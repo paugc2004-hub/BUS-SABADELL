@@ -30,6 +30,8 @@ export function enrich(p: Pattern, v: BaseVehicle): VehicleState {
   let prev = -1;
   for (let i = 0; i < n; i++) if (sd[i]! <= v.dist + AT_STOP_M) prev = i;
   if (v.status === 'EN_CABECERA') prev = -1;
+  // en marxa, l'última parada feta és sempre anterior a la propera (encara que en sigui a pocs cm)
+  if (v.status !== 'EN_PARADA' && v.status !== 'RETIRADA') prev = Math.min(prev, v.nextStopIndex - 1);
   let at: number | null = null;
   if (v.status === 'EN_PARADA' || v.status === 'EN_CABECERA') {
     const i = v.status === 'EN_CABECERA' ? 0 : prev;
@@ -66,14 +68,14 @@ export function stopsUntil(v: VehicleState, index: number): number {
  * Línia temporal del trajecte. `times[i]` és l'hora de pas per la parada i: per a les
  * passades, la simulada (o la real, si el proveïdor la té); per a les futures, l'ETA.
  */
-export function journeyOf(p: Pattern, v: VehicleState, times: (number | null)[]): Journey {
+export function journeyOf(p: Pattern, v: VehicleState, times: (number | null)[], scheduled: (number | null)[] = []): Journey {
   const stops: JourneyStop[] = p.stopIds.map((stopId, index) => {
     let state: JourneyStop['state'];
     if (v.atStopIndex === index) state = 'current';
     else if (index <= v.prevStopIndex) state = 'passed';
     else if (index === v.nextStopIndex && v.status !== 'RETIRADA') state = 'next';
     else state = 'upcoming';
-    return { stopId, index, dist: p.stopDist[index]!, at: times[index] ?? null, state };
+    return { stopId, index, dist: p.stopDist[index]!, at: times[index] ?? null, scheduledAt: scheduled[index] ?? null, state };
   });
   const a = p.stopDist[0] ?? 0;
   const b = p.stopDist[p.stopDist.length - 1] ?? p.length;

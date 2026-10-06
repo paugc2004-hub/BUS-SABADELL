@@ -5,6 +5,9 @@ import { SimClock, dayTypeFor, forcedInstant, serviceDayOrigin } from '../src/ti
 import { pointAlong } from '../src/geo.ts';
 import { local, makePattern, tinyNetwork } from './fixtures.ts';
 
+// aquests tests comproven l'horari exacte: sense retards simulats
+const EXACT = { delays: false } as const;
+
 describe('calendari', () => {
   const h = tinyNetwork().holidays;
   it('feiner, dissabte, diumenge i festiu', () => {
@@ -53,11 +56,11 @@ describe('rellotge', () => {
 });
 
 describe('motor de simulació', () => {
-  const engine = new SimEngine(tinyNetwork());
+  const engine = new SimEngine(tinyNetwork(), EXACT);
   const at8 = local('2026-10-06T08:00');
 
   it('és determinista', () => {
-    const a = new SimEngine(tinyNetwork()).snapshot(at8 + 37_000);
+    const a = new SimEngine(tinyNetwork(), EXACT).snapshot(at8 + 37_000);
     const b = engine.snapshot(at8 + 37_000);
     expect(a).toEqual(b);
   });
@@ -133,7 +136,7 @@ describe('motor de simulació', () => {
 
 describe('servei que creua la mitjanit', () => {
   const p = makePattern({ id: 'N-a', routeId: 'X1', trips: [[23 * 3600 + 50 * 60, 0], [24 * 3600 + 10 * 60, 0]] });
-  const engine = new SimEngine(tinyNetwork({ patterns: [p] }));
+  const engine = new SimEngine(tinyNetwork({ patterns: [p] }), EXACT);
 
   it('una expedició de les 24:10 del dimarts circula dimecres a les 00:13', () => {
     const t = local('2026-10-07T00:13');
@@ -151,14 +154,14 @@ describe('servei que creua la mitjanit', () => {
 
 describe('canvi d’hora', () => {
   it('el 25/10 (hora repetida) no hi ha expedicions duplicades ni perdudes', () => {
-    const engine = new SimEngine(tinyNetwork({ holidays: [] }));
+    const engine = new SimEngine(tinyNetwork({ holidays: [] }), EXACT);
     // diumenge 25/10/2026 és festiu per TUS: provem el dissabte 28/03 i un feiner normal
     const tA = local('2026-10-26T08:00');
     expect(engine.snapshot(tA).length).toBe(engine.snapshot(local('2026-10-27T08:00')).length);
   });
 
   it('el 29/03/2027 (endemà del canvi de primavera) els horaris són a l’hora local correcta', () => {
-    const engine = new SimEngine(tinyNetwork({ holidays: [] }));
+    const engine = new SimEngine(tinyNetwork({ holidays: [] }), EXACT);
     const t = local('2027-03-29T06:00');
     const s = engine.snapshot(t);
     expect(s.length).toBeGreaterThan(0);

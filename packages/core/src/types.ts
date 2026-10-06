@@ -99,8 +99,10 @@ export interface NetworkData {
 
 export interface StopEta {
   stopId: string;
-  /** epoch ms */
+  /** hora estimada (epoch ms): la que es mostra i la que fa servir el compte enrere */
   at: number;
+  /** hora programada a l'horari (epoch ms); at - scheduledAt = retard */
+  scheduledAt?: number;
 }
 
 export interface VehicleState {
@@ -155,6 +157,8 @@ export interface JourneyStop {
   dist: number;
   /** hora de pas (epoch ms): prevista per a les futures, simulada/real per a les passades */
   at: number | null;
+  /** hora programada (epoch ms) */
+  scheduledAt: number | null;
   state: 'passed' | 'current' | 'next' | 'upcoming';
 }
 
@@ -173,7 +177,10 @@ export interface Arrival {
   routeId: string;
   patternId: string;
   headsign: string;
-  at: number; // epoch ms
+  at: number; // epoch ms, estimada
+  scheduledAt: number; // epoch ms, horari
+  /** retard estimat en aquesta parada (s); null si no se sap */
+  delaySec: number | null;
   vehicleId: string | null; // null si encara no ha sortit de capçalera
   status: 'EN_RUTA' | 'PENDENT_SORTIDA';
   source: DataSource;

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { SimEngine, bearing, pointAlong, projectOnLine, stopsUntil, trapezoid, type NetworkData } from '../src/index.ts';
+import { MAX_DELAY_S, MAX_EARLY_S, SimEngine, bearing, pointAlong, projectOnLine, stopsUntil, trapezoid, type NetworkData } from '../src/index.ts';
 
 const net = JSON.parse(readFileSync(join(__dirname, '../../../apps/web/public/data/network.json'), 'utf8')) as NetworkData;
 const engine = new SimEngine(net);
@@ -147,11 +147,45 @@ describe('una sola font de veritat: mapa → fitxa → parada → línia tempora
     expect(v.progress).toBeCloseTo((v.dist - a) / (b - a), 9);
   });
 
-  it('la simulació no s’inventa retards ni desviaments', () => {
-    for (const t of instants) for (const v of engine.snapshot(t)) {
+  it('retards simulats: deterministes, acotats, etiquetats com a simulats i amb una red viva', () => {
+    const other = new SimEngine(net);
+    const delays: number[] = [];
+    for (const t of instants) {
+      const a = engine.snapshot(t);
+      const b = other.snapshot(t);
+      expect(b.map((v) => [v.id, v.delaySec, v.lon])).toEqual(a.map((v) => [v.id, v.delaySec, v.lon]));
+      for (const v of a) {
+        expect(v.source).toBe('SIMULATED');
+        expect(v.status).not.toBe('DESVIADO');
+        if (v.delaySec === null) continue;
+        expect(v.delaySec).toBeGreaterThanOrEqual(-MAX_EARLY_S);
+        expect(v.delaySec).toBeLessThanOrEqual(MAX_DELAY_S + 60);
+        if (v.status === 'RETRASADO') expect(v.delaySec).toBeGreaterThanOrEqual(180);
+        if (v.status === 'EN_RUTA' || v.status === 'RETRASADO') delays.push(v.delaySec);
+      }
+    }
+    const onTime = delays.filter((d) => d > -60 && d < 180).length / delays.length;
+    // la majoria a l'hora, però no tots: n'hi ha de retardats i d'avançats
+    expect(onTime).toBeGreaterThan(0.6);
+    expect(onTime).toBeLessThan(0.97);
+    expect(delays.some((d) => d >= 180)).toBe(true);
+    expect(delays.some((d) => d <= -30)).toBe(true);
+  });
+
+  it('la ETA és l’hora estimada i guarda l’hora programada: la diferència és el retard', () => {
+    const t = Date.parse('2026-10-06T07:40:00Z');
+    for (const v of engine.snapshot(t).filter((x) => x.status === 'EN_RUTA' || x.status === 'RETRASADO')) {
+      const e = v.etas[0]!;
+      expect(e.scheduledAt).toBeDefined();
+      expect(Math.round((e.at - e.scheduledAt!) / 1000)).toBe(v.delaySec);
+    }
+  });
+
+  it('sense retards (delays: false) tot va exactament a l’horari', () => {
+    const exact = new SimEngine(net, { delays: false });
+    for (const v of exact.snapshot(Date.parse('2026-10-06T07:40:00Z'))) {
       expect(v.delaySec).toBeNull();
-      expect(['RETRASADO', 'DESVIADO']).not.toContain(v.status);
-      expect(v.source).toBe('SIMULATED');
+      for (const e of v.etas) expect(e.at).toBe(e.scheduledAt);
     }
   });
 });

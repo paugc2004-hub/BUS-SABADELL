@@ -37,6 +37,11 @@ export interface EngineOptions {
   chainRadiusM?: number;
   /** descanso mínimo en cabecera */
   minLayoverS?: number;
+  /**
+   * Retrasos simulados (deterministas por fecha + expedición). false = todo exactamente
+   * a su hora (tests de horario y modo "solo horario").
+   */
+  delays?: boolean;
 }
 
 const DEFAULTS: Required<EngineOptions> = {
@@ -45,7 +50,12 @@ const DEFAULTS: Required<EngineOptions> = {
   maxLayoverShowS: 25 * 60,
   chainRadiusM: 350,
   minLayoverS: 60,
+  delays: true,
 };
+
+/** límites de los retrasos simulados (s) */
+export const MAX_EARLY_S = 90;
+export const MAX_DELAY_S = 540;
 
 export interface PreparedPattern {
   p: Pattern;
@@ -63,6 +73,8 @@ export interface Trip {
   offsets: number[]; // llegada a cada parada (s desde dep)
   end: number; // dep + última llegada
   dwell: number[]; // tiempo de parada en cada parada (s)
+  /** variación de velocidad de crucero por tramo (−0,3…0,3): misma duración, distinto ritmo */
+  wobble: number[];
   vehicle: string;
   blockPos: number;
 }
@@ -77,7 +89,18 @@ export interface Block {
 interface DayTables {
   trips: Trip[];
   blocks: Block[];
+  blockById: Map<string, Block>;
   byStop: Map<string, { trip: Trip; idx: number }[]>;
+}
+
+/**
+ * Horas reales (simuladas) de un día concreto: para cada expedición del torn, la salida
+ * y la llegada a cada parada en segundos desde el origen del día de servicio.
+ */
+interface Actual {
+  dep: number;
+  arr: number[];
+  end: number;
 }
 
 /** aceleración y frenada típicas de un autobús urbano (m/s²) */
@@ -184,6 +207,7 @@ export class SimEngine {
           const want = 8 + rnd() * 14; // 8–22 s
           return Math.max(0, Math.min(want, seg * 0.3));
         });
+        const wobble = offsets.map(() => (rnd() - 0.5) * 0.6);
         trips.push({
           key,
           pattern: pp,
@@ -191,6 +215,7 @@ export class SimEngine {
           offsets,
           end: dep + (offsets[offsets.length - 1] ?? 0),
           dwell,
+          wobble,
           vehicle: '',
           blockPos: 0,
         });
@@ -213,7 +238,72 @@ export class SimEngine {
     }
     for (const arr of byStop.values())
       arr.sort((a, b) => a.trip.dep + a.trip.offsets[a.idx]! - (b.trip.dep + b.trip.offsets[b.idx]!));
-    return { trips, blocks, byStop };
+    return { trips, blocks, blockById: new Map(blocks.map((b) => [b.id, b])), byStop };
+  }
+
+  // ------------------------------------------------------------------ retrasos simulados
+
+  private actualCache = new Map<string, Actual[]>();
+
+  /**
+   * Retrasos simulados de un torn en una fecha. Deterministas (semilla = fecha + expedición):
+   * recargar la página da lo mismo. Cada parada suma una pequeña deriva (más en hora punta),
+   * se recupera algo en los tramos rápidos, y un viaje que llega tarde a cabecera sale tarde
+   * en el siguiente si no le da tiempo al descanso mínimo. Acotados a [−90 s, +9 min].
+   */
+  private actualOf(b: Block, date: string): Actual[] {
+    const key = `${date}|${b.id}`;
+    const hit = this.actualCache.get(key);
+    if (hit) return hit;
+    if (this.actualCache.size > 4000) this.actualCache.clear();
+    const out: Actual[] = [];
+    let prevEnd = -Infinity;
+    for (const t of b.trips) {
+      if (!this.opts.delays) {
+        out.push({ dep: t.dep, arr: t.offsets.map((o) => t.dep + o), end: t.end });
+        continue;
+      }
+      const rnd = mulberry32(hashString(`${date}|${t.key}`));
+      // carácter de la expedición: la mayoría normales, algunas con tráfico, pocas adelantadas
+      const r = rnd();
+      const kind = r < 0.75 ? 'normal' : r < 0.9 ? 'traffic' : 'early';
+      const h = (t.dep / 3600) % 24;
+      const peak = (h >= 7 && h < 9.5) || (h >= 13 && h < 15) || (h >= 17 && h < 19.5) ? 1.6 : 1;
+      const own = rnd() * 40; // las salidas de cabecera son casi puntuales
+      let d = Math.max(own, prevEnd + this.opts.minLayoverS - t.dep);
+      const arr: number[] = [];
+      for (let i = 0; i < t.offsets.length; i++) {
+        if (i > 0) {
+          const seg = t.offsets[i]! - t.offsets[i - 1]!;
+          let step: number;
+          if (kind === 'traffic') step = (1 + rnd() * 13) * peak;
+          else if (kind === 'early') step = -7 + rnd() * 8;
+          else step = -6 + rnd() * 11 * peak;
+          // un tramo largo deja recuperar (o perder) algo más
+          step *= Math.min(2, Math.max(0.5, seg / 75));
+          // regulación: con retraso, el conductor (o el centro de control) recupera un poco
+          if (d > 120) step -= 4;
+          d = Math.min(MAX_DELAY_S, Math.max(-MAX_EARLY_S, d + step));
+        }
+        let a = t.dep + t.offsets[i]! + d;
+        // nunca antes de lo físicamente posible: dwell de la anterior + 15 s de marcha
+        if (i > 0) a = Math.max(a, arr[i - 1]! + t.dwell[i - 1]! + 15);
+        arr.push(a);
+      }
+      const dep = arr[0]!;
+      const end = arr[arr.length - 1]!;
+      out.push({ dep, arr, end });
+      prevEnd = end;
+    }
+    this.actualCache.set(key, out);
+    return out;
+  }
+
+  /** Hora estimada (s desde el origen del día) de la expedición `trip` en la parada idx. */
+  private actualAt(tables: DayTables, trip: Trip, idx: number, date: string): number {
+    const b = tables.blockById.get(trip.vehicle);
+    if (!b) return trip.dep + trip.offsets[idx]!;
+    return this.actualOf(b, date)[trip.blockPos]!.arr[idx]!;
   }
 
   /**
@@ -305,32 +395,36 @@ export class SimEngine {
     const first = trips[0];
     const last = trips[trips.length - 1];
     if (!first || !last) return null;
-    if (s < first.dep - this.opts.preDepartureShowS) return null;
-    if (s > last.end + this.opts.retireShowS) return null;
-    // última expedición con salida <= s
+    // cota rápida con el horario (los retrasos están acotados) antes de calcular nada
+    if (s < first.dep - this.opts.preDepartureShowS - MAX_EARLY_S) return null;
+    if (s > last.end + this.opts.retireShowS + MAX_DELAY_S + 3600) return null;
+    const act = this.actualOf(b, date);
+    if (s < act[0]!.dep - this.opts.preDepartureShowS) return null;
+    if (s > act[act.length - 1]!.end + this.opts.retireShowS) return null;
+    // última expedición con salida real <= s
     let lo = 0;
     let hi = trips.length - 1;
     let k = -1;
     while (lo <= hi) {
       const mid = (lo + hi) >> 1;
-      if (trips[mid]!.dep <= s) {
+      if (act[mid]!.dep <= s) {
         k = mid;
         lo = mid + 1;
       } else hi = mid - 1;
     }
     const vid = `${date}:${b.id}`;
-    if (k === -1) return this.atTerminal(b, vid, first, origin, t);
+    if (k === -1) return this.atTerminal(b, vid, first, act[0]!, origin, t);
     const cur = trips[k]!;
-    if (s <= cur.end) return this.moving(b, vid, cur, s, origin, t);
+    if (s <= act[k]!.end) return this.moving(b, vid, cur, act[k]!, s, origin, t);
     const next = trips[k + 1];
     if (next) {
-      if (next.dep - s > this.opts.maxLayoverShowS) return null; // se fue a cochera
-      return this.atTerminal(b, vid, next, origin, t);
+      if (act[k + 1]!.dep - s > this.opts.maxLayoverShowS) return null; // se fue a cochera
+      return this.atTerminal(b, vid, next, act[k + 1]!, origin, t);
     }
     return this.atEnd(b, vid, cur, origin, t);
   }
 
-  private base(b: Block, vid: string, trip: Trip, origin: number, t: number) {
+  private base(b: Block, vid: string, trip: Trip, origin: number, t: number, act?: Actual) {
     return {
       id: vid,
       label: b.label,
@@ -338,26 +432,27 @@ export class SimEngine {
       patternId: trip.pattern.p.id,
       tripKey: trip.key,
       source: 'SIMULATED' as const,
-      departure: origin + trip.dep * 1000,
+      departure: origin + (act?.dep ?? trip.dep) * 1000,
       lastTrip: trip.blockPos === b.trips.length - 1,
       timestamp: t,
     };
   }
 
-  private etasFrom(trip: Trip, fromIdx: number, origin: number): StopEta[] {
+  private etasFrom(trip: Trip, act: Actual, fromIdx: number, origin: number): StopEta[] {
     const ids = trip.pattern.p.stopIds;
     const out: StopEta[] = [];
     for (let j = fromIdx; j < ids.length; j++)
-      out.push({ stopId: ids[j]!, at: origin + (trip.dep + trip.offsets[j]!) * 1000 });
+      out.push({ stopId: ids[j]!, at: Math.round(origin + act.arr[j]! * 1000), scheduledAt: origin + (trip.dep + trip.offsets[j]!) * 1000 });
     return out;
   }
 
-  private atTerminal(b: Block, vid: string, trip: Trip, origin: number, t: number): VehicleState {
+  private atTerminal(b: Block, vid: string, trip: Trip, act: Actual, origin: number, t: number): VehicleState {
     const pp = trip.pattern;
     const d = pp.p.stopDist[0] ?? 0;
     const [lon, lat] = pointAlong(pp.coords, pp.p.cum, d);
     return this.out(pp, {
-      ...this.base(b, vid, trip, origin, t),
+      ...this.base(b, vid, trip, origin, t, act),
+      delaySec: this.opts.delays ? Math.round(act.dep - trip.dep) : null,
       status: 'EN_CABECERA',
       dist: d,
       lon,
@@ -366,7 +461,7 @@ export class SimEngine {
       speedKmh: 0,
       nextStopIndex: 0,
       nextStopId: pp.p.stopIds[0] ?? null,
-      etas: this.etasFrom(trip, 0, origin),
+      etas: this.etasFrom(trip, act, 0, origin),
     });
   }
 
@@ -394,12 +489,13 @@ export class SimEngine {
   }
 
   /** Posición de un bus en ruta: interpolación por distancia a lo largo de la geometría. */
-  private moving(b: Block, vid: string, trip: Trip, s: number, origin: number, t: number): VehicleState {
+  private moving(b: Block, vid: string, trip: Trip, act: Actual, s: number, origin: number, t: number): VehicleState {
     const pp = trip.pattern;
     const sd = pp.p.stopDist;
-    const o = trip.offsets;
+    // horas reales (con el retraso simulado) relativas a la salida real
+    const o = act.arr.map((a) => a - act.dep);
     const n = o.length;
-    const rel = s - trip.dep;
+    const rel = s - act.dep;
     // i = última parada a la que ya ha llegado
     const i = Math.max(0, Math.min(n - 1, upperBound(o, rel) - 1));
     let dist: number;
@@ -418,14 +514,23 @@ export class SimEngine {
       const leave = o[i]! + trip.dwell[i]!;
       const dur = Math.max(1, o[i + 1]! - leave);
       const segLen = sd[i + 1]! - sd[i]!;
-      const [run, ms] = trapezoid(segLen, dur, rel - leave);
+      // pequeña variación de ritmo dentro del tramo (misma duración total, monótona)
+      const tau = rel - leave;
+      const f = Math.min(1, Math.max(0, tau / dur));
+      const w = trip.wobble[i] ?? 0;
+      const warped = tau + (w * dur * Math.sin(2 * Math.PI * f)) / (2 * Math.PI);
+      const [run, ms] = trapezoid(segLen, dur, warped);
       dist = sd[i]! + Math.min(segLen, run);
-      speed = ms * 3.6;
+      speed = ms * (1 + w * Math.cos(2 * Math.PI * f)) * 3.6;
       nextIdx = i + 1;
     }
     const [lon, lat] = pointAlong(pp.coords, pp.p.cum, dist);
+    // retraso en la próxima parada: estimado − programado
+    const delay = this.opts.delays ? Math.round(act.arr[nextIdx]! - (trip.dep + trip.offsets[nextIdx]!)) : null;
+    if (status === 'EN_RUTA' && delay !== null && delay >= 180) status = 'RETRASADO';
     return this.out(pp, {
-      ...this.base(b, vid, trip, origin, t),
+      ...this.base(b, vid, trip, origin, t, act),
+      delaySec: delay,
       status,
       dist,
       lon,
@@ -435,7 +540,7 @@ export class SimEngine {
       speedKmh: Math.round(speed),
       nextStopIndex: nextIdx,
       nextStopId: pp.p.stopIds[nextIdx] ?? null,
-      etas: this.etasFrom(trip, nextIdx, origin),
+      etas: this.etasFrom(trip, act, nextIdx, origin),
     });
   }
 
@@ -452,9 +557,15 @@ export class SimEngine {
     const b = this.days.get(dayTypeFor(date, this.network.holidays))!.blocks.find((x) => x.id === blockId);
     const trip = b?.trips.find((x) => x.key === v.tripKey);
     const pp = this.patterns.get(v.patternId);
-    if (!trip || !pp) return null;
+    if (!trip || !pp || !b) return null;
     const origin = serviceDayOrigin(date);
-    return journeyOf(pp.p, v, trip.offsets.map((o) => origin + (trip.dep + o) * 1000));
+    const act = this.actualOf(b, date)[trip.blockPos]!;
+    return journeyOf(
+      pp.p,
+      v,
+      act.arr.map((a) => Math.round(origin + a * 1000)),
+      trip.offsets.map((o) => origin + (trip.dep + o) * 1000),
+    );
   }
 
   /**
@@ -468,17 +579,24 @@ export class SimEngine {
       if (!list) continue;
       const s = (t - sd.origin) / 1000;
       for (const { trip, idx } of list) {
-        const arr = trip.dep + trip.offsets[idx]!;
-        if (arr < s - 20) continue;
-        if (arr > s + horizonMin * 60) break;
-        const visible = s >= trip.dep - this.opts.preDepartureShowS;
+        const sched = trip.dep + trip.offsets[idx]!;
+        // la lista va ordenada por horario; los retrasos están acotados
+        if (sched < s - 20 - MAX_DELAY_S) continue;
+        if (sched > s + horizonMin * 60 + MAX_EARLY_S) break;
+        const arr = this.actualAt(sd.tables, trip, idx, sd.date);
+        if (arr < s - 20 || arr > s + horizonMin * 60) continue;
+        const b = sd.tables.blockById.get(trip.vehicle);
+        const depAct = b ? this.actualOf(b, sd.date)[trip.blockPos]!.dep : trip.dep;
+        const visible = s >= depAct - this.opts.preDepartureShowS;
         out.push({
           routeId: trip.pattern.route.id,
           patternId: trip.pattern.p.id,
           headsign: trip.pattern.p.headsign,
-          at: sd.origin + arr * 1000,
+          at: Math.round(sd.origin + arr * 1000),
+          scheduledAt: sd.origin + sched * 1000,
+          delaySec: this.opts.delays ? Math.round(arr - sched) : null,
           vehicleId: visible ? `${sd.date}:${trip.vehicle}` : null,
-          status: s >= trip.dep ? 'EN_RUTA' : 'PENDENT_SORTIDA',
+          status: s >= depAct ? 'EN_RUTA' : 'PENDENT_SORTIDA',
           source: 'SIMULATED',
         });
       }

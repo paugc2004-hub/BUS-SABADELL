@@ -1,107 +1,135 @@
-# Auditoría para la evolución — Bus Sabadell en directe
+# Auditoría de evolución — Bus Sabadell en directe
 
-Fecha: 2026-10-06 · Base auditada: commit `f574f76` (https://bus-sabadell.vercel.app)
+Segunda iteración · 2026-10-06 · base auditada: commit `4f56d5e`, producción https://bus-sabadell.vercel.app
+(La primera iteración —datos, motor, marcador de bus, ficha, parada, viaje, demo— está resumida al final.)
 
-Este documento se escribió **antes** de tocar la experiencia, tras leer el código y
-validar los datos. La validación línea por línea completa (106 variantes) está en
-[LINE_AUDIT.md](LINE_AUDIT.md) y se regenera con `pnpm data:audit`.
+Método: lectura del código completo, ejecución local y en producción, capturas de escritorio y móvil,
+`pnpm data:audit`, tests (69 unitarios/API, 33 e2e) y medición de rendimiento con `scripts/perf-probe.mjs`
+(Chromium sin GPU: valores pesimistas, útiles para comparar antes/después).
 
 ---
 
 ## 1. Arquitectura actual
 
-| Pieza | Qué es | Estado |
-|---|---|---|
-| `packages/data-pipeline` | Lee los extractos guardados de tus.es (JSON `trayectos` de cada página pública de línea), OSM y GTFS de la Generalitat → `apps/web/public/data/network.json` + GTFS propio + informe | Sólido, determinista |
-| `packages/core` | Tipos, geodesia, tiempo Europe/Madrid (día de servicio "mediodía − 12 h"), `SimEngine` determinista, interfaz `VehicleProvider` | Sólido; la posición es función pura de (red, instante) |
-| `apps/web` | Vite + React 18 + MapLibre GL + Zustand. Router propio (`/`, `/linia/:id`, `/parada/:id`, `/cercar`, `/presentacio`). PWA offline | Funciona; UX de "mapa con puntos" |
-| `apps/api` | Fastify: `/v1/meta`, vehículos, SSE (snapshot + diff + heartbeat), llegadas, `GtfsRtProvider` probado con fixture | Desplegado en Vercel |
+```
+data/raw (tus.es, OSM rutas + calles, GTFS Generalitat)
+  └─ packages/data-pipeline: build → geometry (despike) → repair (sentidos, circulares, tramos con donante)
+                             → audit (calles, paradas, sentidos únicos, OSM) → network.json + GTFS + informes
+packages/core: tipos · geo · tiempo · SimEngine (puro) · vehicle.ts (derivados únicos) · providers
+apps/web: React 18 + Zustand + MapLibre; simula en el navegador; SSE opcional
+apps/api: Fastify + SSE; GtfsRtProvider / HybridProvider / TusSaeProvider (interfaz)
+```
 
-**Flujo de datos de vehículos.** El navegador crea `SimEngine(network)` y cada tick del
-bucle `requestAnimationFrame` de `MapView` llama a `vehiclesAt(engine, clock.now())`.
-La ficha de bus, el panel de parada y la vista de línea llaman al mismo motor con
-`useNow()` (1 Hz). Como el motor es puro, mapa y paneles coinciden — pero cada vista
-**deriva por su cuenta** cosas como "a cuántas paradas está" o el progreso, y algunas
-no existen (progreso, paradas pasadas, línea temporal).
-
-**Rendimiento medido (antes de evolucionar).** `snapshot` 0,3–0,9 ms con ~87 buses; el
-mapa actualiza la fuente GeoJSON a 2 Hz en vista de ciudad y hasta 15 Hz con zoom; React
-no se re-renderiza por posición. Soak de 8 min a ×10: heap estable 38–43 MB.
-
-## 2. Datos actuales
-
-| Elemento | Fuente | Calidad |
-|---|---|---|
-| Líneas (23) y colores | tus.es, página pública de cada línea | Oficiales |
-| Recorridos (106 variantes) | Polilínea publicada por tus.es | Coinciden con OSM a 1–2 m de media en las 12 líneas comparables |
-| Paradas (408) y orden | tus.es (`orden`) | Oficiales |
-| Horarios | Horas de paso por parada (al minuto) de tus.es, reconstruidas en expediciones | Oficiales; segundos simulados |
-| Vehículos | **Simulados** por `SimEngine`: torns encadenados, interpolación sobre la geometría | Siempre `source: 'SIMULATED'` |
-| Calles para validar | OSM `highway=*` del bbox de Sabadell (nuevo: `data/raw/osm/roads-2026-10-06.json`) | Independiente de tus.es |
-
-## 3. Problemas encontrados
-
-### 3.1 Datos (corregidos en la fase 2 — ver `repair.ts` y LINE_AUDIT.md)
-
-| # | Problema | Causa | Corrección |
+| Pieza | Funciona | Problemas | Decisión |
 |---|---|---|---|
-| D1 | **Sentidos incorrectos** en 11 variantes (p. ej. L14 sábado: "Els Merinals → Can Roqueta" y "Can Roqueta → Els Merinals" salían las dos como sentido 1; L8 "Zona Industrial → La Roureda" como sentido 1 aunque va igual que "Estació Sud → La Roureda") | `dir` se decidía comparando el *nombre* de la cabecera de origen con el de la primera variante | El sentido se decide por **geometría**: proyección de las paradas sobre el recorrido principal (adelante = 0, atrás = 1). Afectaba a la vista de línea (buses en la vía equivocada) |
-| D2 | **F6 pasa por una calle que ya no existe** (190 m + 180 m por la antigua carretera de Bellaterra, retirada de OSM en 2024) | Polilínea antigua en tus.es | El tramo Aeroport → Zona Industrial → Turó de Sant Pau se toma de la L11, que hace **el mismo tramo entre las mismas paradas** por la Gran Via actual |
-| D3 | L12: la cabecera Estació Centre quedaba a 43 m del recorrido en 3 variantes | Polilínea que empieza en otro punto | Tramo Estació Centre → Tres Creus tomado de la variante L12 "per BMC", que sí pasa por la parada |
-| D4 | L15/F15 parecían líneas de un solo sentido | La geometría es un bucle cerrado pero la primera y la última parada son distintas | Se marcan **circulares** cuando la geometría publicada es un bucle |
-| D5 | L8 "La Roureda → Zona Industrial" acaba a 63 m del poste de la parada | Es el punto de regulación (las dos variantes de Zona Industrial empiezan/acaban en el mismo punto) | Aviso documentado, no error |
-| D6 | No existía validación independiente de las 10 líneas que OSM no tiene (L44, L55, L80, F1–F6, F15) | — | `pnpm data:audit`: todo recorrido debe ir por el eje de una calle de OSM (≤ 20 m, sin tramos > 60 m fuera) y cada parada a ≤ 40 m. **106/106 variantes pasan**, se ejecuta en los tests |
+| Pipeline + auditoría | Sí; 105 variantes sin error | — | **Mantener** |
+| `SimEngine` determinista | Sí; posición = f(red, instante) | Todos los buses van exactamente a su hora; crucero constante | **Ampliar**: retrasos y variaciones deterministas |
+| `vehicle.ts` (fuente única) | Sí | Falta hora programada vs. estimada en las ETA | **Ampliar** |
+| Acceso a datos en la web | Funciona | Las vistas llaman a `engine.arrivals()` / `engine.journey()` directamente: con un proveedor real habría que tocar la UI | **Refactorizar**: capa `data/` agnóstica del proveedor |
+| `MapView` | Fluido; capas por función | Etiquetas de todos los buses a z ≥ 13 (≈ 50 a la vez) | **Ajustar**: colisión de etiquetas por prioridad |
+| Navegación | Cercar · Mapa · Línia | No responde a "¿qué bus cojo?"; el inicio es un panel sobre el mapa | **Rediseñar** |
+| `LineView` (esquema horizontal SVG) | Sí | Vista aislada a pantalla completa, sin mapa, scroll horizontal, diseño anterior | **Eliminar y reconstruir** como panel de línea sobre el mapa |
+| `SearchPanel` | Líneas y paradas | No busca destinos; vive en una pestaña aparte | **Integrar** en el inicio y ampliar |
+| `BusCard`, `StopTimeline`, `StopPanel`, `Trip`, `Presentation` | Sí (iteración 1) | Sin puntualidad (+2 min); presentación sin escena SAE/arquitectura ni hora/fecha/reset | **Mantener y ampliar** |
+| Estilos | Coherentes en color | 17 tamaños de letra distintos (9–30 px, con 12,5 / 14,5 / 10,5); bordes en casi todo | **Sistema de diseño**: escala 32/24/18/16/14/12, menos bordes |
+| Metadatos | title, description, manifest, PWA | Sin Open Graph ni imagen para compartir | **Completar** |
 
-**Comprobaciones sobre el brief.** Algunos ejemplos del encargo no corresponden a la red real
-y **no se usan**: la L2 es *Can Deu ↔ La Creu de Barberà* (no "Les Termes", que es L5/L55);
-"Plaça Catalunya" es la parada *Catalunya* (L5, L55, F5, F6); "Eix Macià" es *Francesc Macià*.
-"Estació Centre" son seis postes distintos: la experiencia "Mi parada" los agrupa por nombre y
-proximidad.
+**Duplicado detectado:** la vista de línea calculaba su propia posición de los buses en el esquema
+(`trackPosition`) a partir de `dist`; se sustituye por la línea temporal del core. Los chips de línea existían
+en tres formatos (filtro, vista de línea, ficha).
 
-### 3.2 Representación y animación
+## 2. Datos
 
-| # | Problema |
+- **Reales (públicos):** 23 líneas oficiales, colores, recorridos, 408 paradas, orden, horas de paso al minuto
+  (tus.es); calles y rutas (OSM); festivos (Generalitat/Ajuntament); interurbanos (GTFS Generalitat).
+- **Corregidos a partir de los propios datos:** sentidos (11 variantes), 1.694 picos de las polilíneas,
+  F6 y L12 (tramo de otra línea en el mismo par de paradas), **F4 a contrasentido 100 m por el c. de Calderón**
+  (tramo de la L4, mismas paradas), L15/F15 circulares.
+- **Eliminado:** L4 "Can Roqueta IES" (1 expedición): 100 m a contrasentido por el c. de Can Fadó sin ninguna
+  otra línea que lo confirme. Mejor no mostrarla.
+- **Simulado:** posición, segundos dentro del minuto, tiempos de parada, qué bus hace cada expedición.
+- **Aproximaciones:** la última parada de cada trayecto (tus.es no publica su hora; se extrapola); agrupación
+  de postes por nombre + 250 m.
+- Validación completa: [LINE_AUDIT.md](LINE_AUDIT.md) (105 variantes · 0 errores · 9 avisos documentados).
+
+## 3. Simulación
+
+| Aspecto | Estado | Problema |
+|---|---|---|
+| Movimiento | Sobre la geometría por distancia (`pointAlong`), rumbo de la geometría | — |
+| Velocidad | Trapezoidal: 1,0 m/s² arranque, crucero, 1,2 m/s² frenada | Crucero idéntico en todos los tramos |
+| Dwell | 8–22 s deterministas por expedición | — |
+| Horarios / frecuencia | Expediciones reales de tus.es | — |
+| Puntualidad | **Siempre a su hora** | Red "de maqueta": nadie va +2 o −1 min (P1) |
+| Cabeceras / torns | IDA → cabecera → VUELTA encadenado FIFO (≥ 60 s de descanso, ≤ 350 m) | Un retraso no se propaga al siguiente viaje (no hay retrasos) |
+| ETA | Horas programadas de la expedición | No distingue programado de estimado |
+| Flota | 87 en punta (TUS ≈ 70) | Torns no compartidos entre líneas (P2, documentado) |
+
+## 4. UX/UI
+
+- **Jerarquía (P0 del brief):** la primera pantalla es el mapa con 80+ buses; la pregunta "¿qué bus cojo y
+  cuánto falta?" exige buscar una parada. Falta "Tu próximo bus" arriba del todo.
+- **Navegación:** "Cercar · Mapa · Línia" no son tareas del usuario. Propuesta: **Inici · Mapa · Línies · Xarxa**
+  (escritorio, arriba) y barra inferior en móvil.
+- **Densidad:** filtro de líneas de 23 chips siempre visible en escritorio; bordes en todas las tarjetas.
+- **Tipografía:** 17 tamaños; falta escala.
+- **Línea:** la vista esquemática obliga a scroll horizontal y separa la línea del mapa.
+- **Accesibilidad:** Lighthouse 100; navegación por teclado y etiquetas presentes; falta revisar foco al abrir
+  paneles.
+
+## 5. Rendimiento (antes)
+
+| Medida | Valor |
 |---|---|
-| V1 | El bus es una **gota** de color con el código encima: se lee como un pin, no como un vehículo |
-| V2 | Seleccionar un bus no destaca su línea; filtrar líneas **oculta** las demás en vez de atenuarlas; no hay sentido de circulación visible en el mapa |
-| V3 | Colores muy parecidos entre líneas (L2 `#004996`, L55 `#00679a`, L7 `#0099cc`; L11 y F6 comparten `#b0d2f0`) → el color no basta, hace falta el código siempre visible y jerarquía al seleccionar |
-| V4 | Entre paradas la velocidad sigue una curva seno: el bus nunca "va a velocidad de crucero", acelera y frena durante todo el tramo (pico = 2× la media) |
-| V5 | Seguir bus usa `easeTo` cada 400 ms → pequeños tirones |
-| V6 | No se ve la parte recorrida / pendiente del viaje ni la siguiente parada en el mapa |
+| Lighthouse móvil (producción) | Rendimiento 70 · Accesibilidad 100 · Buenas prácticas 100 · FCP/LCP 1,3 s · TBT 2,8 s |
+| JS de la app (gzip) | 119 KB (+ MapLibre 280 KB gzip en trozo aparte) |
+| Mapa en reposo, 20 s (escritorio) | 0 tareas largas · 60 fps · heap 26 MB · 144 nodos DOM |
+| Panel de parada abierto | 0 tareas largas · 60 fps · 30 MB · 408 nodos |
+| Bus seleccionado | 0 tareas largas · 57 fps · 47 MB |
+| Móvil (Pixel 7 emulado) | 0 tareas largas · 60 fps · 42 MB |
 
-### 3.3 ETA y estado
+Conclusión honesta: en régimen estable **no hay un problema de rendimiento** (React no se re-renderiza por
+posición; el mapa actualiza GeoJSON a 2–15 Hz según zoom). El coste está en la **carga** (TBT de MapLibre con
+WebGL por software). Optimizar a ciegas no tiene sentido: se medirá de nuevo tras los cambios.
 
-| # | Problema |
-|---|---|
-| E1 | `VehicleState` no tiene **progreso**, destino, sentido, parada anterior ni paradas restantes: cada vista los recalcularía |
-| E2 | No hay paradas **pasadas** con hora (necesarias para la línea temporal) |
-| E3 | "A N paradas" no existe en el panel de parada |
-| E4 | Estados `RETRASADO`/`DESVIADO` del brief: el tipo tenía `DESVIAT` pero no `RETRASADO` |
+## 6. Problemas clasificados
 
-### 3.4 Experiencia
+| Prio | Problema | Acción |
+|---|---|---|
+| **P0** | Rutas incorrectas (sentidos, picos, calle desaparecida, contrasentidos) | ✅ Corregido o eliminado, con auditoría en los tests |
+| **P0** | La primera pantalla no responde "¿qué bus viene y cuánto falta?" | Nuevo inicio con "Tu próximo bus" |
+| **P1** | Simulación sin puntualidad: todo a su hora | Retrasos deterministas y acotados, propagados en cabecera, etiquetados como simulados |
+| **P1** | ETA sin programado vs. estimado | `scheduledAt` + `at` en cada ETA; "+2 min" / "A su hora" en toda la UI |
+| **P1** | UI acoplada al motor (`engine.arrivals` en vistas) | Capa de datos agnóstica del proveedor |
+| **P1** | Vista de línea aislada y anticuada | Panel de línea con mapa, sentido, paradas, buses, próximos pasos, frecuencia, duración |
+| **P2** | Sin vista de red para TUS | Dashboard "Xarxa en directe" con métricas derivadas de la simulación |
+| **P2** | Etiquetas saturadas en zoom medio | Colisión por prioridad |
+| **P2** | Sistema de diseño: tamaños arbitrarios, exceso de bordes | Escala tipográfica y tokens |
+| **P2** | Presentación sin escena SAE/arquitectura, hora/fecha y reset | Ampliar |
+| **P3** | Open Graph, imagen social | Añadir |
+| **P3** | Flota simulada > real | Documentado (interlineado = trabajo con datos de TUS) |
 
-| # | Problema |
-|---|---|
-| U1 | No hay "Mi parada": hay favoritas, pero ningún panel de inicio con próximos buses |
-| U2 | Pulsar una llegada lleva al bus, pero no hay "Voy a coger este bus" ni modo viaje |
-| U3 | No hay alertas contextuales |
-| U4 | La presentación es un bucle automático sin narrativa (no enseña parada → bus → viaje) |
-| U5 | El panel de parada no muestra en el mapa por dónde vienen los buses |
+## 7. Plan (por fases, sin reescritura innecesaria)
 
-## 4. Plan de evolución
+1. ✅ Auditoría (este documento).
+2. ✅ Datos: sentidos únicos + correcciones (hecho antes de tocar la UI).
+3. Modelo: ETA con hora programada y estimada; `delaySec` real en la simulación.
+4. Simulación: retrasos deterministas por expedición y propagación en cabecera; pequeñas variaciones de velocidad.
+5. Capa de datos agnóstica del proveedor en la web.
+6. Sistema de diseño (escala tipográfica, tokens, menos bordes).
+7. Navegación + nuevo inicio + buscador global (líneas, paradas, destinos).
+8. Panel de línea (sustituye a `LineView`).
+9. Puntualidad en ficha, parada, viaje y línea temporal.
+10. Mapa: etiquetas por prioridad.
+11. Dashboard de red e incidencias (solo las publicadas; si no hay, "sin incidencias publicadas").
+12. Presentación: hora/fecha, reset, escena "con el SAE real" y arquitectura.
+13. Metadatos/OG.
+14. Medir de nuevo, tests, e2e, despliegue, `IMPLEMENTATION_SUMMARY.md`.
 
-Regla: **no reescribir lo que funciona** (pipeline, motor puro, reloj, PWA, API, SSE).
+---
 
-1. **Corrección de datos** — `repair.ts` (sentidos por geometría, circulares, tramos con donante) + `audit.ts` en los tests. ✅ antes de la UI.
-2. **Experiencia de mapa** — líneas: la seleccionada gruesa y por encima, el resto atenuadas (no ocultas); flechas de sentido sobre la línea enfocada; código de línea siempre junto al bus; parte recorrida/pendiente del viaje; siguiente parada y "mi parada" destacadas.
-3. **Experiencia de bus** — `BusVehicleMarker`: silueta vectorial de bus vista desde arriba (canvas para el mapa, SVG para la UI), rota con el rumbo, código de línea en una etiqueta que no rota, estados (en ruta, en parada, cabecera, retrasado, desviado, retirada, seleccionado, seguido).
-4. **Experiencia de parada** — "Mi parada": agrupación de postes por zona; próximas llegadas con minutos, "a N paradas", hacia dónde va; en el mapa, los buses que vienen y el tramo que les falta.
-5. **Seguimiento de viaje** — `StopTimeline` (pasadas / actual / futuras), progreso por distancia, "Seguir bus" con cámara suave por fotograma, "Voy a coger este bus" → modo viaje persistente (`myBus`) con alertas contextuales.
-6. **Simulación** — perfil trapezoidal (aceleración ~1 m/s², crucero, frenada ~1,2 m/s² hasta la parada), dwell; `journey()` en el core como **única fuente** de ETA, progreso, paradas restantes y línea temporal.
-7. **UI/UX** — panel de inicio en el mapa (no 5 pestañas): Mapa · Línies · Cercar; tarjetas de 20–24 px de radio con jerarquía; mismo lenguaje visual en móvil (bottom sheets) y escritorio (panel lateral).
-8. **Performance** — mantener: posiciones fuera de React, GeoJSON a frecuencia adaptativa; el seguimiento usa `jumpTo` por fotograma solo mientras se sigue.
-9. **Preparación SAE/AVL** — el `VehicleState` ampliado sale del motor y lo puede rellenar igual un `GtfsRtProvider`/`TusSaeProvider`; `RETRASADO`/`DESVIADO` y `delaySec` existen en el tipo, pero la simulación **no inventa retrasos**: solo los mostrará un proveedor real.
+## Anexo: primera iteración (resumen)
 
-### Honestidad (se mantiene en todas las fases)
-Banner fijo "Demo · posiciones simuladas…", etiqueta "Simulat" en ficha, parada y viaje; nunca
-"GPS en directo" ni "datos oficiales TUS"; sin logotipo de TUS; atribución OSM visible.
+Encontrado y corregido: sentidos por nombre de cabecera, F6 por una calle retirada en 2024, L12 lejos de la
+parada, L15/F15 no circulares, 1.694 picos, proyección en la pasada equivocada (L14 Ebre → Sau → Ebre), bus en
+forma de gota, curva de velocidad seno, cada vista derivando lo suyo, sin parada/timeline/viaje/seguimiento.
