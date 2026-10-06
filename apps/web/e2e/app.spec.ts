@@ -55,11 +55,11 @@ test('línies: índex → panell de línia amb sentit, propers busos, recorregut
 
 test('cercador global tolerant a accents: línies, parades i destinacions', async ({ page }) => {
   await page.goto(`/cercar?${AT}`);
-  await page.getByRole('searchbox').fill('termes');
+  await page.getByRole('combobox').fill('termes');
   await expect(page.locator('.sr-group', { hasText: /Destinaci|Destino/ })).toBeVisible();
-  await page.getByRole('searchbox').fill('l2');
+  await page.getByRole('combobox').fill('l2');
   await expect(page.locator('.sr-item').first()).toContainText('L2');
-  await page.getByRole('searchbox').fill('creu alta');
+  await page.getByRole('combobox').fill('creu alta');
   const res = page.locator('.sr-item', { hasText: 'La Creu Alta' }).first();
   await expect(res).toBeVisible();
   await res.click();
