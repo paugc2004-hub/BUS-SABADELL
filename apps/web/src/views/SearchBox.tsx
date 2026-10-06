@@ -21,7 +21,7 @@ export function SearchBox({ autoFocus = false }: { autoFocus?: boolean }) {
   const items: Item[] = [
     ...res.routes.map((r) => ({ key: `r${r.id}`, go: () => st.navigate({ name: 'line', ref: r.id }) })),
     ...res.stops.map((s) => ({ key: `s${s.stop.id}`, go: () => st.navigate({ name: 'stop', id: s.stop.id }) })),
-    ...res.destinations.map((d) => ({ key: `d${d.name}`, go: () => st.navigate({ name: 'line', ref: d.routes[0]! }) })),
+    ...res.destinations.map((d) => ({ key: `d${d.name.replace(/\W+/g, '-')}`, go: () => st.navigate({ name: 'line', ref: d.routes[0]! }) })),
   ];
   const pick = (i: number) => {
     items[i]?.go();
@@ -42,8 +42,11 @@ export function SearchBox({ autoFocus = false }: { autoFocus?: boolean }) {
           value={q}
           placeholder={t.searchAll}
           aria-label={t.searchAll}
+          role="combobox"
+          aria-autocomplete="list"
           aria-expanded={open}
           aria-controls="search-results"
+          aria-activedescendant={open && items[active] ? `sr-${items[active]!.key}` : undefined}
           onChange={(e) => {
             setQ(e.target.value);
             setActive(0);
@@ -67,7 +70,7 @@ export function SearchBox({ autoFocus = false }: { autoFocus?: boolean }) {
           {res.routes.map((r) => {
             const i = row();
             return (
-              <button key={r.id} type="button" role="option" aria-selected={i === active} className={`sr-item${i === active ? ' on' : ''}`} onMouseEnter={() => setActive(i)} onClick={() => pick(i)}>
+              <button key={r.id} id={`sr-r${r.id}`} type="button" role="option" aria-selected={i === active} className={`sr-item${i === active ? ' on' : ''}`} onMouseEnter={() => setActive(i)} onClick={() => pick(i)}>
                 <RouteChip route={r} size="md" />
                 <span className="sr-main">{r.longName}</span>
               </button>
@@ -77,7 +80,7 @@ export function SearchBox({ autoFocus = false }: { autoFocus?: boolean }) {
           {res.stops.map((s) => {
             const i = row();
             return (
-              <button key={s.stop.id} type="button" role="option" aria-selected={i === active} className={`sr-item${i === active ? ' on' : ''}`} onMouseEnter={() => setActive(i)} onClick={() => pick(i)}>
+              <button key={s.stop.id} id={`sr-s${s.stop.id}`} type="button" role="option" aria-selected={i === active} className={`sr-item${i === active ? ' on' : ''}`} onMouseEnter={() => setActive(i)} onClick={() => pick(i)}>
                 <span className="stop-dot" aria-hidden />
                 <span className="sr-main">{s.stop.name}</span>
                 <span className="chips sr-chips">
@@ -92,7 +95,7 @@ export function SearchBox({ autoFocus = false }: { autoFocus?: boolean }) {
           {res.destinations.map((d) => {
             const i = row();
             return (
-              <button key={d.name} type="button" role="option" aria-selected={i === active} className={`sr-item${i === active ? ' on' : ''}`} onMouseEnter={() => setActive(i)} onClick={() => pick(i)}>
+              <button key={d.name} id={`sr-d${d.name.replace(/\W+/g, '-')}`} type="button" role="option" aria-selected={i === active} className={`sr-item${i === active ? ' on' : ''}`} onMouseEnter={() => setActive(i)} onClick={() => pick(i)}>
                 <span className="sr-dest" aria-hidden>
                   →
                 </span>
