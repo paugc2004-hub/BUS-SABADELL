@@ -24,7 +24,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}', 'data/*.json'],
+        globPatterns: ['**/*.{js,css,html,svg,png}', 'assets/inter-latin-wght-*.woff2', 'assets/jetbrains-mono-latin-*.woff2', 'data/*.json'],
+        clientsClaim: true,
+        skipWaiting: true,
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: '/index.html',
         // mai a la memòria cau: l'stream de vehicles ni l'API en directe

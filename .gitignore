@@ -12,3 +12,6 @@ test-results/
 # HTML crudo de tus.es: pesa 26 MB; se versiona solo el JSON extraído
 data/raw/tus/**/*.html
 data/raw/gtfs/*.zip
+apps/web/test-results/
+apps/web/playwright-report/
+apps/web/dev-dist/
