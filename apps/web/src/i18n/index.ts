@@ -1,4 +1,5 @@
 import { ca, type Dict } from './ca.ts';
+export type { Dict } from './ca.ts';
 import { es } from './es.ts';
 import { useApp } from '../state/store.ts';
 

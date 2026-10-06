@@ -145,6 +145,23 @@ export const Icon = {
       <path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" fill={on ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
     </svg>
   ),
+  board: (
+    <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden>
+      <path d="M12 2.5v10M7.5 8.5L12 13l4.5-4.5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="4" y="15.5" width="16" height="5" rx="2" stroke="currentColor" strokeWidth="1.8" fill="none" />
+    </svg>
+  ),
+  home: (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
+      <path d="M12 3a6 6 0 016 6c0 4.5-6 11-6 11S6 13.5 6 9a6 6 0 016-6z" stroke="currentColor" strokeWidth="1.8" fill="none" />
+      <circle cx="12" cy="9" r="2.2" fill="currentColor" />
+    </svg>
+  ),
+  chevron: (up: boolean) => (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden style={{ transform: up ? 'rotate(180deg)' : undefined }}>
+      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
   info: (
     <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden>
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" fill="none" />

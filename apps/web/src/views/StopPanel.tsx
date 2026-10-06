@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { localDate, serviceDayOrigin, type Arrival } from '@bus/core';
+import { localDate, serviceDayOrigin, type SimEngine } from '@bus/core';
+import { areaOf, liveArrivals, type LiveArrival } from '../data/derive.ts';
 import { useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { Countdown, Icon, IconButton, RouteChip, SourceTag, hm, relativeLabel, shareUrl, useNow } from '../ui/common.tsx';
@@ -15,53 +16,66 @@ function TusStop({ id }: { id: string }) {
   const engine = useApp((s) => s.engine);
   const network = useApp((s) => s.network);
   const favorites = useApp((s) => s.favorites);
+  const selectedBus = useApp((s) => s.selectedBus);
+  const lang = useApp((s) => s.lang);
   const now = useNow(1000);
   const [copied, setCopied] = useState(false);
   const stop = engine?.stops.get(id);
   const st = useApp.getState();
+  const area = useMemo(() => (engine && stop ? areaOf(engine, stop.id) : []), [engine, stop]);
 
   useEffect(() => {
-    if (stop) st.requestFly([stop.lon, stop.lat], Math.max(15.5, 15.5));
+    if (stop) st.requestFly([stop.lon, stop.lat], 15.5);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // agrupar por línea + destino, como un panel de parada
-  const minuteKey = Math.floor(now / 15000);
-  const arrivals = useMemo(() => (engine && stop ? engine.arrivals(stop.id, now, 90, 40) : []), [engine, stop, minuteKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // llegades de tots els pals de la zona, agrupades per línia + destinació
+  const tick = Math.floor(now / 5000);
+  const arrivals = useMemo(() => (engine ? liveArrivals(engine, area, now, 90, 40) : []), [engine, area, tick]); // eslint-disable-line react-hooks/exhaustive-deps
   const groups = useMemo(() => {
-    const m = new Map<string, Arrival[]>();
+    const m = new Map<string, LiveArrival[]>();
     for (const a of arrivals) {
       const k = `${a.routeId}|${a.headsign}`;
-      const arr = m.get(k) ?? [];
-      arr.push(a);
-      m.set(k, arr);
+      m.set(k, [...(m.get(k) ?? []), a]);
     }
     return [...m.values()].sort((a, b) => a[0]!.at - b[0]!.at);
   }, [arrivals]);
 
   if (!engine || !stop) return null;
+  // amb un bus triat, la fitxa del bus ocupa el panell (amb tornada a la parada)
+  if (selectedBus) return null;
   const close = () => st.navigate({ name: 'map' });
   const fav = favorites.includes(stop.id);
-  const alerts = (network?.alerts ?? []).filter((a) => a.stops.includes(stop.id) || a.routes.some((r) => stop.routes.includes(r)));
+  const routes = [...new Set(area.flatMap((sid) => engine.stops.get(sid)?.routes ?? []))].sort(
+    (a, b) => (engine.routes.get(a)?.order ?? 0) - (engine.routes.get(b)?.order ?? 0),
+  );
+  const alerts = (network?.alerts ?? []).filter((a) => a.stops.some((s) => area.includes(s)) || a.routes.some((r) => routes.includes(r)));
   const first = groups[0]?.[0];
   const live = first ? `${first.routeId} ${first.headsign} ${relativeLabel(first.at, now, t)}` : t.noArrivals;
+  const open = (a: LiveArrival) => {
+    if (!a.vehicleId) return;
+    st.set({ boardHint: a.stopId });
+    st.selectBus(a.vehicleId);
+  };
 
   return (
     <Sheet label={`${t.stop} ${stop.name}`} onClose={close} className="stop-panel">
       <header className="card-head">
         <div>
+          <div className="eyebrow">{t.stop}</div>
           <h2 className="stop-name">{stop.name}</h2>
           <div className="stop-meta">
-            <span className="dim">
-              {t.code} {stop.id}
+            <span className="dim small">
+              {t.code} {area.join(' · ')}
+              {area.length > 1 && ` (${t.home.poles(area.length)})`}
             </span>
-            <span className="chips">
-              {stop.routes.map((r) => (
-                <button key={r} type="button" className="chip-btn" onClick={() => st.navigate({ name: 'line', ref: r })}>
-                  <RouteChip route={engine.routes.get(r)} size="sm" dim={!engine.runsOn(r, engine.dayTypeAt(now))} />
-                </button>
-              ))}
-            </span>
+          </div>
+          <div className="chips mt-s">
+            {routes.map((r) => (
+              <button key={r} type="button" className="chip-btn" onClick={() => st.navigate({ name: 'line', ref: r })}>
+                <RouteChip route={engine.routes.get(r)} size="sm" dim={!engine.runsOn(r, engine.dayTypeAt(now))} />
+              </button>
+            ))}
           </div>
         </div>
         <div className="card-actions">
@@ -70,10 +84,12 @@ function TusStop({ id }: { id: string }) {
           </IconButton>
           <IconButton
             label={copied ? t.copied : t.share}
-            onClick={() => shareUrl(location.href, stop.name, () => {
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1600);
-            })}
+            onClick={() =>
+              shareUrl(location.href, stop.name, () => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1600);
+              })
+            }
           >
             {Icon.share}
           </IconButton>
@@ -85,7 +101,7 @@ function TusStop({ id }: { id: string }) {
 
       {alerts.map((a) => (
         <div key={a.id} className="alert-inline">
-          {Icon.bell} {a.text[useApp.getState().lang]}
+          {Icon.bell} {a.text[lang]}
         </div>
       ))}
 
@@ -93,44 +109,15 @@ function TusStop({ id }: { id: string }) {
         {live}
       </div>
 
+      <div className="section-title">{t.home.coming}</div>
       {groups.length === 0 && <div className="card-empty">{t.noArrivals}</div>}
       <ul className="arrivals">
         {groups.map((g) => {
           const a = g[0]!;
           const b = g[1];
-          const route = engine.routes.get(a.routeId);
           return (
             <li key={`${a.routeId}|${a.headsign}`} className="arrival">
-              <div className="arrival-head">
-                <RouteChip route={route} size="sm" />
-                <div>
-                  <div className="cell-label">{t.direction}</div>
-                  <div className="arrival-dest">{a.headsign}</div>
-                </div>
-              </div>
-              <div className="arrival-times">
-                <button
-                  type="button"
-                  className="arrival-main"
-                  disabled={!a.vehicleId}
-                  onClick={() => {
-                    if (!a.vehicleId) return;
-                    st.navigate({ name: 'map' });
-                    st.selectBus(a.vehicleId);
-                  }}
-                >
-                  <Countdown at={a.at} now={now} className="big" />
-                  <span className="dim small">
-                    {a.status === 'PENDENT_SORTIDA' ? t.pendingDeparture : relativeLabel(a.at, now, t)}
-                  </span>
-                </button>
-                {b && (
-                  <div className="arrival-next">
-                    <span className="mono">{hm(b.at)}</span>
-                    <span className="dim small">{relativeLabel(b.at, now, t)}</span>
-                  </div>
-                )}
-              </div>
+              <ArrivalRow a={a} b={b} now={now} onOpen={open} engine={engine} />
             </li>
           );
         })}
@@ -139,6 +126,45 @@ function TusStop({ id }: { id: string }) {
         <SourceTag source="SIMULATED" /> <span className="dim small">{t.sourceHint.SIMULATED}</span>
       </div>
     </Sheet>
+  );
+}
+
+/** Una línia del panell de parada: quan arriba, a quantes parades és i cap on va. */
+export function ArrivalRow({ a, b, now, onOpen, engine, compact = false }: { a: LiveArrival; b?: LiveArrival; now: number; onOpen: (a: LiveArrival) => void; engine: SimEngine; compact?: boolean }) {
+  const t = useT();
+  const route = engine.routes.get(a.routeId);
+  const mins = Math.max(0, Math.floor((a.at - now) / 60000));
+  const sub =
+    a.stopsAway !== null
+      ? t.stopsAway(a.stopsAway)
+      : a.status === 'PENDENT_SORTIDA'
+        ? t.pendingAtTerminal(hm(a.vehicle?.patternId === a.patternId ? a.vehicle.departure : a.at))
+        : t.finishingTrip;
+  return (
+    <>
+      <div className="arrival-head">
+        <RouteChip route={route} size={compact ? 'sm' : 'md'} />
+        <div className="arrival-dest-wrap">
+          <div className="arrival-dest">
+            <span aria-hidden>→ </span>
+            {a.headsign}
+          </div>
+          <div className={`arrival-sub${a.stopsAway !== null && a.stopsAway <= 2 ? ' near' : ''}`}>{sub}</div>
+        </div>
+      </div>
+      <div className="arrival-times">
+        <button type="button" className="arrival-main" disabled={!a.vehicleId} onClick={() => onOpen(a)} aria-label={`${route?.ref} → ${a.headsign}: ${relativeLabel(a.at, now, t)}`}>
+          <span className="big mono">{mins <= 0 ? t.imminent : mins >= 60 ? hm(a.at) : `${mins} min`}</span>
+          <Countdown at={a.at} now={now} className="dim small" />
+        </button>
+        {b && !compact && (
+          <div className="arrival-next">
+            <span className="mono">{hm(b.at)}</span>
+            <span className="dim small">{relativeLabel(b.at, now, t)}</span>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 

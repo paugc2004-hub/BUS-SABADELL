@@ -59,6 +59,46 @@ export function viewPath(v: View): string {
   }
 }
 
+/**
+ * Viatge actiu ("Vaig a agafar aquest bus"). Es guarda al navegador (myBus) i mai
+ * surt del dispositiu. Tota la informació que se'n mostra es deriva del VehicleState.
+ */
+export interface Trip {
+  vehicleId: string;
+  patternId: string;
+  routeId: string;
+  /** parada on el viatger puja (índex dins el pattern) */
+  boardIndex: number;
+  boardStopId: string;
+  /** parada on baixa, si l'ha triada */
+  alightIndex: number | null;
+  createdAt: number;
+}
+
+export interface Toast {
+  id: number;
+  text: string;
+  tone: 'info' | 'go' | 'warn';
+}
+
+function readTrip(): Trip | null {
+  try {
+    const t = JSON.parse(localStorage.getItem('myBus') ?? 'null') as Trip | null;
+    return t && typeof t.vehicleId === 'string' ? t : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeTrip(t: Trip | null) {
+  try {
+    if (t) localStorage.setItem('myBus', JSON.stringify(t));
+    else localStorage.removeItem('myBus');
+  } catch {
+    /* navegació privada */
+  }
+}
+
 function readFavs(): string[] {
   try {
     return JSON.parse(localStorage.getItem('favs') ?? '[]') as string[];
@@ -87,6 +127,16 @@ interface AppState {
   alertsOpen: boolean;
   userPos: [number, number] | null;
   flyTo: { center: [number, number]; zoom: number; id: number } | null;
+  /** línia destacada al mapa (la resta s'atenuen, no s'amaguen) */
+  focusRoute: string | null;
+  trip: Trip | null;
+  toasts: Toast[];
+  /** panell d'inici (La meva parada) plegat */
+  homeCollapsed: boolean;
+  /** parada des d'on s'ha obert el bus: és on el viatger el vol agafar */
+  boardHint: string | null;
+  /** mode presentació actiu (es manté encara que la demo navegui a una parada) */
+  presenting: boolean;
   setLang(l: Lang): void;
   navigate(v: View, opts?: { replace?: boolean; keepQuery?: boolean }): void;
   selectBus(id: string | null): void;
@@ -98,7 +148,15 @@ interface AppState {
   setClock(start: number | null, speed: number): void;
   set(p: Partial<AppState>): void;
   requestFly(center: [number, number], zoom: number): void;
+  setFocusRoute(r: string | null): void;
+  startTrip(t: Omit<Trip, 'createdAt'>): void;
+  setAlight(index: number | null): void;
+  endTrip(): void;
+  pushToast(text: string, tone?: Toast['tone']): void;
+  dismissToast(id: number): void;
 }
+
+let toastSeq = 0;
 
 export const useApp = create<AppState>((set, get) => ({
   lang: 'ca',
@@ -119,6 +177,12 @@ export const useApp = create<AppState>((set, get) => ({
   alertsOpen: false,
   userPos: null,
   flyTo: null,
+  focusRoute: null,
+  trip: readTrip(),
+  toasts: [],
+  homeCollapsed: false,
+  boardHint: null,
+  presenting: parseView(location.pathname).name === 'present',
   setLang(l) {
     try {
       localStorage.setItem('lang', l);
@@ -135,7 +199,7 @@ export const useApp = create<AppState>((set, get) => ({
     const url = viewPath(v) + (qs ? `?${qs}` : '');
     if (opts.replace) history.replaceState(null, '', url);
     else history.pushState(null, '', url);
-    set({ view: v });
+    set({ view: v, ...(v.name === 'present' ? { presenting: true } : {}) });
   },
   selectBus(id) {
     const q = new URLSearchParams(location.search);
@@ -143,7 +207,7 @@ export const useApp = create<AppState>((set, get) => ({
     else q.delete('bus');
     const qs = q.toString();
     history.replaceState(null, '', location.pathname + (qs ? `?${qs}` : ''));
-    set({ selectedBus: id, follow: id ? get().follow : false });
+    set({ selectedBus: id, follow: id ? get().follow : false, ...(id ? {} : { boardHint: null }) });
   },
   setFollow(f) {
     set({ follow: f });
@@ -199,6 +263,34 @@ export const useApp = create<AppState>((set, get) => ({
   },
   requestFly(center, zoom) {
     set({ flyTo: { center, zoom, id: Date.now() } });
+  },
+  setFocusRoute(r) {
+    set({ focusRoute: r });
+  },
+  startTrip(t) {
+    const trip = { ...t, createdAt: Date.now() };
+    writeTrip(trip);
+    set({ trip, selectedBus: t.vehicleId });
+  },
+  setAlight(index) {
+    const cur = get().trip;
+    if (!cur) return;
+    const trip = { ...cur, alightIndex: index };
+    writeTrip(trip);
+    set({ trip });
+  },
+  endTrip() {
+    writeTrip(null);
+    set({ trip: null });
+  },
+  pushToast(text, tone = 'info') {
+    const id = ++toastSeq;
+    // com a molt dues alertes a la vegada: no saturar
+    set({ toasts: [...get().toasts.slice(-1), { id, text, tone }] });
+    setTimeout(() => get().dismissToast(id), 6500);
+  },
+  dismissToast(id) {
+    set({ toasts: get().toasts.filter((x) => x.id !== id) });
   },
 }));
 

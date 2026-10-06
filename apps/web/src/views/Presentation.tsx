@@ -1,133 +1,204 @@
 /**
- * Modo presentación (/presentacio): pantalla completa, sin controles, tour en bucle:
- * vista general → zoom a la línea con más servicio → ficha de un bus → vista de línea → vuelta.
- * Pensado para aguantar 30+ min: un único temporizador, todo se limpia al salir.
+ * Mode presentació (/presentacio): demo narrada de 2–3 minuts sobre l'aplicació real.
+ *
+ * No és un vídeo ni una maqueta: cada escena mou l'estat de l'app (línia enfocada, bus
+ * seleccionat, seguiment, parada, viatge) i el que es veu és el mateix mapa, la mateixa
+ * fitxa i el mateix panell de parada que fa servir qualsevol usuari.
+ *
+ *  1 xarxa · 2 línia · 3 bus · 4 seguir · 5 línia temporal · 6 parada · 7 viatge · 8 "a 2 parades"
+ *
+ * Determinista: amb la mateixa hora forçada (?hora=08:15&dia=dimarts) tria sempre el mateix bus.
+ * Controls: ←/→ escenes, espai pausa, Esc surt. Velocitat del rellotge 1× 5× 10× 30×.
  */
-import { useEffect, useRef, useState } from 'react';
-import type { Map as MLMap } from 'maplibre-gl';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { forcedInstant, stopsUntil, type SimEngine, type VehicleState } from '@bus/core';
 import { clock, useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { vehiclesAt } from '../data/vehicles.ts';
-import { MapView } from '../map/MapView.tsx';
-import { LineView } from './LineView.tsx';
-import { BusCard } from './BusCard.tsx';
 import { RouteChip, hm, useNow } from '../ui/common.tsx';
 
-type Step = { kind: 'overview' } | { kind: 'line-map'; route: string } | { kind: 'bus'; route: string; bus: string } | { kind: 'diagram'; route: string };
+const SCENES = 8;
+/** durada mínima de cada escena (ms de temps real) */
+const DUR = [9000, 9000, 10000, 9000, 11000, 11000, 8000, 30000];
+const SPEEDS = [1, 5, 10, 30];
 
-const DUR: Record<Step['kind'], number> = { overview: 13000, 'line-map': 11000, bus: 13000, diagram: 15000 };
+interface Cast {
+  routeId: string;
+  busId: string;
+  /** parada de la demo: 3 parades per davant del bus */
+  stopId: string;
+  stopIndex: number;
+  patternId: string;
+}
+
+/** Tria la línia (L2 si circula), un bus amb recorregut per davant i la parada de la demo. */
+function cast(engine: SimEngine, t: number): Cast | null {
+  const vs = vehiclesAt(engine, t).filter((v) => v.status === 'EN_RUTA' && v.stopsRemaining >= 8);
+  const byRoute = new Map<string, VehicleState[]>();
+  for (const v of vs) byRoute.set(v.routeId, [...(byRoute.get(v.routeId) ?? []), v]);
+  const order = ['L2', ...[...byRoute.entries()].sort((a, b) => b[1].length - a[1].length).map(([r]) => r)];
+  for (const r of order) {
+    const cands = (byRoute.get(r) ?? []).sort((a, b) => a.id.localeCompare(b.id));
+    for (const v of cands) {
+      const p = engine.patternById(v.patternId)!;
+      const idx = v.nextStopIndex + 3;
+      const stopId = p.stopIds[idx];
+      if (!stopId || idx >= p.stopIds.length - 1) continue;
+      return { routeId: r, busId: v.id, stopId, stopIndex: idx, patternId: v.patternId };
+    }
+  }
+  return null;
+}
 
 export function Presentation() {
   const t = useT();
   const engine = useApp((s) => s.engine);
   const network = useApp((s) => s.network);
   const now = useNow(1000);
-  const mapRef = useRef<MLMap | null>(null);
-  const [step, setStep] = useState<Step>({ kind: 'overview' });
-  const [chrome, setChrome] = useState(false);
-  const cycle = useRef(0);
-  const st = useApp.getState();
+  const [scene, setScene] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const [speed, setSpeed] = useState(clock.getSpeed());
+  const castRef = useRef<Cast | null>(null);
+  const enteredAt = useRef(Date.now());
 
-  // máquina de estados del tour
+  const setClockSpeed = useCallback((x: number) => {
+    setSpeed(x);
+    useApp.getState().setClock(clock.now(), x);
+  }, []);
+
+  // en entrar: si ara no hi ha prou servei (nit, festiu sense F...), hora de demo de dia feiner
   useEffect(() => {
-    if (!engine || !network) return;
-    const map = mapRef.current;
-    const pickRoute = () => {
-      const vs = vehiclesAt(engine, clock.now()).filter((v) => v.status === 'EN_RUTA');
-      const count = new Map<string, number>();
-      for (const v of vs) count.set(v.routeId, (count.get(v.routeId) ?? 0) + 1);
-      const ranked = [...count.entries()].sort((a, b) => b[1] - a[1]).map(([r]) => r);
-      return ranked[cycle.current % Math.max(1, Math.min(4, ranked.length))] ?? null;
+    if (!engine) return;
+    if (vehiclesAt(engine, clock.now()).filter((v) => v.status === 'EN_RUTA').length < 15)
+      useApp.getState().setClock(forcedInstant(Date.now(), '08:15', 'dimarts'), clock.getSpeed());
+    const s = useApp.getState();
+    s.endTrip();
+    s.set({ homeCollapsed: true });
+    return () => {
+      const e = useApp.getState();
+      e.setFocusRoute(null);
+      e.setFollow(false);
+      e.selectBus(null);
+      e.endTrip();
+      e.set({ homeCollapsed: false });
     };
-    let next: Step;
-    if (step.kind === 'overview') {
-      st.selectBus(null);
-      st.setFollow(false);
-      st.setVisibleRoutes(null);
-      map?.flyTo({ center: [2.1065, 41.5475], zoom: window.innerWidth < 700 ? 12 : 12.7, bearing: 0, pitch: 0, duration: 2600 });
-      const r = pickRoute();
-      next = r ? { kind: 'line-map', route: r } : { kind: 'overview' };
-    } else if (step.kind === 'line-map') {
-      const pats = network.patterns.filter((p) => p.routeId === step.route && p.dayType === engine.dayTypeAt(clock.now()));
-      const coords = pats.flatMap((p) => p.coords);
-      if (map && coords.length) {
-        const lons = coords.map((c) => c[0]);
-        const lats = coords.map((c) => c[1]);
-        map.fitBounds(
-          [
-            [Math.min(...lons), Math.min(...lats)],
-            [Math.max(...lons), Math.max(...lats)],
-          ],
-          { padding: 90, duration: 2600, bearing: -12, pitch: 35 },
-        );
-      }
-      st.setVisibleRoutes([step.route]);
-      const v = vehiclesAt(engine, clock.now()).find((x) => x.routeId === step.route && x.status === 'EN_RUTA');
-      next = v ? { kind: 'bus', route: step.route, bus: v.id } : { kind: 'diagram', route: step.route };
-    } else if (step.kind === 'bus') {
-      const v = engine.vehicle(step.bus, clock.now());
-      if (v && map) map.flyTo({ center: [v.lon, v.lat], zoom: 16, pitch: 45, duration: 2200 });
-      st.selectBus(step.bus);
-      setTimeout(() => useApp.getState().setFollow(true), 2300);
-      next = { kind: 'diagram', route: step.route };
-    } else {
-      st.setFollow(false);
-      next = { kind: 'overview' };
-      cycle.current++;
-    }
-    const id = setTimeout(() => setStep(next), DUR[step.kind]);
-    return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, engine, network]);
+  }, [engine]);
 
+  // cada escena posa l'app en el seu estat
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && exit();
-    let hide: ReturnType<typeof setTimeout> | undefined;
-    const onMove = () => {
-      setChrome(true);
-      clearTimeout(hide);
-      hide = setTimeout(() => setChrome(false), 2500);
+    if (!engine) return;
+    enteredAt.current = Date.now();
+    const s = useApp.getState();
+    if (scene === 0 || !castRef.current) castRef.current = cast(engine, clock.now());
+    const c = castRef.current;
+    const goStop = () => c && s.view.name !== 'stop' && s.navigate({ name: 'stop', id: c.stopId }, { replace: true });
+    const goMap = () => s.view.name !== 'present' && s.navigate({ name: 'present' }, { replace: true });
+    switch (scene) {
+      case 0:
+        s.endTrip();
+        s.setFollow(false);
+        s.selectBus(null);
+        s.setFocusRoute(null);
+        goMap();
+        if (speed !== 1) setClockSpeed(1);
+        s.requestFly([2.1065, 41.5475], window.innerWidth < 700 ? 12 : 12.8);
+        break;
+      case 1:
+        goMap();
+        s.selectBus(null);
+        s.setFocusRoute(c?.routeId ?? null);
+        break;
+      case 2:
+        if (c) s.selectBus(c.busId);
+        s.setFocusRoute(null);
+        break;
+      case 3:
+        if (c) s.selectBus(c.busId);
+        s.setFollow(true);
+        break;
+      case 4:
+        s.setFollow(true);
+        setClockSpeed(5);
+        break;
+      case 5:
+        s.setFollow(false);
+        s.selectBus(null);
+        setClockSpeed(1);
+        goStop();
+        break;
+      case 6:
+        goStop();
+        if (c) {
+          s.set({ boardHint: c.stopId });
+          s.selectBus(c.busId);
+          const v = engine.vehicle(c.busId, clock.now());
+          // si el bus ja ha passat la parada de la demo, es tria la següent per davant
+          let idx = c.stopIndex;
+          if (v && v.patternId === c.patternId && stopsUntil(v, idx) < 3) idx = Math.min(engine.patternById(c.patternId)!.stopIds.length - 2, v.nextStopIndex + 2);
+          const stopId = engine.patternById(c.patternId)!.stopIds[idx]!;
+          s.startTrip({ vehicleId: c.busId, patternId: c.patternId, routeId: c.routeId, boardIndex: idx, boardStopId: stopId, alightIndex: null });
+        }
+        break;
+      case 7:
+        // fins que el bus és a 2 parades, el rellotge corre
+        setClockSpeed(10);
+        break;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scene, engine]);
+
+  // avançar escenes (i l'escena 8 espera l'esdeveniment real "a 2 parades")
+  useEffect(() => {
+    if (!playing || !engine) return;
+    const id = setInterval(() => {
+      const elapsed = Date.now() - enteredAt.current;
+      if (scene === 7) {
+        const tr = useApp.getState().trip;
+        const v = tr ? engine.vehicle(tr.vehicleId, clock.now()) : null;
+        const away = v && tr && v.patternId === tr.patternId ? stopsUntil(v, tr.boardIndex) : null;
+        if (away !== null && away <= 2 && clock.getSpeed() !== 1) setClockSpeed(1);
+        if ((away !== null && away <= 1) || elapsed > DUR[7]!) setScene(0);
+        return;
+      }
+      if (elapsed > DUR[scene]!) setScene((x) => (x + 1) % SCENES);
+    }, 400);
+    return () => clearInterval(id);
+  }, [playing, scene, engine, setClockSpeed]);
+
+  // teclat
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') setScene((x) => (x + 1) % SCENES);
+      else if (e.key === 'ArrowLeft') setScene((x) => (x + SCENES - 1) % SCENES);
+      else if (e.key === ' ') {
+        e.preventDefault();
+        setPlaying((p) => !p);
+      } else if (e.key === 'Escape') exit();
     };
     window.addEventListener('keydown', onKey);
-    window.addEventListener('pointermove', onMove);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('pointermove', onMove);
-      clearTimeout(hide);
-      const s = useApp.getState();
-      s.setVisibleRoutes(null);
-      s.setFollow(false);
-    };
-     
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   const exit = () => {
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
-    useApp.getState().navigate({ name: 'map' });
+    const s = useApp.getState();
+    s.set({ presenting: false });
+    s.setClock(null, 1);
+    s.navigate({ name: 'map' });
   };
 
   if (!engine || !network) return null;
+  const c = castRef.current;
+  const route = c ? engine.routes.get(c.routeId) : undefined;
   const vs = vehiclesAt(engine, now);
   const moving = vs.filter((v) => v.status !== 'RETIRADA').length;
   const linesNow = new Set(vs.map((v) => v.routeId)).size;
-  const route = 'route' in step ? engine.routes.get(step.route) : undefined;
+  const sc = t.presentation.scenes[scene]!;
+  const x = scene === 1 ? route?.ref ?? '' : scene === 5 && c ? engine.stops.get(c.stopId)?.name ?? '' : '';
 
   return (
-    <div className="present" onClick={() => !document.fullscreenElement && document.documentElement.requestFullscreen?.().catch(() => undefined)}>
-      <div className={`present-map${step.kind === 'diagram' ? ' hidden' : ''}`}>
-        <MapView interactive={false} onReady={(m) => (mapRef.current = m)} />
-      </div>
-      {step.kind === 'diagram' && (
-        <div className="present-diagram">
-          <LineView routeRef={step.route} />
-        </div>
-      )}
-      {step.kind === 'bus' && <BusCard />}
+    <div className="director" aria-live="polite">
       <div className="present-hud">
-        <div className="hud-title">
-          <span className="brand-text">Bus Sabadell <span className="brand-sub">en directe</span></span>
-          <span className="mono hud-clock">{hm(now)}</span>
-        </div>
         <div className="hud-stats">
           <div>
             <div className="hud-num mono">{moving}</div>
@@ -142,16 +213,43 @@ export function Presentation() {
             <div className="hud-lbl">{t.stopsCount}</div>
           </div>
         </div>
-        {route && (
-          <div className="hud-route">
-            <RouteChip route={route} size="lg" /> <span>{route.longName}</span>
-          </div>
-        )}
+      </div>
+      <div className="caption">
+        <div className="caption-meta">
+          <span className="mono">{t.presentation.scene.replace('{i}', String(scene + 1)).replace('{n}', String(SCENES))}</span>
+          {route && scene > 0 && <RouteChip route={route} size="sm" />}
+          <span className="mono dim">{hm(now)}</span>
+        </div>
+        <h2>{sc.title.replace('{x}', x)}</h2>
+        <p>{sc.text}</p>
+        <div className="caption-dots" aria-hidden>
+          {Array.from({ length: SCENES }, (_, i) => (
+            <span key={i} className={i === scene ? 'on' : i < scene ? 'done' : ''} />
+          ))}
+        </div>
+        <div className="caption-ctrl">
+          <button type="button" aria-label={t.presentation.prev} onClick={() => setScene((s) => (s + SCENES - 1) % SCENES)}>
+            ‹
+          </button>
+          <button type="button" className="play" aria-label={playing ? t.presentation.pause : t.presentation.play} onClick={() => setPlaying(!playing)}>
+            {playing ? '❚❚' : '▶'}
+          </button>
+          <button type="button" aria-label={t.presentation.next} onClick={() => setScene((s) => (s + 1) % SCENES)}>
+            ›
+          </button>
+          <span className="caption-speed" role="group" aria-label={t.presentation.speed}>
+            {SPEEDS.map((v) => (
+              <button key={v} type="button" className={speed === v ? 'on' : ''} aria-pressed={speed === v} onClick={() => setClockSpeed(v)}>
+                {v}×
+              </button>
+            ))}
+          </span>
+          <button type="button" className="exit" onClick={exit}>
+            {t.presentation.exit}
+          </button>
+        </div>
       </div>
       <div className="present-banner">{t.banner}</div>
-      <button type="button" className={`present-exit${chrome ? ' show' : ''}`} onClick={(e) => { e.stopPropagation(); exit(); }}>
-        {t.presentation.exit}
-      </button>
     </div>
   );
 }

@@ -171,3 +171,14 @@ export function simplify(coords: LonLat[], toleranceM: number, keep: Set<number>
   for (let i = 0; i < n; i++) if (mark[i]) out.push(i);
   return out;
 }
+
+/** Tram de la polilínia entre les distàncies a i b (m), amb els extrems interpolats. */
+export function sliceLine(coords: LonLat[], cum: number[], a: number, b: number): LonLat[] {
+  const total = cum[cum.length - 1] ?? 0;
+  const lo = Math.max(0, Math.min(a, b));
+  const hi = Math.min(total, Math.max(a, b));
+  const out: LonLat[] = [pointAlong(coords, cum, lo)];
+  for (let i = 0; i < coords.length; i++) if (cum[i]! > lo && cum[i]! < hi) out.push(coords[i]!);
+  out.push(pointAlong(coords, cum, hi));
+  return out;
+}

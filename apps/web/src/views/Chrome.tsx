@@ -188,22 +188,32 @@ export function LineFilter() {
   const t = useT();
   const network = useApp((s) => s.network);
   const engine = useApp((s) => s.engine);
-  const visible = useApp((s) => s.visibleRoutes);
+  const focus = useApp((s) => s.focusRoute);
   const [open, setOpen] = useState(false);
   const now = useNow(30000);
   const st = useApp.getState();
   if (!network || !engine) return null;
   const dayType = engine.dayTypeAt(now);
   const routes = [...network.routes].sort((a, b) => Number(engine.runsOn(b.id, dayType)) - Number(engine.runsOn(a.id, dayType)) || a.order - b.order);
+  const focused = focus ? engine.routes.get(focus) : null;
   return (
     <div className={`line-filter${open ? ' open' : ''}`}>
       <button type="button" className="lf-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
         {t.lines}
-        <span className="dim small">{visible ? `${visible.length}/${network.routes.length}` : t.all}</span>
+        {focused ? <RouteChip route={focused} size="sm" /> : <span className="dim small">{t.all}</span>}
       </button>
+      {focused && (
+        <div className="lf-focus">
+          <RouteChip route={focused} size="md" />
+          <span className="lf-focus-name">{focused.longName}</span>
+          <button type="button" className="lf-all" onClick={() => st.navigate({ name: 'line', ref: focused.id })}>
+            {t.viewLine}
+          </button>
+        </div>
+      )}
       <div className="lf-chips" role="group" aria-label={t.lines}>
         {routes.map((r) => {
-          const on = !visible || visible.includes(r.id);
+          const on = focus === r.id;
           const runs = engine.runsOn(r.id, dayType);
           return (
             <button
@@ -211,16 +221,20 @@ export function LineFilter() {
               type="button"
               aria-pressed={on}
               title={runs ? r.longName : `${r.longName} · ${t.notToday}`}
-              className={`lf-chip${on ? ' on' : ''}${runs ? '' : ' off-today'}`}
+              className={`lf-chip${on || !focus ? ' on' : ''}${on ? ' focused' : ''}${runs ? '' : ' off-today'}`}
               style={{ ['--c' as string]: r.color, ['--tc' as string]: r.textColor }}
-              onClick={() => st.toggleRoute(r.id)}
+              onClick={() => {
+                st.setFocusRoute(on ? null : r.id);
+                if (!on && st.selectedBus && engine.vehicle(st.selectedBus, clock.now())?.routeId !== r.id) st.selectBus(null);
+              }}
             >
               {r.ref}
             </button>
           );
         })}
-        <button type="button" className="lf-all" onClick={() => st.setVisibleRoutes(null)}>{t.all}</button>
-        <button type="button" className="lf-all" onClick={() => st.setVisibleRoutes([])}>{t.none}</button>
+        <button type="button" className="lf-all" onClick={() => st.setFocusRoute(null)}>
+          {t.all}
+        </button>
       </div>
     </div>
   );

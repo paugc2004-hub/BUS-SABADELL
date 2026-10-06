@@ -8,6 +8,8 @@ import { BusCard } from './views/BusCard.tsx';
 import { StopPanel } from './views/StopPanel.tsx';
 import { SearchPanel } from './views/SearchPanel.tsx';
 import { LineView } from './views/LineView.tsx';
+import { HomePanel } from './views/Home.tsx';
+import { Toasts, TripMonitor, TripPanel } from './views/Trip.tsx';
 import { RouteChip, hm, useNow } from './ui/common.tsx';
 
 // el mapa (MapLibre + CSS) i la presentació van en trossos a part: la carcassa es pinta abans
@@ -65,6 +67,8 @@ export function App() {
   const view = useApp((s) => s.view);
   const ready = useApp((s) => s.loadState === 'ready');
   const lang = useApp((s) => s.lang);
+  const selectedBus = useApp((s) => s.selectedBus);
+  const trip = useApp((s) => s.trip);
 
   useEffect(() => {
     useApp.getState().setLang(detectLang());
@@ -75,24 +79,15 @@ export function App() {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, []);
 
+  const presenting = useApp((s) => s.presenting);
   useEffect(() => {
-    document.title = view.name === 'present' ? 'Bus Sabadell en directe · Presentació' : 'Bus Sabadell en directe';
-  }, [view, lang]);
-
-  if (view.name === 'present')
-    return (
-      <>
-        <Loading />
-        {ready && (
-          <Suspense fallback={null}>
-            <Presentation />
-          </Suspense>
-        )}
-      </>
-    );
+    document.title = presenting ? 'Bus Sabadell en directe · Presentació' : 'Bus Sabadell en directe';
+  }, [presenting, lang]);
+  // /presentacio és el mapa amb el director de la demo a sobre
+  const name = view.name === 'present' ? 'map' : view.name;
 
   return (
-    <div className={`app view-${view.name}`}>
+    <div className={`app view-${name}${presenting ? ' presenting' : ''}`}>
       <TopBar />
       <HonestyBanner />
       <main className="stage">
@@ -101,17 +96,26 @@ export function App() {
             <MapView />
           </Suspense>
         )}
-        {ready && view.name !== 'line' && (
+        {ready && name !== 'line' && !presenting && (
           <>
             <LineFilter />
             <MapControls />
-            <NoService />
           </>
         )}
+        {ready && name !== 'line' && <NoService />}
         {ready && view.name === 'line' && <LineView routeRef={view.ref} />}
         {ready && view.name === 'stop' && <StopPanel id={view.id} />}
         {ready && view.name === 'search' && <SearchPanel />}
-        {ready && view.name !== 'search' && <BusCard />}
+        {ready && name !== 'search' && <BusCard />}
+        {ready && name === 'map' && !selectedBus && !trip && !presenting && <HomePanel />}
+        {ready && name !== 'line' && name !== 'search' && <TripPanel />}
+        {ready && presenting && (
+          <Suspense fallback={null}>
+            <Presentation />
+          </Suspense>
+        )}
+        {ready && <TripMonitor />}
+        <Toasts />
         <Offline />
         <Loading />
       </main>
