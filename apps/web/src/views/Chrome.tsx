@@ -1,10 +1,12 @@
 /** Barra superior, banner de honestidad, avisos, "qué es real", filtro de líneas y controles del mapa. */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { forcedInstant, holidayName, localDate } from '@bus/core';
 import { clock, useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { vehicleById } from '../data/vehicles.ts';
 import { Icon, IconButton, RouteChip, hm, useNow } from '../ui/common.tsx';
+import { Logo } from '../ui/Logo.tsx';
+import { auth } from '../auth/auth.ts';
 
 type NavKey = 'home' | 'map' | 'line' | 'network' | 'mine';
 
@@ -51,16 +53,7 @@ export function TopBar() {
   return (
     <header className="topbar">
       <button type="button" className="brand" onClick={() => st.navigate({ name: 'home' })} aria-label={t.appName}>
-        <span className="brand-mark" aria-hidden>
-          <svg viewBox="0 0 24 24" width="22" height="22">
-            <rect x="3" y="4" width="18" height="14" rx="4" fill="currentColor" />
-            <rect x="6" y="7" width="5" height="4" rx="1" fill="#08090b" />
-            <rect x="13" y="7" width="5" height="4" rx="1" fill="#08090b" />
-            <circle cx="8" cy="20" r="1.8" fill="currentColor" />
-            <circle cx="16" cy="20" r="1.8" fill="currentColor" />
-          </svg>
-        </span>
-        <span className="brand-text">Bus Sabadell</span>
+        <Logo size={34} compact />
       </button>
 
       <button type="button" className="live-chip" onClick={() => st.set({ alertsOpen: true })} aria-label={`${t.liveSim} · ${alerts ? t.incidentsN(alerts) : t.noIncidents}`}>
@@ -93,6 +86,7 @@ export function TopBar() {
         <IconButton label={t.present} onClick={() => st.navigate({ name: 'present' })} className="present-btn">
           {Icon.play}
         </IconButton>
+        <AccountMenu />
       </div>
     </header>
   );
@@ -374,3 +368,54 @@ export function TimeControl({ onDone }: { onDone: () => void }) {
   );
 }
 
+
+/** Inicial del compte per a l'avatar. */
+export const initial = (name: string) => (name.trim()[0] ?? '?').toUpperCase();
+
+/** Sortir del compte: es torna a la landing (l'app demana sessió). */
+export async function signOut() {
+  await auth.signOut();
+  const st = useApp.getState();
+  st.setUser(null);
+  st.navigate({ name: 'landing' });
+}
+
+/** Avatar del compte amb el menú (nom, correu, tancar la sessió). */
+export function AccountMenu() {
+  const t = useT();
+  const user = useApp((s) => s.user);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open]);
+  if (!user) return null;
+  return (
+    <div className="account" ref={ref}>
+      <button type="button" className="avatar" aria-label={`${t.authUi.account}: ${user.name}`} aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen(!open)}>
+        {initial(user.name)}
+      </button>
+      {open && (
+        <div className="account-menu" role="menu">
+          <div className="account-who">
+            <strong>{user.name}</strong>
+            <span className="dim">{user.email}</span>
+            {user.demo && <span className="status-pill st-en_cabecera">{t.authUi.demoBadge}</span>}
+          </div>
+          <button type="button" role="menuitem" className="account-item" onClick={() => void signOut()}>
+            {t.authUi.signOut}
+          </button>
+          <p className="account-note dim">{t.authUi.localNote}</p>
+        </div>
+      )}
+    </div>
+  );
+}

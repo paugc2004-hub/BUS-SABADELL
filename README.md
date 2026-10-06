@@ -1,10 +1,10 @@
-# Bus Sabadell en directe
+# NextMobility Sabadell
 
-Mapa de la xarxa de bus urbà de Sabadell (TUS) amb tots els autobusos en moviment, "la meva parada",
-seguiment d'un bus i mode viatge. **Demo independent**: les posicions dels vehicles són **simulades** a partir
+**El teu bus, en directe.** App (web instal·lable) amb la xarxa de bus urbà de Sabadell: tots els autobusos en
+moviment, «el teu proper bus», seguiment d'un bus i mode viatge. **Demo independent**: les posicions dels vehicles són **simulades** a partir
 dels horaris publicats; la xarxa, les parades i els horaris són dades públiques de tus.es i OpenStreetMap.
 
-- Web: **https://bus-sabadell.vercel.app**
+- Landing: **https://bus-sabadell.vercel.app** · App: **/app** (cal iniciar sessió; hi ha un compte de demostració)
 - Presentació guiada (10 escenes, 2–3 min): **https://bus-sabadell.vercel.app/presentacio**
 - API: https://bus-sabadell-api.vercel.app (`/v1/meta`, `/v1/vehicles`, `/v1/vehicles/stream`, `/v1/stops/:id/arrivals`…)
 
@@ -17,7 +17,10 @@ dels horaris publicats; la xarxa, les parades i els horaris són dades públique
 - Autobús vectorial que gira amb el rumb i circula pel recorregut real, amb arrencada, crucero i frenada;
   retards simulats deterministes i acotats.
 - 105 variants validades contra els carrers i els sentits únics d'OSM.
-- Funciona sense connexió (PWA) i sense servidor (la simulació corre al navegador).
+- Funciona sense connexió (PWA) i sense servidor (la simulació corre al navegador); s'instal·la com una app.
+- **Comptes (de moment ficticis):** registre i inici de sessió amb correu i contrasenya, obligatori per entrar a
+  l'app. Es guarden **només al navegador** (contrasenyes amb PBKDF2, mai en clar) i ho diu la pantalla.
+  Preparat per canviar a un servei real (Supabase, Firebase…) implementant `AuthProvider` (`apps/web/src/auth/auth.ts`).
 
 ## Comandes
 ```bash

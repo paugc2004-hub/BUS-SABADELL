@@ -1,4 +1,4 @@
-# Bus Sabadell en directe — proposta per a TUS i l'Ajuntament de Sabadell
+# NextMobility Sabadell — proposta per a TUS i l'Ajuntament de Sabadell
 
 **Demo:** https://bus-sabadell.vercel.app · **Presentació guiada (2–3 min):** https://bus-sabadell.vercel.app/presentacio
 

@@ -1,8 +1,12 @@
 import { create } from 'zustand';
 import { SimClock, forcedInstant, type NetworkData, type SimEngine } from '@bus/core';
 import type { Lang } from '../i18n/index.ts';
+import { auth, type User } from '../auth/auth.ts';
 
 export type View =
+  | { name: 'landing' }
+  | { name: 'login'; next?: string }
+  | { name: 'register'; next?: string }
   | { name: 'home'; search?: boolean }
   | { name: 'map' }
   | { name: 'line'; ref: string | null }
@@ -44,6 +48,10 @@ export function parseView(path: string): View {
   if (m) return { name: 'line', ref: m[1]?.toUpperCase() ?? null };
   m = /^\/parada\/([^/]+)$/.exec(p);
   if (m) return { name: 'stop', id: m[1]! };
+  if (p === '/') return { name: 'landing' };
+  if (p === '/entra') return { name: 'login', next: new URLSearchParams(location.search).get('next') ?? undefined };
+  if (p === '/registre') return { name: 'register', next: new URLSearchParams(location.search).get('next') ?? undefined };
+  if (p === '/app') return { name: 'home' };
   if (p === '/cercar') return { name: 'home', search: true };
   if (p === '/mapa') return { name: 'map' };
   if (p === '/xarxa') return { name: 'network' };
@@ -58,6 +66,14 @@ export function viewPath(v: View): string {
       return v.ref ? `/linia/${v.ref}` : '/linia';
     case 'stop':
       return `/parada/${encodeURIComponent(v.id)}`;
+    case 'landing':
+      return '/';
+    case 'login':
+      return '/entra';
+    case 'register':
+      return '/registre';
+    case 'home':
+      return v.search ? '/cercar' : '/app';
     case 'map':
       return '/mapa';
     case 'network':
@@ -93,9 +109,12 @@ export interface Toast {
   tone: 'info' | 'go' | 'warn';
 }
 
-function readTrip(): Trip | null {
+/** les dades de cada compte es guarden separades (paradas, viatge) */
+const keyFor = (base: string, uid: string | null | undefined) => (uid ? `${base}:${uid}` : base);
+
+function readTrip(uid: string | null = auth.current()?.id ?? null): Trip | null {
   try {
-    const t = JSON.parse(localStorage.getItem('myBus') ?? 'null') as Trip | null;
+    const t = JSON.parse(localStorage.getItem(keyFor('myBus', uid)) ?? 'null') as Trip | null;
     return t && typeof t.vehicleId === 'string' ? t : null;
   } catch {
     return null;
@@ -103,17 +122,20 @@ function readTrip(): Trip | null {
 }
 
 function writeTrip(t: Trip | null) {
+  const uid = auth.current()?.id ?? null;
   try {
-    if (t) localStorage.setItem('myBus', JSON.stringify(t));
-    else localStorage.removeItem('myBus');
+    if (t) localStorage.setItem(keyFor('myBus', uid), JSON.stringify(t));
+    else localStorage.removeItem(keyFor('myBus', uid));
   } catch {
     /* navegació privada */
   }
 }
 
-function readFavs(): string[] {
+function readFavs(uid: string | null = auth.current()?.id ?? null): string[] {
   try {
-    return JSON.parse(localStorage.getItem('favs') ?? '[]') as string[];
+    const own = localStorage.getItem(keyFor('favs', uid));
+    // primera vegada amb compte: es queden les parades que ja tenia desades sense compte
+    return JSON.parse(own ?? localStorage.getItem('favs') ?? '[]') as string[];
   } catch {
     return [];
   }
@@ -134,6 +156,10 @@ interface AppState {
   online: boolean;
   backend: 'off' | 'connecting' | 'live' | 'down';
   favorites: string[];
+  /** compte amb la sessió iniciada (ficticis: veure auth/auth.ts) */
+  user: User | null;
+  /** després d'entrar o sortir del compte */
+  setUser(u: User | null): void;
   clockVersion: number;
   aboutOpen: boolean;
   alertsOpen: boolean;
@@ -188,6 +214,11 @@ export const useApp = create<AppState>((set, get) => ({
   online: typeof navigator === 'undefined' ? true : navigator.onLine,
   backend: 'off',
   favorites: readFavs(),
+  user: auth.current(),
+  setUser(u) {
+    // en canviar de compte, cada usuari recupera les seves parades i el seu viatge
+    set({ user: u, favorites: readFavs(u?.id ?? null), trip: u ? readTrip(u.id) : null, selectedBus: null, follow: false });
+  },
   clockVersion: 0,
   aboutOpen: false,
   alertsOpen: false,
@@ -257,7 +288,7 @@ export const useApp = create<AppState>((set, get) => ({
     const cur = get().favorites;
     const next = cur.includes(stopId) ? cur.filter((x) => x !== stopId) : [...cur, stopId];
     try {
-      localStorage.setItem('favs', JSON.stringify(next));
+      localStorage.setItem(keyFor('favs', get().user?.id), JSON.stringify(next));
     } catch {
       /* ignore */
     }

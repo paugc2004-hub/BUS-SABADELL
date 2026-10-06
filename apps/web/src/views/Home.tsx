@@ -89,7 +89,7 @@ function NextBusHero({ engine, stopId, example, now }: { engine: SimEngine; stop
               </span>
             </div>
             <div className="hero-eta">
-              <span className="hero-min mono">{mins <= 0 ? t.imminent : mins >= 60 ? hm(a.at) : mins}</span>
+              <span className={`hero-min mono${mins <= 0 ? ' now' : ''}`}>{mins <= 0 ? t.nowLabel : mins >= 60 ? hm(a.at) : mins}</span>
               {mins > 0 && mins < 60 && <span className="hero-unit">min</span>}
             </div>
           </button>

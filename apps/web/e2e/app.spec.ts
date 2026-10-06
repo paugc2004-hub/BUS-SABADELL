@@ -8,192 +8,249 @@ async function ready(page: Page) {
   await expect(page.locator('.fullscreen-msg')).toHaveCount(0);
 }
 
-test('carrega el mapa amb el banner d’honestedat i les atribucions', async ({ page }) => {
-  await page.goto(`/?${AT}`);
-  await ready(page);
-  await expect(page.locator('.honesty')).toContainText(/simulad/i);
-  await expect(page.locator('.maplibregl-ctrl-attrib')).toContainText(/OpenStreetMap|tus\.es/);
-  await expect(page.locator('.clock-time')).toHaveText(/^08:1\d:\d\d$/);
+/** les proves de l'app entren amb el compte de demostració (els comptes són al navegador) */
+const DEMO_SESSION = () => localStorage.setItem('nextmobility.session', JSON.stringify({ userId: 'demo', at: Date.now() }));
+
+test.describe('app (amb sessió)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(DEMO_SESSION);
+  });
+
+  test('carrega el mapa amb el banner d’honestedat i les atribucions', async ({ page }) => {
+    await page.goto(`/app?${AT}`);
+    await ready(page);
+    await expect(page.locator('.honesty')).toContainText(/simulad/i);
+    await expect(page.locator('.maplibregl-ctrl-attrib')).toContainText(/OpenStreetMap|tus\.es/);
+    await expect(page.locator('.clock-time')).toHaveText(/^08:1\d:\d\d$/);
+  });
+
+  test('panell de parada → bus → fitxa amb origen "Simulat"', async ({ page }) => {
+    await page.goto(`/parada/17?${AT}`);
+    await ready(page);
+    await expect(page.locator('.stop-name')).toHaveText('Manresa');
+    // una llegada amb el bus ja de camí ("a N parades")
+    const first = page.locator('.arrival', { has: page.locator('.arrival-sub', { hasText: /\d paradas?|\d parades|Propera|Próxima/ }) }).locator('.arrival-main').first();
+    await expect(first).toBeVisible();
+    await first.click();
+    const card = page.locator('.bus-card');
+    await expect(card).toBeVisible();
+    await expect(card.locator('.led')).toHaveText(/·\d\d$/);
+    await expect(card.locator('.source-simulated')).toBeVisible();
+    // compte enrere mm:ss que avança
+    const a = await card.locator('.cell-big').innerText();
+    expect(a).toMatch(/^\d\d:\d\d$/);
+    await expect.poll(() => card.locator('.cell-big').innerText(), { timeout: 8000 }).not.toBe(a);
+  });
+
+  test('línies: índex → panell de línia amb sentit, propers busos, recorregut i busos', async ({ page }) => {
+    await page.goto(`/linia?${AT}`);
+    await ready(page);
+    await page.locator('.line-row', { hasText: 'Creu de Barberà' }).first().click();
+    await expect(page).toHaveURL(/\/linia\/L2/);
+    const panel = page.locator('.line-panel');
+    await expect(panel.locator('.lp-title h2')).toContainText('Can Deu');
+    expect(await panel.locator('.lp-stop').count()).toBeGreaterThan(20);
+    await expect(panel.locator('.lp-bus').first()).toBeVisible();
+    await expect(panel.locator('.lp-next-item').first()).toContainText('min');
+    // canvi de sentit
+    const tabs = panel.locator('.seg-ctl button');
+    await tabs.nth(1).click();
+    await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
+    // un bus de la línia obre la seva fitxa, amb tornada a la línia
+    await panel.locator('.lp-bus').first().click();
+    await expect(page.locator('.bus-card .back-link')).toContainText('L2');
+  });
+
+  test('cercador global tolerant a accents: línies, parades i destinacions', async ({ page }) => {
+    await page.goto(`/cercar?${AT}`);
+    await page.getByRole('combobox').fill('termes');
+    await expect(page.locator('.sr-group', { hasText: /Destinaci|Destino/ })).toBeVisible();
+    await page.getByRole('combobox').fill('l2');
+    await expect(page.locator('.sr-item').first()).toContainText('L2');
+    await page.getByRole('combobox').fill('creu alta');
+    const res = page.locator('.sr-item', { hasText: 'La Creu Alta' }).first();
+    await expect(res).toBeVisible();
+    await res.click();
+    await expect(page).toHaveURL(/\/parada\//);
+    await expect(page.locator('.stop-name')).toHaveText('La Creu Alta');
+  });
+
+  test('canvi d’idioma', async ({ page }) => {
+    await page.goto(`/app?${AT}`);
+    await ready(page);
+    const banner = page.locator('.honesty');
+    const before = await banner.innerText();
+    await page.locator('.lang-btn').click();
+    await expect(banner).not.toHaveText(before);
+    await expect(page.locator('html')).toHaveAttribute('lang', /ca|es/);
+  });
+
+  test('fora d’horari: missatge amb el primer bus', async ({ page }) => {
+    await page.goto('/app?hora=03:00&dia=dimarts');
+    await ready(page);
+    await expect(page.locator('.no-service')).toContainText(/04:|05:/);
+  });
+
+  test('modal "què és real" explica la frontera real/simulat', async ({ page }) => {
+    await page.goto(`/app?${AT}`);
+    await page.locator('.honesty').click();
+    const modal = page.getByRole('dialog');
+    await expect(modal.locator('.about-real')).toBeVisible();
+    await expect(modal.locator('.about-sim')).toBeVisible();
+    await expect(modal).toContainText('tus.es');
+  });
+
+  test('mode presentació: demo narrada per escenes, sempre amb el banner', async ({ page, isMobile }) => {
+    await page.goto(`/presentacio?${AT}`);
+    await ready(page);
+    const caption = page.locator('.caption');
+    await expect(caption.locator('h2')).toContainText(/xarxa|red/i);
+    if (!isMobile) {
+      const n = Number(await page.locator('.hud-num').first().innerText());
+      expect(n).toBeGreaterThan(30);
+    }
+    await expect(page.locator('.honesty')).toContainText(/simulad/i);
+    await page.keyboard.press(' '); // pausa
+    await page.keyboard.press('ArrowRight');
+    await expect(caption.locator('h2')).toContainText(/L\d/);
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('.bus-card')).toBeVisible();
+    await expect(page.locator('.bus-card .source-simulated')).toBeVisible();
+  });
+
+  test('enfocar una línia: es destaca i la resta s’atenua (no s’amaga)', async ({ page, isMobile }) => {
+    await page.goto(`/mapa?${AT}`);
+    await ready(page);
+    if (isMobile) await page.locator('.lf-toggle').click();
+    const chip = page.locator('.lf-chip', { hasText: /^L2$/ });
+    await chip.click();
+    await expect(chip).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.lf-focus')).toContainText('Can Deu');
+    await expect(page.locator('.lf-chip', { hasText: /^L1$/ })).toHaveAttribute('aria-pressed', 'false');
+    await chip.click();
+    await expect(page.locator('.lf-focus')).toHaveCount(0);
+  });
+
+  test('parada → bus → seguir → "vaig a agafar aquest bus" → viatge actiu', async ({ page }) => {
+    await page.goto(`/parada/176?${AT}`);
+    await ready(page);
+    await expect(page.locator('.stop-name')).toHaveText('Estació Centre');
+    // les llegades diuen a quantes parades és el bus
+    await expect(page.locator('.arrival-sub').first()).toContainText(/parad|capçalera|cabecera/i);
+    await page.locator('.arrival-main:not([disabled])').first().click();
+    const card = page.locator('.bus-card');
+    await expect(card).toBeVisible();
+    await expect(card.locator('.back-link')).toContainText('Estació Centre');
+    // línia temporal amb la propera parada i el progrés per distància
+    await expect(card.locator('.tl-next, .tl-current').first()).toBeVisible();
+    await expect(card.locator('.tl-progress-text')).toContainText('%');
+    // seguir bus
+    const follow = card.locator('.cta', { hasText: /Seguir|Segueix|Deixa|Dejar/ });
+    await follow.click();
+    await expect(follow).toHaveAttribute('aria-pressed', 'true');
+    // viatge: puja a la parada d'on venim
+    await card.locator('.cta-primary').click();
+    await expect(card.locator('.tl-tag.board')).toBeVisible();
+    await expect(card.locator('.cta-on', { hasText: /Acaba|Terminar/ })).toBeVisible();
+    // el viatge (myBus) es manté en recarregar
+    await page.goto(`/app?${AT}`);
+    await ready(page);
+    const trip = page.locator('.trip-card');
+    await expect(trip).toBeVisible();
+    await expect(trip).toContainText('Estació Centre');
+    await expect(trip.locator('.source-simulated')).toBeVisible();
+    await trip.getByRole('button', { name: /Acaba|Terminar/ }).click();
+    await expect(trip).toHaveCount(0);
+  });
+
+  test('sense connexió: continua funcionant amb simulació local', async ({ page, context }) => {
+    await page.goto(`/app?${AT}`);
+    await ready(page);
+    await page.waitForFunction(() => navigator.serviceWorker?.controller != null, null, { timeout: 20_000 });
+    await context.setOffline(true);
+    await expect(page.locator('.offline-note')).toBeVisible();
+    await page.goto(`/parada/17?${AT}`).catch(() => undefined);
+    // amb el service worker, la ruta torna a carregar sense xarxa
+    await expect(page.locator('.stop-name')).toHaveText('Manresa', { timeout: 20_000 });
+    await context.setOffline(false);
+  });
+
+  test('inici: el teu proper bus, amb minuts, puntualitat i accions', async ({ page, isMobile }) => {
+    await page.goto(`/app?${AT}`);
+    await ready(page);
+    const hero = page.locator('.hero');
+    await expect(hero).toContainText(/proper bus|próximo bus/i);
+    await expect(hero.locator('.hero-min')).toHaveText(/\d|Ara|Ahora/);
+    await expect(hero.locator('.punct')).toBeVisible();
+    await expect(hero.locator('.cta-primary')).toBeVisible();
+    // navegació: barra inferior al mòbil, a dalt a l'escriptori
+    await expect(page.locator(isMobile ? '.bottomnav' : '.topnav')).toBeVisible();
+    await expect(page.locator('.honesty')).toContainText(/simulad/i);
+  });
+
+  test('xarxa en directe: mètriques derivades de la flota simulada, etiquetades', async ({ page }) => {
+    await page.goto(`/xarxa?${AT}`);
+    await ready(page);
+    const net = page.locator('.network');
+    await expect(net.locator('.kpi')).toHaveCount(4);
+    const inService = Number(await net.locator('.kpi-n').first().innerText());
+    expect(inService).toBeGreaterThan(30);
+    expect(await net.locator('.fleet-row').count()).toBeGreaterThan(8);
+    await expect(net).toContainText(/simulada/i);
+  });
+
+  test('parada: cada llegada diu a quantes parades és i la puntualitat', async ({ page }) => {
+    await page.goto(`/parada/176?${AT}`);
+    await ready(page);
+    await expect(page.locator('.arrival .punct').first()).toBeVisible();
+    await expect(page.locator('.arrival .punct').first()).toHaveAttribute('aria-label', /simulat|simulado/i);
+  });
 });
 
-test('panell de parada → bus → fitxa amb origen "Simulat"', async ({ page }) => {
-  await page.goto(`/parada/17?${AT}`);
-  await ready(page);
-  await expect(page.locator('.stop-name')).toHaveText('Manresa');
-  // una llegada amb el bus ja de camí ("a N parades")
-  const first = page.locator('.arrival', { has: page.locator('.arrival-sub', { hasText: /\d paradas?|\d parades|Propera|Próxima/ }) }).locator('.arrival-main').first();
-  await expect(first).toBeVisible();
-  await first.click();
-  const card = page.locator('.bus-card');
-  await expect(card).toBeVisible();
-  await expect(card.locator('.led')).toHaveText(/·\d\d$/);
-  await expect(card.locator('.source-simulated')).toBeVisible();
-  // compte enrere mm:ss que avança
-  const a = await card.locator('.cell-big').innerText();
-  expect(a).toMatch(/^\d\d:\d\d$/);
-  await expect.poll(() => card.locator('.cell-big').innerText(), { timeout: 8000 }).not.toBe(a);
-});
+test.describe('landing i comptes', () => {
+  test('landing pública amb la marca, les crides i l’avís d’honestedat (sense carregar el mapa)', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('.lnd-hero h1')).toContainText(/bus/i);
+    await expect(page.locator('.lnd-nav .logo-name')).toContainText('NextMobility');
+    await expect(page.locator('.lnd-honest')).toContainText(/simulad/i);
+    await expect(page.locator('canvas.maplibregl-canvas')).toHaveCount(0);
+    await expect(page).toHaveTitle(/NextMobility Sabadell/);
+  });
 
-test('línies: índex → panell de línia amb sentit, propers busos, recorregut i busos', async ({ page }) => {
-  await page.goto(`/linia?${AT}`);
-  await ready(page);
-  await page.locator('.line-row', { hasText: 'Creu de Barberà' }).first().click();
-  await expect(page).toHaveURL(/\/linia\/L2/);
-  const panel = page.locator('.line-panel');
-  await expect(panel.locator('.lp-title h2')).toContainText('Can Deu');
-  expect(await panel.locator('.lp-stop').count()).toBeGreaterThan(20);
-  await expect(panel.locator('.lp-bus').first()).toBeVisible();
-  await expect(panel.locator('.lp-next-item').first()).toContainText('min');
-  // canvi de sentit
-  const tabs = panel.locator('.seg-ctl button');
-  await tabs.nth(1).click();
-  await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
-  // un bus de la línia obre la seva fitxa, amb tornada a la línia
-  await panel.locator('.lp-bus').first().click();
-  await expect(page.locator('.bus-card .back-link')).toContainText('L2');
-});
+  test('l’app demana sessió: sense compte porta a /entra i després torna on anava', async ({ page }) => {
+    await page.goto(`/parada/176?${AT}`);
+    await expect(page).toHaveURL(/\/entra/);
+    await page.getByRole('button', { name: /demostració|demostración/i }).click();
+    await expect(page).toHaveURL(/\/parada\/176/);
+    await expect(page.locator('.stop-name')).toHaveText('Estació Centre');
+  });
 
-test('cercador global tolerant a accents: línies, parades i destinacions', async ({ page }) => {
-  await page.goto(`/cercar?${AT}`);
-  await page.getByRole('combobox').fill('termes');
-  await expect(page.locator('.sr-group', { hasText: /Destinaci|Destino/ })).toBeVisible();
-  await page.getByRole('combobox').fill('l2');
-  await expect(page.locator('.sr-item').first()).toContainText('L2');
-  await page.getByRole('combobox').fill('creu alta');
-  const res = page.locator('.sr-item', { hasText: 'La Creu Alta' }).first();
-  await expect(res).toBeVisible();
-  await res.click();
-  await expect(page).toHaveURL(/\/parada\//);
-  await expect(page.locator('.stop-name')).toHaveText('La Creu Alta');
-});
-
-test('canvi d’idioma', async ({ page }) => {
-  await page.goto(`/?${AT}`);
-  await ready(page);
-  const banner = page.locator('.honesty');
-  const before = await banner.innerText();
-  await page.locator('.lang-btn').click();
-  await expect(banner).not.toHaveText(before);
-  await expect(page.locator('html')).toHaveAttribute('lang', /ca|es/);
-});
-
-test('fora d’horari: missatge amb el primer bus', async ({ page }) => {
-  await page.goto('/?hora=03:00&dia=dimarts');
-  await ready(page);
-  await expect(page.locator('.no-service')).toContainText(/04:|05:/);
-});
-
-test('modal "què és real" explica la frontera real/simulat', async ({ page }) => {
-  await page.goto(`/?${AT}`);
-  await page.locator('.honesty').click();
-  const modal = page.getByRole('dialog');
-  await expect(modal.locator('.about-real')).toBeVisible();
-  await expect(modal.locator('.about-sim')).toBeVisible();
-  await expect(modal).toContainText('tus.es');
-});
-
-test('mode presentació: demo narrada per escenes, sempre amb el banner', async ({ page, isMobile }) => {
-  await page.goto(`/presentacio?${AT}`);
-  await ready(page);
-  const caption = page.locator('.caption');
-  await expect(caption.locator('h2')).toContainText(/xarxa|red/i);
-  if (!isMobile) {
-    const n = Number(await page.locator('.hud-num').first().innerText());
-    expect(n).toBeGreaterThan(30);
-  }
-  await expect(page.locator('.honesty')).toContainText(/simulad/i);
-  await page.keyboard.press(' '); // pausa
-  await page.keyboard.press('ArrowRight');
-  await expect(caption.locator('h2')).toContainText(/L\d/);
-  await page.keyboard.press('ArrowRight');
-  await expect(page.locator('.bus-card')).toBeVisible();
-  await expect(page.locator('.bus-card .source-simulated')).toBeVisible();
-});
-
-test('enfocar una línia: es destaca i la resta s’atenua (no s’amaga)', async ({ page, isMobile }) => {
-  await page.goto(`/mapa?${AT}`);
-  await ready(page);
-  if (isMobile) await page.locator('.lf-toggle').click();
-  const chip = page.locator('.lf-chip', { hasText: /^L2$/ });
-  await chip.click();
-  await expect(chip).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('.lf-focus')).toContainText('Can Deu');
-  await expect(page.locator('.lf-chip', { hasText: /^L1$/ })).toHaveAttribute('aria-pressed', 'false');
-  await chip.click();
-  await expect(page.locator('.lf-focus')).toHaveCount(0);
-});
-
-test('parada → bus → seguir → "vaig a agafar aquest bus" → viatge actiu', async ({ page }) => {
-  await page.goto(`/parada/176?${AT}`);
-  await ready(page);
-  await expect(page.locator('.stop-name')).toHaveText('Estació Centre');
-  // les llegades diuen a quantes parades és el bus
-  await expect(page.locator('.arrival-sub').first()).toContainText(/parad|capçalera|cabecera/i);
-  await page.locator('.arrival-main:not([disabled])').first().click();
-  const card = page.locator('.bus-card');
-  await expect(card).toBeVisible();
-  await expect(card.locator('.back-link')).toContainText('Estació Centre');
-  // línia temporal amb la propera parada i el progrés per distància
-  await expect(card.locator('.tl-next, .tl-current').first()).toBeVisible();
-  await expect(card.locator('.tl-progress-text')).toContainText('%');
-  // seguir bus
-  const follow = card.locator('.cta', { hasText: /Seguir|Segueix|Deixa|Dejar/ });
-  await follow.click();
-  await expect(follow).toHaveAttribute('aria-pressed', 'true');
-  // viatge: puja a la parada d'on venim
-  await card.locator('.cta-primary').click();
-  await expect(card.locator('.tl-tag.board')).toBeVisible();
-  await expect(card.locator('.cta-on', { hasText: /Acaba|Terminar/ })).toBeVisible();
-  // el viatge (myBus) es manté en recarregar
-  await page.goto(`/?${AT}`);
-  await ready(page);
-  const trip = page.locator('.trip-card');
-  await expect(trip).toBeVisible();
-  await expect(trip).toContainText('Estació Centre');
-  await expect(trip.locator('.source-simulated')).toBeVisible();
-  await trip.getByRole('button', { name: /Acaba|Terminar/ }).click();
-  await expect(trip).toHaveCount(0);
-});
-
-test('sense connexió: continua funcionant amb simulació local', async ({ page, context }) => {
-  await page.goto(`/?${AT}`);
-  await ready(page);
-  await page.waitForFunction(() => navigator.serviceWorker?.controller != null, null, { timeout: 20_000 });
-  await context.setOffline(true);
-  await expect(page.locator('.offline-note')).toBeVisible();
-  await page.goto(`/parada/17?${AT}`).catch(() => undefined);
-  // amb el service worker, la ruta torna a carregar sense xarxa
-  await expect(page.locator('.stop-name')).toHaveText('Manresa', { timeout: 20_000 });
-  await context.setOffline(false);
-});
-
-test('inici: el teu proper bus, amb minuts, puntualitat i accions', async ({ page, isMobile }) => {
-  await page.goto(`/?${AT}`);
-  await ready(page);
-  const hero = page.locator('.hero');
-  await expect(hero).toContainText(/proper bus|próximo bus/i);
-  await expect(hero.locator('.hero-min')).toHaveText(/\d|imminent|inminente/);
-  await expect(hero.locator('.punct')).toBeVisible();
-  await expect(hero.locator('.cta-primary')).toBeVisible();
-  // navegació: barra inferior al mòbil, a dalt a l'escriptori
-  await expect(page.locator(isMobile ? '.bottomnav' : '.topnav')).toBeVisible();
-  await expect(page.locator('.honesty')).toContainText(/simulad/i);
-});
-
-test('xarxa en directe: mètriques derivades de la flota simulada, etiquetades', async ({ page }) => {
-  await page.goto(`/xarxa?${AT}`);
-  await ready(page);
-  const net = page.locator('.network');
-  await expect(net.locator('.kpi')).toHaveCount(4);
-  const inService = Number(await net.locator('.kpi-n').first().innerText());
-  expect(inService).toBeGreaterThan(30);
-  expect(await net.locator('.fleet-row').count()).toBeGreaterThan(8);
-  await expect(net).toContainText(/simulada/i);
-});
-
-test('parada: cada llegada diu a quantes parades és i la puntualitat', async ({ page }) => {
-  await page.goto(`/parada/176?${AT}`);
-  await ready(page);
-  await expect(page.locator('.arrival .punct').first()).toBeVisible();
-  await expect(page.locator('.arrival .punct').first()).toHaveAttribute('aria-label', /simulat|simulado/i);
+  test('crear compte, tancar la sessió i tornar a entrar; contrasenya incorrecta', async ({ page, isMobile }) => {
+    await page.goto('/registre');
+    const email = `prova-${Date.now()}@exemple.cat`;
+    await page.getByLabel(/^Nom|^Nombre/).fill('Pau Prova');
+    await page.getByLabel(/Correu|Correo/).fill(email);
+    await page.getByLabel(/Contrasenya|Contraseña/).fill('curta');
+    await page.getByRole('button', { name: /Crea el compte|Crear la cuenta/ }).click();
+    await expect(page.locator('.auth-error')).toContainText(/8/);
+    await page.getByLabel(/Contrasenya|Contraseña/).fill('una-contrasenya-llarga');
+    await page.getByRole('button', { name: /Crea el compte|Crear la cuenta/ }).click();
+    await expect(page).toHaveURL(/\/app/);
+    await expect(page.locator('.hero')).toBeVisible();
+    // sortir des d'«Els meus»
+    await page.goto('/meus');
+    await expect(page.locator('.account-card')).toContainText(email);
+    await page.locator('.account-card .cta').click();
+    await expect(page).toHaveURL(/\/$/);
+    // contrasenya incorrecta → missatge; correcta → a dins
+    await page.goto('/entra');
+    await page.getByLabel(/Correu|Correo/).fill(email);
+    await page.getByLabel(/Contrasenya|Contraseña/).fill('dolenta-123');
+    await page.getByRole('button', { name: /^Entra$|^Entrar$/ }).click();
+    await expect(page.locator('.auth-error')).toBeVisible();
+    await page.getByLabel(/Contrasenya|Contraseña/).fill('una-contrasenya-llarga');
+    await page.getByRole('button', { name: /^Entra$|^Entrar$/ }).click();
+    await expect(page).toHaveURL(/\/app/);
+    if (!isMobile) await expect(page.locator('.avatar')).toHaveText('P');
+  });
 });

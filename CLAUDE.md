@@ -1,15 +1,21 @@
-# Bus Sabadell en directe — context per a sessions futures
+# NextMobility Sabadell (abans «Bus Sabadell en directe») — context per a sessions futures
 
 Demo d'un mapa de la xarxa de bus urbà de Sabadell (TUS) amb autobusos moguts per
 **simulació a partir dels horaris publicats**. Objectiu: presentar-ho a TUS/Ajuntament
 per aconseguir dades reals (SAE/AVL). Especificació completa: `docs/SPEC.md`. Pla: `docs/PLAN.md`.
+
+Marca: **NextMobility Sabadell** (logo «N» de recorregut, `ui/Logo.tsx`, `public/icons/icon.svg`). Rutes: `/` landing
+(pública, no carrega el mapa), `/entra`, `/registre`, `/app` inici; la resta de vistes demanen sessió.
+**Comptes ficticis**: `auth/auth.ts` (`LocalAuthProvider`, localStorage, PBKDF2). Per a un servei real, una altra
+implementació d'`AuthProvider`. Paradas i viatge es guarden per usuari (`favs:<id>`, `myBus:<id>`).
+Captures de la landing: `node apps/web/scripts/landing-shots.mjs` (amb el dev server a :5199) i `og-image.mjs`.
 
 ## Regles que no es negocien
 - **Mai presentar una posició simulada com a real.** Banner fix, etiqueta d'origen a cada bus
   (`SIMULATED` | `SCHEDULED` | `REALTIME`) i textos que ho diuen.
 - **Cap enginyeria inversa** de l'app de TUS/GeoActio ni de cap API privada. Només dades públiques
   (pàgines de línia de tus.es, OSM, GTFS de la Generalitat), descarregades rarament i citades.
-- **No fer servir el logo ni la marca de TUS.** Nom propi: "Bus Sabadell en directe".
+- **No fer servir el logo ni la marca de TUS.** Nom propi: "NextMobility Sabadell".
 - Atribució OSM i del mapa base sempre visible.
 
 ## Comandes (pnpm; a PowerShell, `pnpm.cmd` si cal)

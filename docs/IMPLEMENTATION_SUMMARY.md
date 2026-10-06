@@ -1,4 +1,13 @@
-# Resumen de implementación — Bus Sabadell en directe
+# Resumen de implementación — NextMobility Sabadell (antes «Bus Sabadell en directe»)
+
+> **2026-10-07 · Marca, landing y cuentas.** Nuevo nombre **NextMobility Sabadell** con logo propio (una «N» dibujada
+> como recorrido). Landing pública en `/` con capturas reales de la app (no carga el mapa). Login **obligatorio**
+> para usar la app (`/app` y el resto de vistas): registro, entrar, salir, compte de demostración sin contraseña.
+> **Las cuentas son ficticias por ahora**: se guardan solo en el navegador (contraseñas con PBKDF2-SHA-256 y sal,
+> nunca en claro) y la pantalla lo dice. Para pasar a cuentas reales basta otra implementación de `AuthProvider`
+> (`apps/web/src/auth/auth.ts`) con Supabase/Firebase. Paradas y viaje se guardan por usuario. PWA instalable
+> (`start_url: /app`, botón «Instal·la l'app» en la landing). Tests: 5 unitarios de cuentas + 3 e2e
+> (landing, ruta protegida → /entra → vuelta, registro/salir/entrar/contraseña incorrecta); 51 e2e en total.
 
 Actualizado: 2026-10-06 (segunda iteración) · Producción: **https://bus-sabadell.vercel.app** ·
 Presentación: **/presentacio** · API: https://bus-sabadell-api.vercel.app

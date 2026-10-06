@@ -12,6 +12,11 @@ import { NetworkPanel } from './views/Network.tsx';
 import { MinePanel } from './views/Mine.tsx';
 import { Toasts, TripMonitor, TripPanel } from './views/Trip.tsx';
 import { RouteChip, hm, useNow } from './ui/common.tsx';
+import { Landing } from './views/Landing.tsx';
+import { AuthScreen } from './views/Auth.tsx';
+
+/** vistes públiques: no cal sessió ni carregar la xarxa */
+const PUBLIC = new Set(['landing', 'login', 'register']);
 
 // el mapa (MapLibre + CSS) i la presentació van en trossos a part: la carcassa es pinta abans
 const MapView = lazy(() => import('./map/MapView.tsx').then((m) => ({ default: m.MapView })));
@@ -68,20 +73,36 @@ export function App() {
   const view = useApp((s) => s.view);
   const ready = useApp((s) => s.loadState === 'ready');
   const lang = useApp((s) => s.lang);
+  const user = useApp((s) => s.user);
+  const isPublic = PUBLIC.has(view.name);
 
   useEffect(() => {
     useApp.getState().setLang(detectLang());
-    void loadNetwork();
     // la pestaña vuelve: re-render inmediato (todo sale del reloj)
     const onVis = () => document.visibilityState === 'visible' && useApp.setState((s) => ({ clockVersion: s.clockVersion + 1 }));
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
   }, []);
 
+  // l'app necessita sessió: sense compte, a /entra i després de tornada on anava
+  useEffect(() => {
+    const st = useApp.getState();
+    if (!isPublic && !user) {
+      st.navigate({ name: 'login', next: location.pathname + location.search }, { replace: true });
+    } else if (user && (view.name === 'login' || view.name === 'register')) {
+      st.navigate({ name: 'home' }, { replace: true });
+    }
+  }, [isPublic, user, view.name]);
+
+  // la xarxa (116 KB) només es carrega quan s'entra a l'app, no a la landing
+  useEffect(() => {
+    if (!isPublic && user && useApp.getState().loadState !== 'ready' && !useApp.getState().network) void loadNetwork();
+  }, [isPublic, user]);
+
   const presenting = useApp((s) => s.presenting);
   useEffect(() => {
-    document.title = presenting ? 'Bus Sabadell en directe · Presentació' : 'Bus Sabadell en directe';
-  }, [presenting, lang]);
+    document.title = presenting ? 'NextMobility Sabadell · Presentació' : view.name === 'landing' ? 'NextMobility Sabadell · El teu bus, en directe' : 'NextMobility Sabadell';
+  }, [presenting, lang, view.name]);
   const base = useApp((s) => s.base);
   const baseLine = useApp((s) => s.baseLine);
   // /presentacio és el mapa amb el director de la demo a sobre
@@ -89,6 +110,10 @@ export function App() {
   // panell esquerre (escriptori) / pàgina (mòbil): la vista de base; una parada o un bus s'obren a sobre
   const left = presenting ? (name === 'network' ? 'network' : null) : name === 'stop' ? base : name;
   const lineRef = view.name === 'line' ? view.ref : base === 'line' ? baseLine : null;
+
+  if (view.name === 'landing') return <Landing />;
+  if (view.name === 'login' || view.name === 'register') return <AuthScreen mode={view.name} next={view.next} />;
+  if (!user) return null;
 
   return (
     <div className={`app view-${name} base-${left ?? 'none'}${presenting ? ' presenting' : ''}${view.name === 'line' && lineRef ? ' has-line' : ''}`}>
