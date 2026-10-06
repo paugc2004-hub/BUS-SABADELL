@@ -3,7 +3,7 @@
 // Retorna: temps total de tasques llargues (> 50 ms), fps (rAF), heap i nodes DOM.
 // Nota: Chromium sense GPU (SwiftShader): els valors absoluts són pessimistes; serveixen per comparar.
 import { chromium, devices } from '@playwright/test';
-const [, , url, secs = '20', mode = 'desktop'] = process.argv;
+const [, , url, secs = '20', mode = 'desktop', ...flags] = process.argv;
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-precise-memory-info'] });
 const ctx = await browser.newContext(mode === 'mobile' ? { ...devices['Pixel 7'] } : { viewport: { width: 1440, height: 900 } });
 const page = await ctx.newPage();
@@ -17,6 +17,7 @@ await page.addInitScript(() => {
     }
   }).observe({ type: 'longtask', buffered: true });
 });
+if (flags.includes('--noanim')) await page.addInitScript(() => document.addEventListener('DOMContentLoaded', () => { const st = document.createElement('style'); st.textContent = '*,*::before,*::after{animation:none!important;transition:none!important}'; document.head.appendChild(st); }));
 await page.goto(url, { waitUntil: 'load' });
 await page.waitForTimeout(6000); // càrrega i primer pintat del mapa fora de la mesura
 const res = await page.evaluate(async (ms) => {
