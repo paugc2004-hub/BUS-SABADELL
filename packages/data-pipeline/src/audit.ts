@@ -15,6 +15,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { haversine, pointAlong, type LonLat, type NetworkData, type Pattern } from '@bus/core';
 import { countSpikes } from './geometry.ts';
+import { CONTRAFLOW_ERR_M, contraflow, directedGridFrom, type DirectedGrid, type RoadWay } from './oneway.ts';
 import { lineDeviation, stitchRelation, type OsmElement, type OsmNode, type OsmRel, type OsmWay } from './osm.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -159,14 +160,25 @@ export interface AuditRow {
   problems: string[];
 }
 
-export function loadRoads(lat0: number): SegmentGrid | null {
+function roadWays(): RoadWay[] | null {
   const dir = join(RAW, 'osm');
   const f = readdirSync(dir)
     .filter((x) => /^roads-.*\.json$/.test(x))
     .sort()
     .pop();
   if (!f) return null;
-  const els = (JSON.parse(readFileSync(join(dir, f), 'utf8')) as { elements: { geometry?: { lat: number; lon: number }[] }[] }).elements;
+  return (JSON.parse(readFileSync(join(dir, f), 'utf8')) as { elements: RoadWay[] }).elements;
+}
+
+/** Carrers amb sentit (per a la comprovació de sentits únics). */
+export function loadDirected(lat0: number): DirectedGrid | null {
+  const ways = roadWays();
+  return ways ? directedGridFrom(ways, lat0) : null;
+}
+
+export function loadRoads(lat0: number): SegmentGrid | null {
+  const els = roadWays();
+  if (!els) return null;
   const g = gridFor(lat0);
   for (const e of els) {
     const geo = e.geometry ?? [];
@@ -200,6 +212,7 @@ function loadOsmRoutes(): Map<string, { rel: number; coords: LonLat[] }[]> {
 export function audit(net: NetworkData) {
   const lat0 = net.stops[0]?.lat ?? 41.55;
   const roads = loadRoads(lat0);
+  const directed = loadDirected(lat0);
   const osm = loadOsmRoutes();
   const stops = new Map(net.stops.map((s) => [s.id, s]));
   const rows: AuditRow[] = [];
@@ -218,6 +231,11 @@ export function audit(net: NetworkData) {
     if (or.longestOffM > OFFROAD_RUN_ERR_M)
       fail(`${or.longestOffM} m seguits fora de carrer prop de ${or.offAt?.map((x) => x.toFixed(5)).join(',')}`);
     else if (or.longestOffM > 30) warn(`${or.longestOffM} m fora de l'eix del carrer`);
+    for (const r of directed ? contraflow(p, directed) : []) {
+      const msg = `${r.lengthM} m a contrasentit (${r.street || 'carrer de sentit únic'}, prop de ${r.at.map((x) => x.toFixed(5)).join(',')})`;
+      if (r.lengthM > CONTRAFLOW_ERR_M) fail(msg);
+      else if (r.lengthM >= 20) warn(msg);
+    }
     const spikes = countSpikes(p.coords);
     if (spikes > 0) warn(`${spikes} punxes (el recorregut torna enrere sobre si mateix en < 40 m)`);
     const so = stopOffsets(p, net);
@@ -331,6 +349,7 @@ function render(net: NetworkData, res: ReturnType<typeof audit>, shared: ReturnT
   );
   L.push(`- **Parades**: cada parada ha de quedar a ≤ ${STOP_TOL_M} m del punt del recorregut on la situem, i en ordre estrictament creixent.`);
   L.push("- **OSM**: desviació respecte de la relació de ruta d'OSM de la mateixa línia, quan n'hi ha (OSM només en té 13 de 23).");
+  L.push(`- **Sentits únics**: el bus no pot anar en contra d'un carrer de sentit únic d'OSM (llevat d'excepcions per a bus: oneway:bus=no, busway=opposite_lane…). Error si són més de ${CONTRAFLOW_ERR_M} m seguits.`);
   L.push("- **Punxes**: el recorregut no pot tornar enrere sobre si mateix en menys de 40 m (tus.es dibuixa una anada i tornada fins al pal de cada parada; el pipeline les elimina).");
   L.push('- **Sentits i capçaleres**: les línies no circulars tenen els dos sentits i les capçaleres coincideixen (± 400 m).', '');
   L.push(`Resultat: **${rows.length} variants**: ${rows.length - err.length - warnN.length} ok, ${warnN.length} amb avís, ${err.length} amb error.`, '');

@@ -9,6 +9,7 @@ import { checkFestius, FestiusSchema, loadYaml } from '../src/config.ts';
 import { endpoints, dayTypeOf, extractTrayectos } from '../src/tus.ts';
 import { audit } from '../src/audit.ts';
 import { assignDirections, isCircular } from '../src/repair.ts';
+import { busDirections, contraflow, directedGridFrom } from '../src/oneway.ts';
 
 const ROOT = join(__dirname, '../../..');
 
@@ -247,5 +248,29 @@ describe('punxes de tus.es', () => {
     // volta a una rotonda (~80 m) que torna al mateix punt: no és una punxa
     const loop: LonLat[] = [[2.1, 41.5], [2.1003, 41.5], [2.1004, 41.5001], [2.1003, 41.5002], [2.1002, 41.5001], [2.1003, 41.5], [2.1, 41.5]];
     expect(despike(loop, [stop]).removed).toBe(0);
+  });
+});
+
+describe('sentits únics', () => {
+  it('interpreta oneway i les excepcions per a bus', () => {
+    expect(busDirections({ oneway: 'yes' })).toEqual({ fwd: true, back: false });
+    expect(busDirections({ oneway: '-1' })).toEqual({ fwd: false, back: true });
+    expect(busDirections({ oneway: 'yes', 'oneway:bus': 'no' })).toEqual({ fwd: true, back: true });
+    expect(busDirections({ oneway: 'yes', busway: 'opposite_lane' })).toEqual({ fwd: true, back: true });
+    expect(busDirections({ junction: 'roundabout' })).toEqual({ fwd: true, back: false });
+    expect(busDirections({})).toEqual({ fwd: true, back: true });
+  });
+  it('detecta un tram a contrasentit però no les calçades separades', () => {
+    const one = (coords: [number, number][], tags: Record<string, string>) => ({ tags, geometry: coords.map(([lon, lat]) => ({ lon, lat })) });
+    // carrer de sentit únic cap a l'est i, 12 m al nord, un altre cap a l'oest (calçada separada)
+    const g = directedGridFrom([one([[2.1, 41.5], [2.104, 41.5]], { oneway: 'yes' })]);
+    const pat = (coords: [number, number][]) => {
+      const cum = cumulative(coords);
+      return { id: 'x', routeId: 'X', dir: 0 as const, name: '', origin: '', headsign: '', dayType: 'feiner' as const, circular: false, stopIds: ['a', 'b'], stopDist: [0, cum[cum.length - 1]!], coords, cum, length: cum[cum.length - 1]!, profiles: [], trips: [] };
+    };
+    expect(contraflow(pat([[2.1, 41.5], [2.104, 41.5]]), g)).toEqual([]);
+    expect(contraflow(pat([[2.104, 41.5], [2.1, 41.5]]), g)[0]!.lengthM).toBeGreaterThan(250);
+    const dual = directedGridFrom([one([[2.1, 41.5], [2.104, 41.5]], { oneway: 'yes' }), one([[2.104, 41.50008], [2.1, 41.50008]], { oneway: 'yes' })]);
+    expect(contraflow(pat([[2.104, 41.50004], [2.1, 41.50004]]), dual)).toEqual([]);
   });
 });

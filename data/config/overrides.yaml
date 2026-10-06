@@ -1,5 +1,9 @@
 # Correccions manuals sobre les dades de tus.es (bug 12.1-9).
 # excloure: ids de trajecte de tus.es que no s'han de simular
 # colors: color forçat per línia (si mai cal diferenciar-ne dues)
-excloure: []
+excloure:
+  # L4 "El Poblenou - Can Roqueta IES - La Roureda" (1 expedició de feiners): el recorregut publicat
+  # va 100 m a contrasentit pel c. de Can Fadó (sentit únic a OSM) i cap altra línia hi passa.
+  # Millor no mostrar-la que mostrar-la malament; pendent de confirmar amb TUS (2026-10-06).
+  - '40504787'
 colors: {}

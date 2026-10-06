@@ -14,6 +14,10 @@
  */
 import { cumulative, haversine, pointAlong, projectOnLine, type LonLat, type Pattern, type Stop } from '@bus/core';
 import { OFFROAD_RUN_ERR_M, ROAD_TOL_M, STOP_TOL_M, type SegmentGrid } from './audit.ts';
+import { CONTRAFLOW_ERR_M, contraflow, type DirectedGrid } from './oneway.ts';
+
+/** carrers amb sentit de la reparació en curs (repairSegments el fixa) */
+let directed: DirectedGrid | null = null;
 
 const ll = (s: Stop): LonLat => [s.lon, s.lat];
 
@@ -98,6 +102,11 @@ function slice(p: Pattern, a: number, b: number): LonLat[] {
   return out;
 }
 
+function worstContraflow(p: Pattern, i: number): number {
+  if (!directed) return 0;
+  return contraflow(p, directed, 10, p.stopDist[i]!, p.stopDist[i + 1]!).reduce((m, r) => Math.max(m, r.lengthM), 0);
+}
+
 function segmentOkIn(
   geo: Pick<Pattern, 'coords' | 'cum' | 'length' | 'stopDist'>,
   p: Pattern,
@@ -109,6 +118,7 @@ function segmentOkIn(
 }
 
 function segmentOk(p: Pattern, i: number, stops: Map<string, Stop>, roads: SegmentGrid): boolean {
+  if (directed && worstContraflow(p, i) > CONTRAFLOW_ERR_M) return false;
   return (
     offroadRun(p, p.stopDist[i]!, p.stopDist[i + 1]!, roads) <= OFFROAD_RUN_ERR_M &&
     stopOff(p, i, stops) <= STOP_TOL_M &&
@@ -128,7 +138,8 @@ export interface RepairNote {
  * Sustituye, en el sitio, los tramos parada→parada defectuosos por el de un donante
  * que hace el mismo tramo entre las mismas dos paradas y sí pasa la validación.
  */
-export function repairSegments(patterns: Pattern[], stops: Map<string, Stop>, roads: SegmentGrid): RepairNote[] {
+export function repairSegments(patterns: Pattern[], stops: Map<string, Stop>, roads: SegmentGrid, dirGrid: DirectedGrid | null = null): RepairNote[] {
+  directed = dirGrid;
   const notes: RepairNote[] = [];
   // índice de tramos válidos: "a>b" → [patrón, índice]
   // la geometría del donante se copia ANTES de modificar nada: una reparación no encadena otra
@@ -147,7 +158,8 @@ export function repairSegments(patterns: Pattern[], stops: Map<string, Stop>, ro
       const d = donors[0];
       if (!d) continue;
       const run = offroadRun(p, p.stopDist[i]!, p.stopDist[i + 1]!, roads);
-      const reason = run > OFFROAD_RUN_ERR_M ? `${run} m fora de carrer` : 'parada lluny del recorregut';
+      const against = worstContraflow(p, i);
+      const reason = run > OFFROAD_RUN_ERR_M ? `${run} m fora de carrer` : against > CONTRAFLOW_ERR_M ? `${against} m a contrasentit` : 'parada lluny del recorregut';
       const a = p.stopDist[i]!;
       const b = p.stopDist[i + 1]!;
       const head = slice(p, 0, a).slice(0, -1);

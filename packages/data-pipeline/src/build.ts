@@ -38,7 +38,7 @@ import {
 } from './tus.ts';
 import { writeGtfs } from './gtfs.ts';
 import { refreshAll } from './fetch.ts';
-import { loadRoads } from './audit.ts';
+import { loadDirected, loadRoads } from './audit.ts';
 import { assignDirections, isCircular, repairSegments } from './repair.ts';
 import { buildInterurbans } from './interurbans.ts';
 
@@ -287,7 +287,7 @@ export async function build(opts: { refresh?: boolean } = {}) {
   // correcciones deducidas de los datos: tramos fuera de calle, circulares y sentidos (repair.ts)
   const roads = loadRoads(41.55);
   if (roads)
-    for (const n of repairSegments(patterns, stops, roads)) {
+    for (const n of repairSegments(patterns, stops, roads, loadDirected(41.55))) {
       const routeId = patterns.find((p) => p.id === n.pattern)!.routeId;
       report.lines
         .find((l) => l.id === routeId)

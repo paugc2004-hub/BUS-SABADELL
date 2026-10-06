@@ -1,16 +1,17 @@
 # Auditoria línia per línia
 
-Generat per `pnpm data:audit` sobre la versió de dades `2026-10-06-0cd18335c18b`. No editar a mà.
+Generat per `pnpm data:audit` sobre la versió de dades `2026-10-06-57e36b18aedd`. No editar a mà.
 
 Per a cada variant (recorregut publicat per tus.es) es comprova, amb fonts independents:
 
 - **Carrer**: el recorregut, mostrejat cada 10 m, ha d'anar per l'eix d'un carrer d'OpenStreetMap (≤ 20 m). Error si hi ha més de 60 m seguits fora de carrer.
 - **Parades**: cada parada ha de quedar a ≤ 40 m del punt del recorregut on la situem, i en ordre estrictament creixent.
 - **OSM**: desviació respecte de la relació de ruta d'OSM de la mateixa línia, quan n'hi ha (OSM només en té 13 de 23).
+- **Sentits únics**: el bus no pot anar en contra d'un carrer de sentit únic d'OSM (llevat d'excepcions per a bus: oneway:bus=no, busway=opposite_lane…). Error si són més de 40 m seguits.
 - **Punxes**: el recorregut no pot tornar enrere sobre si mateix en menys de 40 m (tus.es dibuixa una anada i tornada fins al pal de cada parada; el pipeline les elimina).
 - **Sentits i capçaleres**: les línies no circulars tenen els dos sentits i les capçaleres coincideixen (± 400 m).
 
-Resultat: **106 variants**: 101 ok, 5 amb avís, 0 amb error.
+Resultat: **105 variants**: 96 ok, 9 amb avís, 0 amb error.
 
 ## Observacions de línia
 
@@ -51,7 +52,6 @@ Resultat: **106 variants**: 101 ok, 5 amb avís, 0 amb error.
 | L4 | feiner | tornada | La Roureda (La Roureda) | El Poblenou (El Poblenou) | 45 | 13.8 | 32 | 100% | 16 m | 1 / 2 m | ok | — |
 | L4 | feiner | anada | El Poblenou (El Poblenou) | La Roureda (La Roureda) | 53 | 17 | 2 | 100% | 20 m | 0 / 1 m | ok | — |
 | L4 | feiner | tornada | La Roureda (La Roureda) | El Poblenou (El Poblenou) | 52 | 16.5 | 4 | 100% | 16 m | 0 / 2 m | ok | — |
-| L4 | feiner | anada | El Poblenou (El Poblenou) | La Roureda (La Roureda) | 47 | 15.5 | 1 | 100% | 20 m | 1 / 2 m | ok | — |
 | L4 | dissabte | anada | El Poblenou (El Poblenou) | La Roureda (La Roureda) | 45 | 14.5 | 31 | 100% | 20 m | 0 / 2 m | ok | — |
 | L4 | dissabte | tornada | La Roureda (La Roureda) | El Poblenou (El Poblenou) | 43 | 14.8 | 29 | 100% | 16 m | 26 / 187 m | ok | — |
 | L4 | dissabte | tornada | La Roureda (La Roureda) | El Poblenou (El Poblenou) | 51 | 17.2 | 1 | 100% | 20 m | 25 / 123 m | ok | — |
@@ -67,7 +67,7 @@ Resultat: **106 variants**: 101 ok, 5 amb avís, 0 amb error.
 | L55 | dissabte | tornada | Les Termes (Les Termes) | Can Llong (La Roureda) | 24 | 8.1 | 31 | 100% | 14 m | — | ok | — |
 | L7 | feiner | anada | Can Puiggener (Can Puiggener) | Castellarnau (Castellarnau) | 28 | 8.7 | 28 | 100% | 24 m | 0 / 4 m | ok | — |
 | L7 | feiner | tornada | Castellarnau (Castellarnau) | Can Puiggener (Can Puiggener) | 29 | 8.8 | 32 | 100% | 17 m | 0 / 3 m | ok | — |
-| L7 | feiner | anada | Can Puiggener (Can Puiggener) | Castellarnau per T. del Capellà (Castellarnau) | 29 | 9.2 | 3 | 100% | 24 m | 18 / 162 m | ok | — |
+| L7 | feiner | anada | Can Puiggener (Can Puiggener) | Castellarnau per T. del Capellà (Castellarnau) | 29 | 9.2 | 3 | 100% | 24 m | 18 / 162 m | avís | 20 m a contrasentit (Carrer dels Clavells, prop de 2.09645,41.56785) |
 | L7 | dissabte | anada | Can Puiggener (Can Puiggener) | Castellarnau (Castellarnau) | 27 | 8.8 | 32 | 100% | 24 m | 6 / 5 m | ok | — |
 | L7 | dissabte | tornada | Castellarnau (Castellarnau) | Can Puiggener (Can Puiggener) | 27 | 8.8 | 31 | 100% | 17 m | 4 / 6 m | ok | — |
 | L8 | feiner | anada | Estació Sud (Estació Sud) | La Roureda (La Roureda) | 20 | 6.2 | 29 | 100% | 18 m | 1 / 8 m | ok | — |
@@ -107,18 +107,18 @@ Resultat: **106 variants**: 101 ok, 5 amb avís, 0 amb error.
 | L23 | feiner | tornada | Can Roqueta (Can Llobateras) | Torre Romeu (Torre-romeu) | 7 | 2.4 | 4 | 100% | 9 m | 100 / 327 m | ok | — |
 | L80 | feiner | anada | Plaça de Picasso (Picasso) | La Plana del Pintor (La Plana del Pintor) | 34 | 9.4 | 46 | 100% | 18 m | — | ok | — |
 | L80 | feiner | tornada | La Plana del Pintor (La Plana del Pintor) | Plaça de Picasso (Picasso) | 32 | 9.1 | 44 | 100% | 17 m | — | ok | — |
-| L80 | dissabte | anada | Plaça de Picasso (Picasso) | La Plana del Pintor (La Plana del Pintor) | 31 | 9.1 | 27 | 100% | 18 m | — | ok | — |
+| L80 | dissabte | anada | Plaça de Picasso (Picasso) | La Plana del Pintor (La Plana del Pintor) | 31 | 9.1 | 27 | 100% | 18 m | — | avís | 20 m a contrasentit (Carrer dels Clavells, prop de 2.09641,41.56780) |
 | L80 | dissabte | tornada | La Plana del Pintor (La Plana del Pintor) | Plaça de Picasso (Picasso) | 30 | 8.9 | 29 | 100% | 17 m | — | ok | — |
 | F1 | festiu | anada | Can Deu (Can Deu) | Estació Sud (Estació Sud) | 32 | 10.1 | 31 | 100% | 18 m | — | ok | — |
 | F1 | festiu | tornada | Estació Sud (Estació Sud) | Can Deu (Can Deu) | 30 | 9.8 | 30 | 100% | 20 m | — | ok | — |
 | F2 | festiu | anada | Can Deu (Can Deu) | La Creu de Barberà (Leonardo da Vinci) | 33 | 11.1 | 30 | 100% | 14 m | — | ok | — |
 | F2 | festiu | tornada | La Creu de Barberà (Leonardo da Vinci) | Can Deu (Can Deu) | 37 | 10.8 | 30 | 100% | 14 m | — | ok | — |
 | F3 | festiu | anada | La Plana del Pintor (La Plana del Pintor) | La Romànica (La Romànica) | 34 | 10.6 | 28 | 100% | 20 m | — | ok | — |
-| F3 | festiu | tornada | La Romànica (La Romànica) | La Plana del Pintor (La Plana del Pintor) | 38 | 11.2 | 28 | 100% | 18 m | — | ok | — |
+| F3 | festiu | tornada | La Romànica (La Romànica) | La Plana del Pintor (La Plana del Pintor) | 38 | 11.2 | 28 | 100% | 18 m | — | avís | 20 m a contrasentit (Carrer dels Clavells, prop de 2.09643,41.56783) |
 | F4 | festiu | anada | El Poblenou (El Poblenou) | La Roureda (La Roureda) | 40 | 14.1 | 14 | 100% | 19 m | — | ok | — |
 | F4 | festiu | tornada | La Roureda (La Roureda) | El Poblenou (El Poblenou) | 42 | 13.6 | 14 | 100% | 16 m | — | ok | — |
-| F4 | festiu | anada | El Poblenou (El Poblenou) | La Roureda (La Roureda) | 46 | 17.1 | 14 | 100% | 19 m | — | ok | — |
-| F4 | festiu | tornada | La Roureda (La Roureda) | El Poblenou (El Poblenou) | 48 | 16.6 | 15 | 100% | 19 m | — | ok | — |
+| F4 | festiu | anada | El Poblenou (El Poblenou) | La Roureda (La Roureda) | 46 | 17.1 | 14 | 100% | 19 m | — | avís | 20 m a contrasentit (Ronda de la Roureda, prop de 2.08512,41.56925) |
+| F4 | festiu | tornada | La Roureda (La Roureda) | El Poblenou (El Poblenou) | 48 | 16.5 | 15 | 100% | 19 m | — | ok | — |
 | F4 | festiu | anada | El Poblenou (El Poblenou) | Calderón (Dr. Almera) | 21 | 7.6 | 28 | 100% | 14 m | — | ok | — |
 | F4 | festiu | tornada | Vallès (Dr. Almera) | El Poblenou (El Poblenou) | 23 | 7.6 | 28 | 100% | 15 m | — | ok | — |
 | F5 | festiu | anada | Castellarnau (Castellarnau) | Les Termes (Les Termes) | 30 | 8.9 | 28 | 100% | 14 m | — | ok | — |
