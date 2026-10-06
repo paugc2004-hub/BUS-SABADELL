@@ -40,6 +40,18 @@ Si dues variants comparteixen capçalera i hora de sortida, l'expedició es qued
 de la qual tenen hora. Es descarten sortides amb menys del 50 % de parades casades o velocitat comercial fora de
 5–40 km/h (vegeu l'informe).
 
+### Correccions deduïdes de les dades (`geometry.ts`, `repair.ts`)
+- **Punxes**: tus.es dibuixa una anada i tornada fins al pal de cada parada. Es treu el vèrtex si és a ≤ 12 m
+  d'una parada, el camí torna gairebé pel mateix traç (< 40°) i mesura ≤ 35 m (o si és una tornada exacta).
+- **Sentit** per geometria (proximitat de les parades sobre el recorregut principal), no pel nom de la capçalera.
+- **Circulars**: també quan la geometria publicada és un bucle tancat.
+- **Trams defectuosos** (fora de carrer o parada lluny): es substitueixen pel tram d'una variant que fa el mateix
+  parell de parades consecutives i que valida. Avui: F6 (antiga carretera de Bellaterra) i L12 (Estació Centre).
+
+### Auditoria (`pnpm data:audit`)
+Cada variant es contrasta amb els carrers d'OSM (`data/raw/osm/roads-2026-10-06.json`) i, si n'hi ha, amb la
+relació de ruta d'OSM. Resultat a `docs/LINE_AUDIT.md`; els tests fallen si alguna variant té errors.
+
 ### Correccions manuals
 `data/config/overrides.yaml`: excloure trajectes, forçar colors. `data/config/avisos.yaml`: avisos de servei
 (talls de carrer, desviaments) amb el text en català i castellà i l'enllaç a la notícia de tus.es.

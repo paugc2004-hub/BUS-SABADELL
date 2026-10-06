@@ -85,8 +85,9 @@ i funciona en plataformes serverless amb streaming. Heartbeat cada 15 s.
 | H6 Frontend nucli | ✅ | Mapa, buses, fitxa, filtre, banner, i18n |
 | H7 Vistes secundàries | ✅ | Vista de línia, parada, cercador, avisos, interurbans |
 | H8 Presentació + offline | ✅ | Tour automàtic, hora forçada per URL, PWA |
-| H9 Poliment | ✅ (parcial) | Accessibilitat i rendiment revisats; Lighthouse: vegeu README |
-| H10 Desplegament + pitch | ✅ | URL pública a README; `docs/PITCH.md` |
+| H9 Poliment | ✅ | Lighthouse mòbil (producció, sense GPU): rendiment 70, accessibilitat 100, bones pràctiques 100, FCP/LCP 1,3 s |
+| H10 Desplegament + pitch | ✅ | https://bus-sabadell.vercel.app · API https://bus-sabadell-api.vercel.app · `docs/PITCH.md` |
+| Evolució (oct. 2026) | ✅ | Auditoria de dades, bus vectorial, línia enfocada, fitxa, parada, línia temporal, seguir bus, mode viatge, demo narrada: `docs/IMPLEMENTATION_SUMMARY.md` |
 
 ## 6. Preguntes obertes (només les pot respondre el Pau)
 1. Data de la reunió amb TUS/Ajuntament (per triar l'hora forçada de la demo).
