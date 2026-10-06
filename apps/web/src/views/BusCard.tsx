@@ -6,9 +6,9 @@ import { useState } from 'react';
 import type { SimEngine, VehicleState } from '@bus/core';
 import { useApp } from '../state/store.ts';
 import { useT, type Dict } from '../i18n/index.ts';
-import { vehicleById } from '../data/vehicles.ts';
+import { journeyFor, vehicleById } from '../data/vehicles.ts';
 import { whereNow } from '../data/derive.ts';
-import { Countdown, Icon, IconButton, RouteChip, SourceTag, hm, shareUrl, useNow } from '../ui/common.tsx';
+import { Countdown, Icon, IconButton, Punctuality, RouteChip, SourceTag, hm, shareUrl, useNow } from '../ui/common.tsx';
 import { BusVehicleMarker } from '../ui/BusVehicleMarker.tsx';
 import { Sheet } from '../ui/Sheet.tsx';
 import { StopTimeline } from './StopTimeline.tsx';
@@ -59,7 +59,7 @@ export function BusCard() {
   }
   const route = engine.routes.get(v.routeId);
   const pattern = engine.patternById(v.patternId)!;
-  const journey = engine.journey(v.id, now);
+  const journey = journeyFor(engine, v.id, now);
   // a l'última parada del trajecte no hi ha "propera": el bus ha acabat aquesta expedició
   const retired = v.status === 'RETIRADA' || v.atStopIndex === pattern.stopIds.length - 1;
   const nextEta = v.etas[0];
@@ -80,6 +80,11 @@ export function BusCard() {
       {view.name === 'stop' && engine.stops.get(view.id) && (
         <button type="button" className="back-link" onClick={() => st.selectBus(null)}>
           ← {engine.stops.get(view.id)!.name}
+        </button>
+      )}
+      {view.name === 'line' && view.ref && (
+        <button type="button" className="back-link" onClick={() => st.selectBus(null)}>
+          ← {t.viewLine} {engine.routes.get(view.ref)?.ref}
         </button>
       )}
       <header className="bc-head">
@@ -113,7 +118,7 @@ export function BusCard() {
 
       <div className="bc-pills">
         <StatusPill v={v} />
-        {v.delaySec === null ? <span className="status-pill st-sched">{t.onSchedule}</span> : <span className="status-pill st-retrasado">+{Math.round(v.delaySec / 60)} min</span>}
+        {v.delaySec === null ? <span className="status-pill st-sched">{t.onSchedule}</span> : <Punctuality delaySec={v.delaySec} source={v.source} />}
         <SourceTag source={v.source} />
         {v.lastTrip && !retired && <span className="status-pill st-last">{t.lastTrip}</span>}
       </div>

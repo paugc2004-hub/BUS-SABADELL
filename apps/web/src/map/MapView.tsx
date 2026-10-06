@@ -4,7 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import type * as GeoJSON from 'geojson';
 import { sliceLine, type DayType, type NetworkData, type SimEngine, type VehicleState } from '@bus/core';
 import { clock, useApp } from '../state/store.ts';
-import { vehiclesAt } from '../data/vehicles.ts';
+import { vehicleById, vehiclesAt } from '../data/vehicles.ts';
 import { areaOf, liveArrivals } from '../data/derive.ts';
 import { addBusImages } from './icons.ts';
 import { loadBaseStyle } from './style.ts';
@@ -43,9 +43,15 @@ export function mapPadding() {
   const wide = window.innerWidth > 760;
   const st = useApp.getState();
   // hi ha un panell obert (fitxa de bus o parada) que tapa part del mapa?
-  const sheet = st.selectedBus !== null || st.view.name === 'stop';
-  if (wide) return { top: 40, bottom: 40, left: st.presenting ? 480 : 40, right: sheet ? 470 : 40 };
-  return { top: st.presenting ? 170 : 30, bottom: sheet ? Math.round(window.innerHeight * 0.5) : 40, left: 30, right: 30 };
+  const sheet = st.selectedBus !== null || st.view.name === 'stop' || (st.view.name === 'line' && st.view.ref !== null);
+  // panell esquerre de la vista de base (inici, línies, xarxa, els meus)
+  const base = st.view.name === 'stop' ? st.base : st.view.name;
+  const leftPanel = !st.presenting && (base === 'home' || base === 'line' || base === 'network' || base === 'mine');
+  if (wide) return { top: 40, bottom: 40, left: st.presenting ? 480 : leftPanel ? 450 : 40, right: sheet ? 470 : 40 };
+  // mòbil: el full de baix tapa una part del mapa; el contingut es centra a la part visible
+  const h = window.innerHeight;
+  const bottom = sheet ? 0.6 * h : leftPanel ? (base === 'home' ? 0.62 : 0.74) * h : 40;
+  return { top: st.presenting ? 170 : 24, bottom: Math.round(bottom), left: 24, right: 24 };
 }
 
 /** Líneas del día: patrones del tipo de día actual; las que no circulan, atenuadas. */
@@ -469,10 +475,13 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
             'icon-image': ['concat', 'lbl-', ['get', 'route']],
             'icon-anchor': 'bottom',
             'icon-offset': [0, -15],
-            'icon-allow-overlap': true,
-            'icon-ignore-placement': true,
+            // les etiquetes no se superposen: es col·loquen per prioritat (seleccionat > destacat > resta)
+            'icon-allow-overlap': false,
+            'icon-ignore-placement': false,
+            'icon-padding': 2,
             'icon-size': ['interpolate', ['linear'], ['zoom'], 12.4, 0.78, 16, 1] as unknown as number,
-            'symbol-sort-key': ['get', 'order'],
+            // menor clau = es col·loca abans i guanya la col·lisió
+            'symbol-sort-key': ['-', 3, ['get', 'order']],
           },
           paint: {
             // a vista de ciutat, només l'etiqueta dels buses destacats
@@ -656,7 +665,7 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map || !engine) return;
-    const focus = focusRoute ?? (selectedBus ? engine.vehicle(selectedBus, clock.now())?.routeId ?? null : null);
+    const focus = focusRoute ?? (selectedBus ? vehicleById(engine, selectedBus, clock.now())?.routeId ?? null : null);
     const f = (id: string) => ['==', ['get', 'route'], id] as maplibregl.FilterSpecification;
     map.setFilter('routes-focus', f(focus ?? ''));
     map.setFilter('routes-focus-casing', f(focus ?? ''));
@@ -740,6 +749,15 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
     if (!ready || !map) return;
     (map.getSource('user') as GeoJSONSource).setData(userPos ? pointFC([{ at: userPos }]) : emptyFC());
   }, [ready, userPos]);
+
+  // ---- en canviar de vista, el mapa es recentra a la part que queda visible
+  const base = useApp((s) => s.base);
+  const presenting = useApp((s) => s.presenting);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || useApp.getState().follow) return;
+    map.easeTo({ padding: mapPadding(), duration: prefersReducedMotion() ? 0 : 500 });
+  }, [ready, view.name, base, presenting, selectedBus]);
 
   // ---- peticiones de cámara
   useEffect(() => {

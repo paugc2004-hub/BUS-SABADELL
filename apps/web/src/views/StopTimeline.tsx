@@ -1,6 +1,6 @@
 /**
  * Línia temporal del trajecte d'un bus: parades fetes, on és ara i les que vénen.
- * Tot surt d'engine.journey(): les mateixes hores que la fitxa, el panell de parada i el mapa.
+ * Tot surt de journeyFor() (data/vehicles.ts): les mateixes hores que la fitxa, el panell de parada i el mapa.
  */
 import { useState } from 'react';
 import type { Journey, Route, SimEngine, VehicleState } from '@bus/core';
@@ -84,7 +84,9 @@ export function StopTimeline({ engine, vehicle: v, journey: j, now, route, board
                 ) : s.at - now < 30 * 60_000 ? (
                   <>
                     <Countdown at={s.at} now={now} className="tl-cd" />
-                    <span className="mono dim small">{hm(s.at)}</span>
+                    <span className="mono dim small">
+                      {s.scheduledAt !== null && Math.abs(s.at - s.scheduledAt) >= 60_000 && <s className="tl-sched">{hm(s.scheduledAt)}</s>} {hm(s.at)}
+                    </span>
                   </>
                 ) : (
                   <span className="mono">{hm(s.at)}</span>

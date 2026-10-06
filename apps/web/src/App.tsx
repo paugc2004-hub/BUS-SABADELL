@@ -3,12 +3,13 @@ import { clock, useApp } from './state/store.ts';
 import { detectLang, useT } from './i18n/index.ts';
 import { loadNetwork } from './data/load.ts';
 import { vehiclesAt } from './data/vehicles.ts';
-import { AboutModal, AlertsPanel, HonestyBanner, LineFilter, MapControls, TopBar } from './views/Chrome.tsx';
+import { AboutModal, AlertsPanel, BottomNav, HonestyBanner, LineFilter, MapControls, TopBar } from './views/Chrome.tsx';
 import { BusCard } from './views/BusCard.tsx';
 import { StopPanel } from './views/StopPanel.tsx';
-import { SearchPanel } from './views/SearchPanel.tsx';
-import { LineView } from './views/LineView.tsx';
 import { HomePanel } from './views/Home.tsx';
+import { LinePanel, LinesIndex } from './views/Lines.tsx';
+import { NetworkPanel } from './views/Network.tsx';
+import { MinePanel } from './views/Mine.tsx';
 import { Toasts, TripMonitor, TripPanel } from './views/Trip.tsx';
 import { RouteChip, hm, useNow } from './ui/common.tsx';
 
@@ -67,8 +68,6 @@ export function App() {
   const view = useApp((s) => s.view);
   const ready = useApp((s) => s.loadState === 'ready');
   const lang = useApp((s) => s.lang);
-  const selectedBus = useApp((s) => s.selectedBus);
-  const trip = useApp((s) => s.trip);
 
   useEffect(() => {
     useApp.getState().setLang(detectLang());
@@ -83,11 +82,16 @@ export function App() {
   useEffect(() => {
     document.title = presenting ? 'Bus Sabadell en directe · Presentació' : 'Bus Sabadell en directe';
   }, [presenting, lang]);
+  const base = useApp((s) => s.base);
+  const baseLine = useApp((s) => s.baseLine);
   // /presentacio és el mapa amb el director de la demo a sobre
   const name = view.name === 'present' ? 'map' : view.name;
+  // panell esquerre (escriptori) / pàgina (mòbil): la vista de base; una parada o un bus s'obren a sobre
+  const left = presenting ? (name === 'network' ? 'network' : null) : name === 'stop' ? base : name;
+  const lineRef = view.name === 'line' ? view.ref : base === 'line' ? baseLine : null;
 
   return (
-    <div className={`app view-${name}${presenting ? ' presenting' : ''}`}>
+    <div className={`app view-${name} base-${left ?? 'none'}${presenting ? ' presenting' : ''}${view.name === 'line' && lineRef ? ' has-line' : ''}`}>
       <TopBar />
       <HonestyBanner />
       <main className="stage">
@@ -96,19 +100,21 @@ export function App() {
             <MapView />
           </Suspense>
         )}
-        {ready && name !== 'line' && !presenting && (
+        {ready && name === 'map' && !presenting && (
           <>
             <LineFilter />
             <MapControls />
           </>
         )}
-        {ready && name !== 'line' && <NoService />}
-        {ready && view.name === 'line' && <LineView routeRef={view.ref} />}
+        {ready && (name === 'map' || name === 'home') && <NoService />}
+        {ready && left === 'home' && <HomePanel autoFocus={view.name === 'home' && Boolean(view.search)} />}
+        {ready && left === 'line' && <LinesIndex />}
+        {ready && left === 'network' && <NetworkPanel />}
+        {ready && left === 'mine' && <MinePanel />}
+        {ready && view.name === 'line' && lineRef && <LinePanel routeRef={lineRef} />}
         {ready && view.name === 'stop' && <StopPanel id={view.id} />}
-        {ready && view.name === 'search' && <SearchPanel />}
-        {ready && name !== 'search' && <BusCard />}
-        {ready && name === 'map' && !selectedBus && !trip && !presenting && <HomePanel />}
-        {ready && name !== 'line' && name !== 'search' && <TripPanel />}
+        {ready && <BusCard />}
+        {ready && <TripPanel />}
         {ready && presenting && (
           <Suspense fallback={null}>
             <Presentation />
@@ -119,6 +125,7 @@ export function App() {
         <Offline />
         <Loading />
       </main>
+      {!presenting && <BottomNav />}
       <AboutModal />
       <AlertsPanel />
       <span className="sr-only" aria-live="off">{clock.isLive() ? '' : 'demo'}</span>

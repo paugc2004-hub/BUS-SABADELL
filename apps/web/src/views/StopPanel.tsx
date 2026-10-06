@@ -3,7 +3,7 @@ import { localDate, serviceDayOrigin, type SimEngine } from '@bus/core';
 import { areaOf, liveArrivals, type LiveArrival } from '../data/derive.ts';
 import { useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
-import { Countdown, Icon, IconButton, RouteChip, SourceTag, hm, relativeLabel, shareUrl, useNow } from '../ui/common.tsx';
+import { Countdown, Icon, IconButton, Punctuality, RouteChip, SourceTag, hm, relativeLabel, shareUrl, useNow } from '../ui/common.tsx';
 import { Sheet } from '../ui/Sheet.tsx';
 
 export function StopPanel({ id }: { id: string }) {
@@ -44,7 +44,7 @@ function TusStop({ id }: { id: string }) {
   if (!engine || !stop) return null;
   // amb un bus triat, la fitxa del bus ocupa el panell (amb tornada a la parada)
   if (selectedBus) return null;
-  const close = () => st.navigate({ name: 'map' });
+  const close = () => st.back();
   const fav = favorites.includes(stop.id);
   const routes = [...new Set(area.flatMap((sid) => engine.stops.get(sid)?.routes ?? []))].sort(
     (a, b) => (engine.routes.get(a)?.order ?? 0) - (engine.routes.get(b)?.order ?? 0),
@@ -149,7 +149,10 @@ export function ArrivalRow({ a, b, now, onOpen, engine, compact = false }: { a: 
             <span aria-hidden>→ </span>
             {a.headsign}
           </div>
-          <div className={`arrival-sub${a.stopsAway !== null && a.stopsAway <= 2 ? ' near' : ''}`}>{sub}</div>
+          <div className={`arrival-sub${a.stopsAway !== null && a.stopsAway <= 2 ? ' near' : ''}`}>
+            {sub}
+            <Punctuality delaySec={a.delaySec} source={a.source} compact />
+          </div>
         </div>
       </div>
       <div className="arrival-times">
@@ -188,7 +191,7 @@ function InterurbanStop({ id }: { id: string }) {
     .slice(0, 12);
   const routes = new Map(data.routes.map((r) => [r.id, r]));
   return (
-    <Sheet label={stop.name} onClose={() => st.navigate({ name: 'map' })} className="stop-panel">
+    <Sheet label={stop.name} onClose={() => st.back()} className="stop-panel">
       <header className="card-head">
         <div>
           <h2 className="stop-name">{stop.name}</h2>
@@ -204,7 +207,7 @@ function InterurbanStop({ id }: { id: string }) {
           </div>
         </div>
         <div className="card-actions">
-          <IconButton label={t.close} onClick={() => st.navigate({ name: 'map' })}>
+          <IconButton label={t.close} onClick={() => st.back()}>
             {Icon.close}
           </IconButton>
         </div>

@@ -3,11 +3,16 @@ import { SimClock, forcedInstant, type NetworkData, type SimEngine } from '@bus/
 import type { Lang } from '../i18n/index.ts';
 
 export type View =
+  | { name: 'home'; search?: boolean }
   | { name: 'map' }
   | { name: 'line'; ref: string | null }
   | { name: 'stop'; id: string }
-  | { name: 'search' }
+  | { name: 'network' }
+  | { name: 'mine' }
   | { name: 'present' };
+
+/** vistes de base: tancar una parada o un bus torna a la darrera d'aquestes */
+export type BaseView = 'home' | 'map' | 'line' | 'network' | 'mine';
 
 export interface InterurbanData {
   source: { name: string; url: string; fetched: string; license: string };
@@ -39,9 +44,12 @@ export function parseView(path: string): View {
   if (m) return { name: 'line', ref: m[1]?.toUpperCase() ?? null };
   m = /^\/parada\/([^/]+)$/.exec(p);
   if (m) return { name: 'stop', id: m[1]! };
-  if (p === '/cercar') return { name: 'search' };
+  if (p === '/cercar') return { name: 'home', search: true };
+  if (p === '/mapa') return { name: 'map' };
+  if (p === '/xarxa') return { name: 'network' };
+  if (p === '/meus') return { name: 'mine' };
   if (p === '/presentacio') return { name: 'present' };
-  return { name: 'map' };
+  return { name: 'home' };
 }
 
 export function viewPath(v: View): string {
@@ -50,8 +58,12 @@ export function viewPath(v: View): string {
       return v.ref ? `/linia/${v.ref}` : '/linia';
     case 'stop':
       return `/parada/${encodeURIComponent(v.id)}`;
-    case 'search':
-      return '/cercar';
+    case 'map':
+      return '/mapa';
+    case 'network':
+      return '/xarxa';
+    case 'mine':
+      return '/meus';
     case 'present':
       return '/presentacio';
     default:
@@ -137,6 +149,10 @@ interface AppState {
   boardHint: string | null;
   /** mode presentació actiu (es manté encara que la demo navegui a una parada) */
   presenting: boolean;
+  base: BaseView;
+  baseLine: string | null;
+  /** tanca la parada o el bus i torna a la vista de base */
+  back(): void;
   setLang(l: Lang): void;
   navigate(v: View, opts?: { replace?: boolean; keepQuery?: boolean }): void;
   selectBus(id: string | null): void;
@@ -183,6 +199,12 @@ export const useApp = create<AppState>((set, get) => ({
   homeCollapsed: false,
   boardHint: null,
   presenting: parseView(location.pathname).name === 'present',
+  base: 'home',
+  baseLine: null,
+  back() {
+    const { base, baseLine } = get();
+    get().navigate(base === 'line' ? { name: 'line', ref: baseLine } : { name: base });
+  },
   setLang(l) {
     try {
       localStorage.setItem('lang', l);
@@ -194,12 +216,13 @@ export const useApp = create<AppState>((set, get) => ({
   },
   navigate(v, opts = {}) {
     const q = new URLSearchParams(location.search);
-    if (v.name !== 'map') q.delete('bus');
+    if (v.name !== 'map' && v.name !== 'home' && v.name !== 'stop') q.delete('bus');
     const qs = opts.keepQuery === false ? '' : q.toString();
     const url = viewPath(v) + (qs ? `?${qs}` : '');
     if (opts.replace) history.replaceState(null, '', url);
     else history.pushState(null, '', url);
-    set({ view: v, ...(v.name === 'present' ? { presenting: true } : {}) });
+    const base: BaseView | null = v.name === 'home' || v.name === 'map' || v.name === 'network' || v.name === 'mine' ? v.name : v.name === 'line' ? 'line' : null;
+    set({ view: v, ...(base ? { base, ...(base === 'line' && v.name === 'line' ? { baseLine: v.ref } : {}) } : {}), ...(v.name === 'present' ? { presenting: true } : {}) });
   },
   selectBus(id) {
     const q = new URLSearchParams(location.search);

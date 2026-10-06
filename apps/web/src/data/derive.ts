@@ -3,7 +3,7 @@
  * VehicleState i les llegades del motor (única font de veritat, core/vehicle.ts).
  */
 import { haversine, normalize, stopsUntil, type Arrival, type SimEngine, type Stop, type VehicleState } from '@bus/core';
-import { vehicleById } from './vehicles.ts';
+import { arrivalsAt, vehicleById } from './vehicles.ts';
 
 // ---------------------------------------------------------------- zones de parada
 
@@ -54,7 +54,7 @@ export interface LiveArrival extends Arrival {
 export function liveArrivals(engine: SimEngine, stopIds: string[], t: number, horizonMin = 90, limit = 40): LiveArrival[] {
   const out: LiveArrival[] = [];
   for (const stopId of stopIds) {
-    for (const a of engine.arrivals(stopId, t, horizonMin, limit)) {
+    for (const a of arrivalsAt(engine, stopId, t, horizonMin, limit)) {
       const p = engine.patternById(a.patternId);
       const v = a.vehicleId ? vehicleById(engine, a.vehicleId, t) : null;
       // el bus que fa aquesta llegada és el que té aquest pattern ara (si no, encara ha d'acabar l'expedició anterior)

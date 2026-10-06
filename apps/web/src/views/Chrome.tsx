@@ -3,11 +3,34 @@ import { useState } from 'react';
 import { forcedInstant, holidayName, localDate } from '@bus/core';
 import { clock, useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
+import { vehicleById } from '../data/vehicles.ts';
 import { Icon, IconButton, RouteChip, hm, useNow } from '../ui/common.tsx';
+
+type NavKey = 'home' | 'map' | 'line' | 'network' | 'mine';
+
+/** Pestanya activa: les vistes de detall (parada, bus) mantenen la vista d'on venien. */
+function activeTab(view: ReturnType<typeof useApp.getState>['view'], base: string): NavKey {
+  if (view.name === 'home' || view.name === 'map' || view.name === 'line' || view.name === 'network' || view.name === 'mine') return view.name;
+  if (view.name === 'present') return 'map';
+  return base as NavKey;
+}
+
+function useNavItems() {
+  const t = useT();
+  const st = useApp.getState();
+  return [
+    { key: 'home' as const, label: t.nav2.home, icon: Icon.home, go: () => st.navigate({ name: 'home' }) },
+    { key: 'map' as const, label: t.nav2.map, icon: Icon.map, go: () => st.navigate({ name: 'map' }) },
+    { key: 'line' as const, label: t.nav2.lines, icon: Icon.line, go: () => st.navigate({ name: 'line', ref: null }) },
+    { key: 'network' as const, label: t.nav2.network, icon: Icon.layers, go: () => st.navigate({ name: 'network' }) },
+    { key: 'mine' as const, label: t.nav2.mine, icon: Icon.star(false), go: () => st.navigate({ name: 'mine' }) },
+  ];
+}
 
 export function TopBar() {
   const t = useT();
   const view = useApp((s) => s.view);
+  const base = useApp((s) => s.base);
   const lang = useApp((s) => s.lang);
   const network = useApp((s) => s.network);
   const engine = useApp((s) => s.engine);
@@ -15,6 +38,8 @@ export function TopBar() {
   const backend = useApp((s) => s.backend);
   const now = useNow(1000);
   const st = useApp.getState();
+  const items = useNavItems().filter((i) => i.key !== 'mine');
+  const tab = activeTab(view, base);
   const alerts = network?.alerts.length ?? 0;
   const live = clock.isLive();
   const date = localDate(now);
@@ -25,7 +50,7 @@ export function TopBar() {
 
   return (
     <header className="topbar">
-      <button type="button" className="brand" onClick={() => st.navigate({ name: 'map' })} aria-label={t.appName}>
+      <button type="button" className="brand" onClick={() => st.navigate({ name: 'home' })} aria-label={t.appName}>
         <span className="brand-mark" aria-hidden>
           <svg viewBox="0 0 24 24" width="22" height="22">
             <rect x="3" y="4" width="18" height="14" rx="4" fill="currentColor" />
@@ -35,54 +60,63 @@ export function TopBar() {
             <circle cx="16" cy="20" r="1.8" fill="currentColor" />
           </svg>
         </span>
-        <span className="brand-text">
-          Bus Sabadell <span className="brand-sub">en directe</span>
-        </span>
+        <span className="brand-text">Bus Sabadell</span>
       </button>
 
-      <div className="clock" aria-live="off">
-        <span className={`clock-time mono${live ? '' : ' forced'}`}>{clockText}</span>
-        <span className="clock-day">
-          {dayText} · {hol ? `${t.holiday}: ${hol}` : dayType ? t.dayType[dayType] : ''}
-          {!live && <strong className="forced-tag"> · {t.demoTime}{clock.getSpeed() !== 1 ? ` ×${clock.getSpeed()}` : ''}</strong>}
-        </span>
-      </div>
+      <button type="button" className="live-chip" onClick={() => st.set({ alertsOpen: true })} aria-label={`${t.liveSim} · ${alerts ? t.incidentsN(alerts) : t.noIncidents}`}>
+        <span className={`live-dot${alerts ? ' warn' : ''}`} aria-hidden />
+        <span className="live-text">{t.liveSim}</span>
+        <span className="live-sub">{alerts ? t.incidentsN(alerts) : t.noIncidents}</span>
+      </button>
 
-      <nav className="seg" aria-label="Vistes">
-        <button type="button" aria-label={t.nav.search} className={view.name === 'search' ? 'on' : ''} onClick={() => st.navigate({ name: 'search' })}>
-          {Icon.search} <span>{t.nav.search}</span>
-        </button>
-        <button type="button" aria-label={t.nav.map} className={view.name === 'map' || view.name === 'stop' ? 'on' : ''} onClick={() => st.navigate({ name: 'map' })}>
-          {Icon.map} <span>{t.nav.map}</span>
-        </button>
-        <button
-          type="button"
-          aria-label={t.nav.line}
-          className={view.name === 'line' ? 'on' : ''}
-          onClick={() => {
-            const sel = st.selectedBus && engine ? engine.vehicle(st.selectedBus, clock.now())?.routeId : null;
-            st.navigate({ name: 'line', ref: sel ?? (view.name === 'line' ? view.ref : null) ?? 'L1' });
-          }}
-        >
-          {Icon.line} <span>{t.nav.line}</span>
-        </button>
+      <nav className="topnav" aria-label="Navegació">
+        {items.map((i) => (
+          <button key={i.key} type="button" aria-current={tab === i.key ? 'page' : undefined} className={tab === i.key ? 'on' : ''} onClick={i.go}>
+            {i.label}
+          </button>
+        ))}
       </nav>
 
-      <div className="top-actions">
+      <div className="top-right">
+        <div className="clock" aria-live="off">
+          <span className={`clock-time mono${live ? '' : ' forced'}`}>{clockText}</span>
+          <span className="clock-day">
+            {dayText} · {hol ? `${t.holiday}: ${hol}` : dayType ? t.dayType[dayType] : ''}
+            {!live && <strong className="forced-tag"> · {t.demoTime}{clock.getSpeed() !== 1 ? ` ×${clock.getSpeed()}` : ''}</strong>}
+          </span>
+        </div>
         {!online && <span className="pill warn" title={t.offline}>offline</span>}
         {backend === 'live' && <span className="pill ok" title={t.backendLive}>API</span>}
-        <IconButton label={`${t.alerts} (${alerts})`} onClick={() => st.set({ alertsOpen: true })} className="badge-host">
-          {Icon.bell}
-          {alerts > 0 && <span className="badge">{alerts}</span>}
-        </IconButton>
         <button type="button" className="lang-btn" aria-label={`${lang === 'ca' ? 'ES' : 'CA'} · ${t.lang}`} onClick={() => st.setLang(lang === 'ca' ? 'es' : 'ca')}>
           {lang === 'ca' ? 'ES' : 'CA'}
         </button>
-        <IconButton label={t.present} onClick={() => st.navigate({ name: 'present' })}>
+        <IconButton label={t.present} onClick={() => st.navigate({ name: 'present' })} className="present-btn">
           {Icon.play}
         </IconButton>
       </div>
     </header>
+  );
+}
+
+/** Navegació inferior al mòbil: Inici · Mapa · Línies · Els meus. */
+export function BottomNav() {
+  const view = useApp((s) => s.view);
+  const base = useApp((s) => s.base);
+  const trip = useApp((s) => s.trip);
+  const items = useNavItems().filter((i) => i.key !== 'network');
+  const tab = activeTab(view, base);
+  return (
+    <nav className="bottomnav" aria-label="Navegació">
+      {items.map((i) => (
+        <button key={i.key} type="button" aria-current={tab === i.key ? 'page' : undefined} className={tab === i.key ? 'on' : ''} onClick={i.go}>
+          <span className="bn-icon" aria-hidden>
+            {i.icon}
+            {i.key === 'mine' && trip && <span className="bn-badge" />}
+          </span>
+          <span>{i.label}</span>
+        </button>
+      ))}
+    </nav>
   );
 }
 
@@ -225,7 +259,7 @@ export function LineFilter() {
               style={{ ['--c' as string]: r.color, ['--tc' as string]: r.textColor }}
               onClick={() => {
                 st.setFocusRoute(on ? null : r.id);
-                if (!on && st.selectedBus && engine.vehicle(st.selectedBus, clock.now())?.routeId !== r.id) st.selectBus(null);
+                if (!on && st.selectedBus && vehicleById(engine, st.selectedBus, clock.now())?.routeId !== r.id) st.selectBus(null);
               }}
             >
               {r.ref}

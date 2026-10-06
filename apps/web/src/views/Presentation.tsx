@@ -14,12 +14,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { forcedInstant, stopsUntil, type SimEngine, type VehicleState } from '@bus/core';
 import { clock, useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
-import { vehiclesAt } from '../data/vehicles.ts';
+import { vehicleById, vehiclesAt } from '../data/vehicles.ts';
 import { RouteChip, hm, useNow } from '../ui/common.tsx';
 
-const SCENES = 8;
+const SCENES = 10;
 /** durada mínima de cada escena (ms de temps real) */
-const DUR = [9000, 9000, 10000, 9000, 11000, 11000, 8000, 30000];
+const DUR = [9000, 9000, 10000, 9000, 11000, 11000, 8000, 30000, 12000, 16000];
 const SPEEDS = [1, 5, 10, 30];
 
 interface Cast {
@@ -32,11 +32,11 @@ interface Cast {
 }
 
 /** Tria la línia (L2 si circula), un bus amb recorregut per davant i la parada de la demo. */
-function cast(engine: SimEngine, t: number): Cast | null {
+function cast(engine: SimEngine, t: number, prefer: string | null = null): Cast | null {
   const vs = vehiclesAt(engine, t).filter((v) => v.status === 'EN_RUTA' && v.stopsRemaining >= 8);
   const byRoute = new Map<string, VehicleState[]>();
   for (const v of vs) byRoute.set(v.routeId, [...(byRoute.get(v.routeId) ?? []), v]);
-  const order = ['L2', ...[...byRoute.entries()].sort((a, b) => b[1].length - a[1].length).map(([r]) => r)];
+  const order = [...(prefer ? [prefer] : []), 'L2', ...[...byRoute.entries()].sort((a, b) => b[1].length - a[1].length).map(([r]) => r)];
   for (const r of order) {
     const cands = (byRoute.get(r) ?? []).sort((a, b) => a.id.localeCompare(b.id));
     for (const v of cands) {
@@ -59,6 +59,9 @@ export function Presentation() {
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(clock.getSpeed());
   const castRef = useRef<Cast | null>(null);
+  const [lineChoice, setLineChoice] = useState<string | null>(null);
+  const [setup, setSetup] = useState(false);
+  const [when, setWhen] = useState(() => ({ time: '08:15', date: '' }));
   const enteredAt = useRef(Date.now());
 
   const setClockSpeed = useCallback((x: number) => {
@@ -89,7 +92,7 @@ export function Presentation() {
     if (!engine) return;
     enteredAt.current = Date.now();
     const s = useApp.getState();
-    if (scene === 0 || !castRef.current) castRef.current = cast(engine, clock.now());
+    if (scene === 0 || !castRef.current) castRef.current = cast(engine, clock.now(), lineChoice);
     const c = castRef.current;
     const goStop = () => c && s.view.name !== 'stop' && s.navigate({ name: 'stop', id: c.stopId }, { replace: true });
     const goMap = () => s.view.name !== 'present' && s.navigate({ name: 'present' }, { replace: true });
@@ -131,7 +134,7 @@ export function Presentation() {
         if (c) {
           s.set({ boardHint: c.stopId });
           s.selectBus(c.busId);
-          const v = engine.vehicle(c.busId, clock.now());
+          const v = vehicleById(engine, c.busId, clock.now());
           // si el bus ja ha passat la parada de la demo, es tria la següent per davant
           let idx = c.stopIndex;
           if (v && v.patternId === c.patternId && stopsUntil(v, idx) < 3) idx = Math.min(engine.patternById(c.patternId)!.stopIds.length - 2, v.nextStopIndex + 2);
@@ -142,6 +145,17 @@ export function Presentation() {
       case 7:
         // fins que el bus és a 2 parades, el rellotge corre
         setClockSpeed(10);
+        break;
+      case 8:
+        // la vista per a TUS: tota la xarxa, amb les xifres derivades de la mateixa flota
+        setClockSpeed(1);
+        s.selectBus(null);
+        s.endTrip();
+        s.navigate({ name: 'network' }, { replace: true });
+        s.requestFly([2.1065, 41.5475], window.innerWidth < 700 ? 12 : 12.6);
+        break;
+      case 9:
+        goMap();
         break;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -154,10 +168,10 @@ export function Presentation() {
       const elapsed = Date.now() - enteredAt.current;
       if (scene === 7) {
         const tr = useApp.getState().trip;
-        const v = tr ? engine.vehicle(tr.vehicleId, clock.now()) : null;
+        const v = tr ? vehicleById(engine, tr.vehicleId, clock.now()) : null;
         const away = v && tr && v.patternId === tr.patternId ? stopsUntil(v, tr.boardIndex) : null;
         if (away !== null && away <= 2 && clock.getSpeed() !== 1) setClockSpeed(1);
-        if ((away !== null && away <= 1) || elapsed > DUR[7]!) setScene(0);
+        if ((away !== null && away <= 1) || elapsed > DUR[7]!) setScene(8);
         return;
       }
       if (elapsed > DUR[scene]!) setScene((x) => (x + 1) % SCENES);
@@ -184,7 +198,7 @@ export function Presentation() {
     const s = useApp.getState();
     s.set({ presenting: false });
     s.setClock(null, 1);
-    s.navigate({ name: 'map' });
+    s.navigate({ name: 'home' });
   };
 
   if (!engine || !network) return null;
@@ -244,12 +258,88 @@ export function Presentation() {
               </button>
             ))}
           </span>
+          <button type="button" className={`gear${setup ? ' on' : ''}`} aria-label={t.presentation.setup} aria-expanded={setup} onClick={() => setSetup(!setup)}>
+            ⚙
+          </button>
           <button type="button" className="exit" onClick={exit}>
             {t.presentation.exit}
           </button>
         </div>
+        {setup && (
+          <div className="caption-setup">
+            <label>
+              {t.presentation.time}
+              <input type="time" value={when.time} onChange={(e) => setWhen({ ...when, time: e.target.value })} />
+            </label>
+            <label>
+              {t.presentation.date}
+              <input type="date" value={when.date} onChange={(e) => setWhen({ ...when, date: e.target.value })} />
+            </label>
+            <label>
+              {t.presentation.line}
+              <select value={lineChoice ?? ''} onChange={(e) => setLineChoice(e.target.value || null)}>
+                <option value="">L2</option>
+                {network.routes.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.ref}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="primary"
+              onClick={() => {
+                // reinicia: nova hora/data, línia triada i tornada a l'escena 1
+                const start = forcedInstant(Date.now(), when.time || '08:15', when.date || 'dimarts');
+                useApp.getState().setClock(start, 1);
+                setSpeed(1);
+                castRef.current = null;
+                setScene(0);
+                setPlaying(true);
+                setSetup(false);
+              }}
+            >
+              {t.presentation.reset}
+            </button>
+          </div>
+        )}
       </div>
+      {scene === 9 && <Architecture />}
       <div className="present-banner">{t.banner}</div>
+    </div>
+  );
+}
+
+/** Escena final: d'on venen les dades avui i d'on vindran amb el SAE de TUS. */
+function Architecture() {
+  const t = useT();
+  const a = t.presentation.arch;
+  return (
+    <div className="arch" role="figure" aria-label={a.title}>
+      <div className="arch-col">
+        <div className="arch-box today">
+          <strong>{a.sim}</strong>
+          <span>{a.simSub}</span>
+          <em>{a.today}</em>
+        </div>
+        <div className="arch-box future">
+          <strong>{a.sae}</strong>
+          <span>{a.saeSub}</span>
+          <em>{a.tomorrow}</em>
+        </div>
+      </div>
+      <div className="arch-arrow" aria-hidden>→</div>
+      <div className="arch-box core">
+        <strong>VehicleProvider → VehicleState</strong>
+        <span>{a.coreSub}</span>
+      </div>
+      <div className="arch-arrow" aria-hidden>→</div>
+      <div className="arch-box ui">
+        <strong>{a.ui}</strong>
+        <span>{a.uiSub}</span>
+      </div>
+      <p className="arch-msg">{a.message}</p>
     </div>
   );
 }

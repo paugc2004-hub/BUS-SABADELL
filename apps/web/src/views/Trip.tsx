@@ -11,7 +11,7 @@ import { stopsUntil } from '@bus/core';
 import { clock, useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { vehicleById } from '../data/vehicles.ts';
-import { Countdown, Icon, IconButton, RouteChip, SourceTag, useNow } from '../ui/common.tsx';
+import { Countdown, Icon, IconButton, Punctuality, RouteChip, SourceTag, useNow } from '../ui/common.tsx';
 import { BusVehicleMarker } from '../ui/BusVehicleMarker.tsx';
 import { whereText } from './BusCard.tsx';
 
@@ -73,7 +73,9 @@ export function TripPanel() {
                 <div className="trip-big mono">{phase === 'boarding' ? t.nowLabel : boardEta ? <Countdown at={boardEta} now={now} /> : '—'}</div>
               </div>
               <div className="span2">
-                <div className={`trip-away${toBoard !== null && toBoard <= 2 ? ' near' : ''}`}>{toBoard !== null ? t.stopsAway(toBoard) : t.finishingTrip}</div>
+                <div className={`trip-away${toBoard !== null && toBoard <= 2 ? ' near' : ''}`}>
+                  {toBoard !== null ? t.stopsAway(toBoard) : t.finishingTrip} {v && sameTrip && <Punctuality delaySec={v.delaySec} source={v.source} compact />}
+                </div>
               </div>
             </div>
           ) : phase === 'onboard' ? (

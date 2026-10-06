@@ -186,3 +186,22 @@ export async function shareUrl(url: string, title: string, onCopied: () => void)
     /* sense porta-retalls */
   }
 }
+
+/**
+ * Puntualitat respecte de l'horari: "A l'hora", "+2 min", "−1 min". Mai només el color.
+ * A la simulació el retard és simulat (ho diu l'etiqueta accessible i el títol).
+ */
+export function Punctuality({ delaySec, source = 'SIMULATED', compact = false }: { delaySec: number | null; source?: 'SIMULATED' | 'SCHEDULED' | 'REALTIME'; compact?: boolean }) {
+  const t = useT();
+  if (delaySec === null) return null;
+  const m = Math.round(Math.abs(delaySec) / 60);
+  const kind = delaySec >= 60 ? (delaySec >= 180 ? 'late3' : 'late') : delaySec <= -60 ? 'early' : 'ontime';
+  const text = kind === 'ontime' ? t.punct.onTime : kind === 'early' ? t.punct.early(m) : t.punct.late(m);
+  const long = kind === 'ontime' ? t.punct.onTime : kind === 'early' ? t.punct.earlyLong(m) : t.punct.lateLong(m);
+  const note = source === 'SIMULATED' ? ` · ${t.punct.simNote}` : '';
+  return (
+    <span className={`punct punct-${kind}${compact ? ' compact' : ''}`} title={long + note} aria-label={long + note}>
+      {text}
+    </span>
+  );
+}

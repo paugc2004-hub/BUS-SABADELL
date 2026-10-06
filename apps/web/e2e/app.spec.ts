@@ -34,20 +34,33 @@ test('panell de parada → bus → fitxa amb origen "Simulat"', async ({ page })
   await expect.poll(() => card.locator('.cell-big').innerText(), { timeout: 8000 }).not.toBe(a);
 });
 
-test('vista de línia amb parades, buses i canvi de línia', async ({ page }) => {
-  await page.goto(`/linia/L1?${AT}`);
-  await expect(page.locator('.lv-name')).toContainText('Can Deu');
-  expect(await page.locator('.lv-stop').count()).toBeGreaterThan(40);
-  await expect(page.locator('.lv-bus').first()).toBeVisible();
-  await page.locator('.lv-chip', { hasText: /^L2$/ }).click();
+test('línies: índex → panell de línia amb sentit, propers busos, recorregut i busos', async ({ page }) => {
+  await page.goto(`/linia?${AT}`);
+  await ready(page);
+  await page.locator('.line-row', { hasText: 'Creu de Barberà' }).first().click();
   await expect(page).toHaveURL(/\/linia\/L2/);
-  await expect(page.locator('.lv-name')).toContainText('Creu de Barberà');
+  const panel = page.locator('.line-panel');
+  await expect(panel.locator('.lp-title h2')).toContainText('Can Deu');
+  expect(await panel.locator('.lp-stop').count()).toBeGreaterThan(20);
+  await expect(panel.locator('.lp-bus').first()).toBeVisible();
+  await expect(panel.locator('.lp-next-item').first()).toContainText('min');
+  // canvi de sentit
+  const tabs = panel.locator('.seg-ctl button');
+  await tabs.nth(1).click();
+  await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
+  // un bus de la línia obre la seva fitxa, amb tornada a la línia
+  await panel.locator('.lp-bus').first().click();
+  await expect(page.locator('.bus-card .back-link')).toContainText('L2');
 });
 
-test('cercador tolerant a accents', async ({ page }) => {
+test('cercador global tolerant a accents: línies, parades i destinacions', async ({ page }) => {
   await page.goto(`/cercar?${AT}`);
+  await page.getByRole('searchbox').fill('termes');
+  await expect(page.locator('.sr-group', { hasText: /Destinaci|Destino/ })).toBeVisible();
+  await page.getByRole('searchbox').fill('l2');
+  await expect(page.locator('.sr-item').first()).toContainText('L2');
   await page.getByRole('searchbox').fill('creu alta');
-  const res = page.locator('.result-list button', { hasText: 'La Creu Alta' }).first();
+  const res = page.locator('.sr-item', { hasText: 'La Creu Alta' }).first();
   await expect(res).toBeVisible();
   await res.click();
   await expect(page).toHaveURL(/\/parada\//);
@@ -98,7 +111,7 @@ test('mode presentació: demo narrada per escenes, sempre amb el banner', async 
 });
 
 test('enfocar una línia: es destaca i la resta s’atenua (no s’amaga)', async ({ page, isMobile }) => {
-  await page.goto(`/?${AT}`);
+  await page.goto(`/mapa?${AT}`);
   await ready(page);
   if (isMobile) await page.locator('.lf-toggle').click();
   const chip = page.locator('.lf-chip', { hasText: /^L2$/ });
@@ -152,4 +165,35 @@ test('sense connexió: continua funcionant amb simulació local', async ({ page,
   // amb el service worker, la ruta torna a carregar sense xarxa
   await expect(page.locator('.stop-name')).toHaveText('Manresa', { timeout: 20_000 });
   await context.setOffline(false);
+});
+
+test('inici: el teu proper bus, amb minuts, puntualitat i accions', async ({ page, isMobile }) => {
+  await page.goto(`/?${AT}`);
+  await ready(page);
+  const hero = page.locator('.hero');
+  await expect(hero).toContainText(/proper bus|próximo bus/i);
+  await expect(hero.locator('.hero-min')).toHaveText(/\d|imminent|inminente/);
+  await expect(hero.locator('.punct')).toBeVisible();
+  await expect(hero.locator('.cta-primary')).toBeVisible();
+  // navegació: barra inferior al mòbil, a dalt a l'escriptori
+  await expect(page.locator(isMobile ? '.bottomnav' : '.topnav')).toBeVisible();
+  await expect(page.locator('.honesty')).toContainText(/simulad/i);
+});
+
+test('xarxa en directe: mètriques derivades de la flota simulada, etiquetades', async ({ page }) => {
+  await page.goto(`/xarxa?${AT}`);
+  await ready(page);
+  const net = page.locator('.network');
+  await expect(net.locator('.kpi')).toHaveCount(4);
+  const inService = Number(await net.locator('.kpi-n').first().innerText());
+  expect(inService).toBeGreaterThan(30);
+  expect(await net.locator('.fleet-row').count()).toBeGreaterThan(8);
+  await expect(net).toContainText(/simulada/i);
+});
+
+test('parada: cada llegada diu a quantes parades és i la puntualitat', async ({ page }) => {
+  await page.goto(`/parada/176?${AT}`);
+  await ready(page);
+  await expect(page.locator('.arrival .punct').first()).toBeVisible();
+  await expect(page.locator('.arrival .punct').first()).toHaveAttribute('aria-label', /simulat|simulado/i);
 });

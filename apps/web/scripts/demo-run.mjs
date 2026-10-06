@@ -32,5 +32,6 @@ for (let k = 0; k < 40 && !/2 parades|2 paradas/.test(toast); k++) {
 await page.screenshot({ path: `${dir}/scene-8.png` });
 console.log('escena 8, avís:', JSON.stringify(toast));
 console.log('trip:', JSON.stringify(await page.locator('.trip-card').innerText().catch(() => '')));
+for (const k of [9, 10]) { await page.waitForTimeout(k === 9 ? 3500 : 0); if (k === 10) { await page.keyboard.press(' '); await page.keyboard.press('ArrowRight'); await page.waitForTimeout(2500); } await page.screenshot({ path: dir + '/scene-' + k + '.png' }); console.log('escena', k, await page.locator('.caption h2').innerText()); }
 console.log('errors:', errors.slice(0, 8));
 await browser.close();
