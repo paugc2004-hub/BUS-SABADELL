@@ -38,6 +38,8 @@ import {
 } from './tus.ts';
 import { writeGtfs } from './gtfs.ts';
 import { refreshAll } from './fetch.ts';
+import { loadRoads } from './audit.ts';
+import { assignDirections, isCircular, repairSegments } from './repair.ts';
 import { buildInterurbans } from './interurbans.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -106,6 +108,7 @@ export async function build(opts: { refresh?: boolean } = {}) {
   const patterns: Pattern[] = [];
   const stopAlerts: Alert[] = [];
 
+  const mainOrigins = new Map<string, string>();
   lines.forEach((lf, li) => {
     const routeId = routeIdOf(lf.line);
     const notes: string[] = [];
@@ -217,6 +220,7 @@ export async function build(opts: { refresh?: boolean } = {}) {
 
     const tripsPer: Record<DayType, number> = { feiner: 0, dissabte: 0, festiu: 0 };
     const mainOrigin = cands[0] ? endpoints(cands[0].tr.name).origin : '';
+    mainOrigins.set(routeId, mainOrigin);
     for (const c of cands) {
       const { origin, headsign } = endpoints(c.tr.name);
       const profiles: number[][] = [];
@@ -279,6 +283,26 @@ export async function build(opts: { refresh?: boolean } = {}) {
     const st = cands.length ? (notes.some((n) => /forat|sense geometria|m del recorregut/.test(n)) ? 'avisos' : 'ok') : 'sense dades';
     report.lines.push({ id: routeId, status: st, patterns: patterns.filter((p) => p.routeId === routeId).length, trips: tripsPer, notes });
   });
+
+  // correcciones deducidas de los datos: tramos fuera de calle, circulares y sentidos (repair.ts)
+  const roads = loadRoads(41.55);
+  if (roads)
+    for (const n of repairSegments(patterns, stops, roads)) {
+      const routeId = patterns.find((p) => p.id === n.pattern)!.routeId;
+      report.lines
+        .find((l) => l.id === routeId)
+        ?.notes.push(`${n.pattern}: tram ${n.from} → ${n.to} (${n.reason}) substituït pel de ${n.donor}, que fa el mateix tram entre les mateixes parades`);
+    }
+  for (const p of patterns) p.circular = isCircular(p.stopIds, p.coords, stops);
+  for (const r of routes) {
+    const ps = patterns.filter((p) => p.routeId === r.id);
+    const dirs = assignDirections(ps, stops, mainOrigins.get(r.id) ?? '');
+    for (const p of ps) {
+      const d = dirs.get(p.id) ?? p.dir;
+      if (d !== p.dir) report.lines.find((l) => l.id === r.id)?.notes.push(`${p.id} "${p.name}": sentit ${p.dir} → ${d} (segons el recorregut)`);
+      p.dir = d;
+    }
+  }
 
   // nombre canónico de cada parada: el más frecuente
   const stopList: Stop[] = [...stops.values()]

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsx src/build.ts",
+    "audit": "tsx src/audit.ts",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {

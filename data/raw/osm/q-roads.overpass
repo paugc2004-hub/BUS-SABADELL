@@ -1,0 +1,1 @@
+[out:json][timeout:180];way["highway"~"^(motorway|motorway_link|trunk|trunk_link|primary|primary_link|secondary|secondary_link|tertiary|tertiary_link|unclassified|residential|living_street|service|pedestrian|busway|road)$"](41.505,2.058,41.582,2.145);out skel geom qt;

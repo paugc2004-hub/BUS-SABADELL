@@ -7,6 +7,8 @@ import { reconstructTrips, parseTimes, smoothOffsets, quantize } from '../src/tr
 import { stitchRelation, type OsmNode, type OsmRel, type OsmWay } from '../src/osm.ts';
 import { checkFestius, FestiusSchema, loadYaml } from '../src/config.ts';
 import { endpoints, dayTypeOf, extractTrayectos } from '../src/tus.ts';
+import { audit } from '../src/audit.ts';
+import { assignDirections, isCircular } from '../src/repair.ts';
 
 const ROOT = join(__dirname, '../../..');
 
@@ -180,5 +182,56 @@ describe('xarxa real generada (network.json)', () => {
     const t0 = performance.now();
     for (let i = 0; i < 100; i++) engine.snapshot(t + i * 1000);
     expect((performance.now() - t0) / 100).toBeLessThan(2);
+  });
+  it('auditoria: cap variant amb error (recorregut al carrer, parades sobre el recorregut i en ordre)', () => {
+    const res = audit(net);
+    expect(res.rows.filter((r) => r.status === 'error').map((r) => `${r.pattern}: ${r.problems.join('; ')}`)).toEqual([]);
+    expect(res.lineNotes).toEqual([]);
+    for (const r of res.rows) expect(r.onRoadPct).toBeGreaterThan(97);
+  });
+
+  it('cada parada d’un pattern declara la seva línia', () => {
+    const stops = new Map(net.stops.map((s) => [s.id, s]));
+    for (const p of net.patterns) for (const id of p.stopIds) expect(stops.get(id)?.routes, `${p.id} ${id}`).toContain(p.routeId);
+  });
+
+  it('les línies no circulars tenen els dos sentits cada dia que circulen', () => {
+    for (const r of net.routes)
+      for (const dt of ['feiner', 'dissabte', 'festiu'] as const) {
+        const ps = net.patterns.filter((p) => p.routeId === r.id && p.dayType === dt && p.trips.length);
+        if (!ps.length || ps.every((p) => p.circular)) continue;
+        expect(new Set(ps.map((p) => p.dir)), `${r.id} ${dt}`).toEqual(new Set([0, 1]));
+      }
+  });
+
+  it('sentits corregits per geometria (L14 dissabte, L8 Zona Industrial) i L15 circular', () => {
+    const dir = (id: string) => net.patterns.find((p) => p.id === id)?.dir;
+    expect(dir('L14-14091104838')).toBe(0); // Els Merinals → Can Roqueta
+    expect(dir('L14-14091204839')).toBe(1); // Can Roqueta → Els Merinals
+    expect(dir('L8-80304800')).toBe(0); // Zona Industrial → La Roureda, com Estació Sud → La Roureda
+    expect(net.patterns.filter((p) => p.routeId === 'L15').every((p) => p.circular)).toBe(true);
+  });
+});
+
+describe('correccions de xarxa', () => {
+  const stops = new Map([
+    ['a', { id: 'a', name: 'A', lat: 41.5, lon: 2.1, routes: [] }],
+    ['b', { id: 'b', name: 'B', lat: 41.5, lon: 2.11, routes: [] }],
+    ['c', { id: 'c', name: 'C', lat: 41.5, lon: 2.12, routes: [] }],
+  ]);
+  const pat = (id: string, stopIds: string[], coords: LonLat[], trips = 1) => {
+    const cum = cumulative(coords);
+    return { id, routeId: 'X', dir: 0 as 0 | 1, name: id, origin: stopIds[0]!, headsign: '', dayType: 'feiner' as const, circular: false, stopIds, stopDist: [], coords, cum, length: cum[cum.length - 1]!, profiles: [], trips: Array.from({ length: trips }, () => [0, 0] as [number, number]) };
+  };
+  it('el sentit surt del recorregut, no del nom de la capçalera', () => {
+    const main = pat('m', ['a', 'b', 'c'], [[2.1, 41.5], [2.12, 41.5]], 10);
+    const fwdOther = { ...pat('f', ['b', 'c'], [[2.11, 41.5], [2.12, 41.5]]), origin: 'Un altre nom' };
+    const back = { ...pat('r', ['c', 'b', 'a'], [[2.12, 41.5], [2.1, 41.5]]), origin: 'C' };
+    const d = assignDirections([main, fwdOther, back], stops, 'a');
+    expect([d.get('m'), d.get('f'), d.get('r')]).toEqual([0, 0, 1]);
+  });
+  it('un bucle tancat és circular encara que la primera i l’última parada siguin diferents', () => {
+    expect(isCircular(['a', 'c'], [[2.1, 41.5], [2.12, 41.5], [2.11, 41.51], [2.1, 41.5]], stops)).toBe(true);
+    expect(isCircular(['a', 'c'], [[2.1, 41.5], [2.12, 41.5]], stops)).toBe(false);
   });
 });

@@ -8,6 +8,7 @@
   },
   "scripts": {
     "data:build": "pnpm --filter @bus/data-pipeline build",
+    "data:audit": "pnpm --filter @bus/data-pipeline audit",
     "data:refresh": "pnpm --filter @bus/data-pipeline build --refresh",
     "dev": "pnpm --filter @bus/web dev",
     "dev:api": "pnpm --filter @bus/api dev",
