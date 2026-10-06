@@ -1,3 +1,4 @@
+/* global console */
 // Empaqueta la API en un único fichero para Vercel (apps/api/.vercel-deploy/api/index.mjs)
 import { build } from 'esbuild';
 import { mkdirSync, writeFileSync } from 'node:fs';
