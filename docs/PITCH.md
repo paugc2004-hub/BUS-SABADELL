@@ -12,6 +12,8 @@ que es pregunta qualsevol usuari:
 - Quan arriba a la meva parada i **a quantes parades** és?
 - Quins busos vénen ara a la meva parada?
 - "Vaig a agafar aquest bus": avisa quan és **a 2 parades**, quan és la propera i quan has de baixar.
+- Per a TUS: una vista **Xarxa en directe** amb busos en servei, puntualitat i flota per línia, i a la
+  presentació, l'esquema de com s'hi connectaria el SAE.
 
 ## Què és real i què és simulat (avui)
 
@@ -21,7 +23,8 @@ que es pregunta qualsevol usuari:
 | Carrers i mapa: © OpenStreetMap | Segons dins de cada minut i temps de parada |
 | Festius oficials (Generalitat i Ajuntament) | Quin vehicle fa cada expedició |
 
-La demo **ho diu sempre** (banner fix i etiqueta "Simulat" a cada bus). No fem servir l'app de TUS ni cap
+La demo **ho diu sempre** (banner fix, "Simulació en directe" i etiqueta "Simulat" a cada bus). Els retards
+("+2 min") també són simulats: serveixen per ensenyar com es veuria la puntualitat. No fem servir l'app de TUS ni cap
 API privada, ni el logotip de TUS. Hem validat les 106 variants de recorregut contra els carrers d'OSM i n'hem
 detectat i corregit errors (p. ej. la F6 passava per una carretera que ja no existeix).
 

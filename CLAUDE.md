@@ -18,6 +18,7 @@ pnpm install
 pnpm data:build     # data/raw → apps/web/public/data/network.json + dist/gtfs + dist/report.md
 pnpm data:refresh   # torna a descarregar tus.es, Overpass i GTFS (rarament!)
 pnpm data:audit     # validació línia per línia → docs/LINE_AUDIT.md (falla si hi ha errors)
+# mesures: node apps/web/scripts/perf-probe.mjs <url> 20 [desktop|mobile] · node apps/web/scripts/lighthouse.mjs <url>
 pnpm dev            # web a http://localhost:5173
 pnpm dev:api        # API a http://localhost:8787
 pnpm test           # vitest (core, pipeline, api)
@@ -34,8 +35,13 @@ pnpm test:e2e       # Playwright (apps/web)
 - `packages/core/src/vehicle.ts` — **única font de veritat** del que es deriva d'un bus (progrés, "a N parades",
   línia temporal). No calcular ETA ni progrés a la UI: sortir d'aquí o d'`engine.journey()`.
 - `apps/web` — Vite + React + MapLibre. Simula al client per defecte (funciona sense backend).
-  `map/MapView.tsx` (capes, enfocament de línia, seguiment), `ui/BusVehicleMarker.tsx`, `views/` (BusCard, StopPanel,
-  StopTimeline, Home, Trip, Presentation), `data/derive.ts` (zones de parada, llegades amb vehicle).
+  Vistes: Inici (`views/Home.tsx`), Mapa, Línies (`views/Lines.tsx`), Xarxa (`views/Network.tsx`), Els meus;
+  a sobre: StopPanel, BusCard, StopTimeline, Trip, Presentation. `map/MapView.tsx` (capes, enfocament, seguiment),
+  `ui/BusVehicleMarker.tsx`, `ui/common.tsx` (Punctuality, chips).
+  **Dades en directe només via `data/vehicles.ts`** (vehiclesAt, vehicleById, arrivalsAt, journeyFor): cap vista
+  crida el motor directament. `data/derive.ts` (zones de parada, llegades amb vehicle), `data/search.ts`.
+  Estils: escala tipogràfica `--fs-*` (32/24/18/16/14/12), radis `--r-*`; res de `backdrop-filter` ni animacions
+  de box-shadow (costen fps sobre el mapa; mesurat).
 - `apps/web/scripts/` — utilitats locals: `shot.mjs` (captures), `demo-run.mjs` (recorre la presentació),
   `lighthouse.mjs`, `soak.mjs`, `offline-check.mjs`, `icons.mjs`, **`deploy.sh`**.
 - `apps/api` — Fastify: red, snapshot, SSE, llegades, `GtfsRtProvider`.
@@ -52,7 +58,10 @@ pnpm test:e2e       # Playwright (apps/web)
 - Les polilínies de tus.es van i tornen fins al pal de cada parada (~1.700 punxes): `despike` les treu. Si una
   parada queda lluny o un tram surt del carrer, `repairSegments` agafa el tram d'una altra variant que fa el
   mateix parell de parades; si no n'hi ha, no s'inventa res i l'auditoria falla.
-- La simulació **no s'inventa retards ni desviaments** (`RETRASADO`/`DESVIADO` només d'un proveïdor real).
+- Retards **simulats**, deterministes (data + expedició), acotats [−90 s, +9 min] i propagats en capçalera;
+  sempre etiquetats com a simulats. `new SimEngine(net, { delays: false })` per a horari exacte (tests).
+  `DESVIADO` només d'un proveïdor real.
+- Sentits únics: `oneway.ts`; una variant a contrasentit > 40 m sense donant s'exclou (`overrides.yaml`).
 
 ## Desplegament (Vercel, equip paugc2004-4556s-projects)
 - Web: **https://bus-sabadell.vercel.app** → `bash apps/web/scripts/deploy.sh` (fixa el projecte `bus-sabadell`;

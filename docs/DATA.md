@@ -48,6 +48,11 @@ de la qual tenen hora. Es descarten sortides amb menys del 50 % de parades casad
 - **Trams defectuosos** (fora de carrer o parada lluny): es substitueixen pel tram d'una variant que fa el mateix
   parell de parades consecutives i que valida. Avui: F6 (antiga carretera de Bellaterra) i L12 (Estació Centre).
 
+### Sentits únics (`oneway.ts`)
+Els carrers d'OSM es descarreguen amb etiquetes (`oneway`, `oneway:bus`, `oneway:psv`, `busway=opposite_lane`,
+rotondes). Un tram a contrasentit es repara amb una variant que fa les mateixes parades pel sentit permès (F4,
+c. de Calderón → tram de la L4) o, si no n'hi ha, la variant s'exclou (L4 «Can Roqueta IES», c. de Can Fadó).
+
 ### Auditoria (`pnpm data:audit`)
 Cada variant es contrasta amb els carrers d'OSM (`data/raw/osm/roads-2026-10-06.json`) i, si n'hi ha, amb la
 relació de ruta d'OSM. Resultat a `docs/LINE_AUDIT.md`; els tests fallen si alguna variant té errors.

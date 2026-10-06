@@ -9,11 +9,14 @@ dels horaris publicats; la xarxa, les parades i els horaris són dades públique
 - API: https://bus-sabadell-api.vercel.app (`/v1/meta`, `/v1/vehicles`, `/v1/vehicles/stream`, `/v1/stops/:id/arrivals`…)
 
 ## Què fa
-- 23 línies, 106 variants, 408 parades, validades una per una contra els carrers d'OSM ([docs/LINE_AUDIT.md](docs/LINE_AUDIT.md)).
-- Autobús vectorial que gira amb el rumb i circula pel recorregut real, amb arrencada, crucero i frenada a cada parada.
-- Línia enfocada amb el seu sentit de circulació; la resta s'atenua.
-- Fitxa de bus (ara / propera / després), línia temporal parada a parada i progrés per distància.
-- Panell de parada amb "a N parades"; "Vaig a agafar aquest bus" amb avisos quan el bus és a prop.
+- 23 línies, 105 variants, 408 parades, validades una per una ([docs/LINE_AUDIT.md](docs/LINE_AUDIT.md)).
+- Inici amb **«El teu proper bus»**: minuts, a quantes parades és, puntualitat (+2 min / a l'hora) i accions.
+- Cercador global (línies, parades, destinacions), panell de línia (sentit, propers busos, freqüència, recorregut
+  amb els busos), panell de parada, fitxa de bus amb línia temporal, seguir bus i «Vaig a agafar aquest bus».
+- **Xarxa en directe** (/xarxa): la vista per a TUS, amb mètriques derivades de la flota simulada.
+- Autobús vectorial que gira amb el rumb i circula pel recorregut real, amb arrencada, crucero i frenada;
+  retards simulats deterministes i acotats.
+- 105 variants validades contra els carrers i els sentits únics d'OSM.
 - Funciona sense connexió (PWA) i sense servidor (la simulació corre al navegador).
 
 ## Comandes
@@ -28,9 +31,9 @@ pnpm data:audit     # validació línia per línia
 Desplegament: vegeu [CLAUDE.md](CLAUDE.md#desplegament-vercel-equip-paugc2004-4556s-projects).
 
 ## Qualitat
-- 69 tests unitaris/API + 33 e2e, en local i contra producció.
-- Lighthouse mòbil (producció, laboratori sense GPU): rendiment 70, accessibilitat 100, bones pràctiques 100,
-  FCP/LCP 1,3 s. El TBT ve del WebGL per programari del laboratori.
+- 73 tests unitaris/API (inclosa l'auditoria de la xarxa) + 42 e2e, en local i contra producció.
+- Lighthouse mòbil (producció, laboratori sense GPU): rendiment 68–69, accessibilitat 100, bones pràctiques 100,
+  FCP/LCP 1,2–1,8 s. 60 fps en règim estable a totes les vistes (`scripts/perf-probe.mjs`).
 
 ## Documentació
 [Auditoria i pla](docs/EVOLUTION_AUDIT.md) · [Resum d'implementació](docs/IMPLEMENTATION_SUMMARY.md) ·
