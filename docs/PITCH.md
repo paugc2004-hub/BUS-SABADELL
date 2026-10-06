@@ -25,7 +25,7 @@ que es pregunta qualsevol usuari:
 
 La demo **ho diu sempre** (banner fix, "Simulació en directe" i etiqueta "Simulat" a cada bus). Els retards
 ("+2 min") també són simulats: serveixen per ensenyar com es veuria la puntualitat. No fem servir l'app de TUS ni cap
-API privada, ni el logotip de TUS. Hem validat les 106 variants de recorregut contra els carrers d'OSM i n'hem
+API privada, ni el logotip de TUS. Hem validat les 105 variants de recorregut contra els carrers i els sentits únics d'OSM i n'hem
 detectat i corregit errors (p. ej. la F6 passava per una carretera que ja no existeix).
 
 ## Què hi guanya TUS

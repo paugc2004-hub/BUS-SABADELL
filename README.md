@@ -5,7 +5,7 @@ seguiment d'un bus i mode viatge. **Demo independent**: les posicions dels vehic
 dels horaris publicats; la xarxa, les parades i els horaris són dades públiques de tus.es i OpenStreetMap.
 
 - Web: **https://bus-sabadell.vercel.app**
-- Presentació guiada (8 escenes, 2–3 min): **https://bus-sabadell.vercel.app/presentacio**
+- Presentació guiada (10 escenes, 2–3 min): **https://bus-sabadell.vercel.app/presentacio**
 - API: https://bus-sabadell-api.vercel.app (`/v1/meta`, `/v1/vehicles`, `/v1/vehicles/stream`, `/v1/stops/:id/arrivals`…)
 
 ## Què fa
