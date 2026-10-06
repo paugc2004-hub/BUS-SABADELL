@@ -1,0 +1,8 @@
+[out:json][timeout:180];
+(
+  relation["network"="Transports Urbans de Sabadell"];
+  relation["network"="TUS"]["type"="route"](41.45,1.95,41.65,2.25);
+);
+out body;
+>;
+out body qt;

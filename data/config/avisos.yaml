@@ -1,0 +1,4 @@
+# Avisos de servei editats a mà a partir de les notícies de tus.es.
+# Format: id, linies, parades (ids TUS), des de, fins a (o null), text ca/es, url de la font.
+# Els avisos que TUS publica a cada parada (camp msgincidencia) s'hi afegeixen automàticament.
+avisos: []

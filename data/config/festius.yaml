@@ -1,0 +1,39 @@
+# Festius oficials en què TUS fa servei de festius (línies F).
+# Fonts verificades el 2026-10-06:
+#  - 2026 Catalunya + locals Sabadell: calendari laboral de Sabadell 2026
+#    https://www.diainternacionalde.com/calendario-laboral/sabadell/2026
+#    (Ordre de festes de la Generalitat i acord municipal de Sabadell)
+#  - 2027 Catalunya: Ordre EMT/52/2026, de 25 de març (DOGC)
+#    https://www.diainternacionalde.com/calendario-laboral/catalunya/2027
+# Els diumenges ja són festius per a TUS i no cal repetir-los.
+font: "Calendari laboral oficial (Generalitat) + festes locals de Sabadell, consultat 2026-10-06"
+pendents:
+  - any: 2027
+    motiu: "L'Ajuntament de Sabadell encara no ha publicat les 2 festes locals de 2027"   # TODO(DECISION: FESTIUS-LOCALS-2027)
+festius:
+  - { data: "2026-01-01", nom: "Cap d'Any", ambit: estatal }
+  - { data: "2026-01-06", nom: "Reis", ambit: estatal }
+  - { data: "2026-04-03", nom: "Divendres Sant", ambit: estatal }
+  - { data: "2026-04-06", nom: "Dilluns de Pasqua", ambit: catalunya }
+  - { data: "2026-05-01", nom: "Festa del Treball", ambit: estatal }
+  - { data: "2026-05-11", nom: "Festa local de Sabadell", ambit: local }
+  - { data: "2026-06-24", nom: "Sant Joan", ambit: catalunya }
+  - { data: "2026-08-15", nom: "L'Assumpció", ambit: estatal }
+  - { data: "2026-09-07", nom: "Festa Major de Sabadell", ambit: local }
+  - { data: "2026-09-11", nom: "Diada Nacional de Catalunya", ambit: catalunya }
+  - { data: "2026-10-12", nom: "Festa Nacional d'Espanya", ambit: estatal }
+  - { data: "2026-12-08", nom: "La Puríssima", ambit: estatal }
+  - { data: "2026-12-25", nom: "Nadal", ambit: estatal }
+  - { data: "2026-12-26", nom: "Sant Esteve", ambit: catalunya }
+  - { data: "2027-01-01", nom: "Cap d'Any", ambit: estatal }
+  - { data: "2027-01-06", nom: "Reis", ambit: estatal }
+  - { data: "2027-03-26", nom: "Divendres Sant", ambit: estatal }
+  - { data: "2027-03-29", nom: "Dilluns de Pasqua", ambit: catalunya }
+  - { data: "2027-05-01", nom: "Festa del Treball", ambit: estatal }
+  - { data: "2027-06-24", nom: "Sant Joan", ambit: catalunya }
+  - { data: "2027-09-11", nom: "Diada Nacional de Catalunya", ambit: catalunya }
+  - { data: "2027-10-12", nom: "Festa Nacional d'Espanya", ambit: estatal }
+  - { data: "2027-11-01", nom: "Tots Sants", ambit: estatal }
+  - { data: "2027-12-06", nom: "Dia de la Constitució", ambit: estatal }
+  - { data: "2027-12-08", nom: "La Puríssima", ambit: estatal }
+  - { data: "2027-12-25", nom: "Nadal", ambit: estatal }

@@ -1,0 +1,5 @@
+# Correccions manuals sobre les dades de tus.es (bug 12.1-9).
+# excloure: ids de trajecte de tus.es que no s'han de simular
+# colors: color forçat per línia (si mai cal diferenciar-ne dues)
+excloure: []
+colors: {}

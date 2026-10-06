@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.vite/
+coverage/
+playwright-report/
+test-results/
+*.log
+.env
+.env.*
+!.env.example
+.vercel/
+# HTML crudo de tus.es: pesa 26 MB; se versiona solo el JSON extraído
+data/raw/tus/**/*.html
+data/raw/gtfs/*.zip

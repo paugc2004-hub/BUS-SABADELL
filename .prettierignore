@@ -1,0 +1,4 @@
+data/
+dist/
+pnpm-lock.yaml
+apps/web/public/data/
