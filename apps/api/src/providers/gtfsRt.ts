@@ -20,7 +20,7 @@ import {
   type VehicleState,
 } from '@bus/core';
 import type { ProviderHealth, Unsubscribe, VehicleDiff, VehicleProvider } from '@bus/core';
-import { diffSnapshots } from '@bus/core';
+import { diffSnapshots, enrich } from '@bus/core';
 
 const { transit_realtime } = GtfsRealtimeBindings;
 type IVehiclePosition = GtfsRealtimeBindings.transit_realtime.IVehiclePosition;
@@ -130,13 +130,17 @@ export class GtfsRtProvider implements VehicleProvider {
     }
     const status = v.currentStatus === transit_realtime.VehiclePosition.VehicleStopStatus.STOPPED_AT ? 'EN_PARADA' : 'EN_RUTA';
     const nearStop = p.stopIds[nextIdx] ? haversine(pos, pointOfStop(this.network, p.stopIds[nextIdx]!)) : Infinity;
-    return {
+    // retard real del TripUpdate (segons): és l'única font que pot posar RETRASADO
+    const delay = tu?.stopTimeUpdate?.find((u) => u.arrival?.delay != null)?.arrival?.delay ?? tu?.delay ?? null;
+    const delaySec = delay === null || delay === undefined ? null : Number(delay);
+    // mateixa derivació (progrés, parades restants…) que la simulació: vehicle.ts del core
+    return enrich(p, {
       id: `rt:${v.vehicle?.id ?? entityId}`,
       label: v.vehicle?.label ?? v.vehicle?.id ?? entityId,
       routeId: p.routeId,
       patternId: p.id,
       tripKey: v.trip?.tripId ?? `${p.id}@rt`,
-      status: nearStop < 15 ? 'EN_PARADA' : status,
+      status: nearStop < 15 ? 'EN_PARADA' : delaySec !== null && delaySec >= 180 ? 'RETRASADO' : status,
       source: 'REALTIME',
       dist,
       lon: pos[0],
@@ -149,7 +153,8 @@ export class GtfsRtProvider implements VehicleProvider {
       departure: ts,
       lastTrip: false,
       timestamp: ts,
-    };
+      delaySec,
+    });
   }
 
   snapshot(): VehicleState[] {

@@ -9,7 +9,7 @@ export const VehicleSchema = z.object({
   routeId: z.string(),
   patternId: z.string(),
   tripKey: z.string(),
-  status: z.enum(['EN_RUTA', 'EN_PARADA', 'EN_CABECERA', 'RETIRADA', 'DESVIAT']),
+  status: z.enum(['EN_RUTA', 'EN_PARADA', 'EN_CABECERA', 'RETRASADO', 'DESVIADO', 'RETIRADA']),
   source: DataSource,
   dist: z.number().nonnegative(),
   lon: z.number(),
@@ -22,6 +22,15 @@ export const VehicleSchema = z.object({
   departure: z.number(),
   lastTrip: z.boolean(),
   timestamp: z.number(),
+  dir: z.union([z.literal(0), z.literal(1)]),
+  origin: z.string(),
+  headsign: z.string(),
+  progress: z.number().min(0).max(1),
+  prevStopIndex: z.number().int().min(-1),
+  atStopIndex: z.number().int().nonnegative().nullable(),
+  distToNextM: z.number().nonnegative().nullable(),
+  stopsRemaining: z.number().int().nonnegative(),
+  delaySec: z.number().nullable(),
 });
 
 export const VehiclesResponse = z.object({

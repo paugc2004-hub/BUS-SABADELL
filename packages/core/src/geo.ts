@@ -72,9 +72,9 @@ export function pointAlong(coords: LonLat[], cum: number[], d: number): LonLat {
  * Rumbo suavizado en la distancia d: mira un tramo de ±`window` metros en lugar
  * de dos vértices muy cercanos (evita giros de 180° en paradas, bug 12.4-29).
  */
-export function bearingAlong(coords: LonLat[], cum: number[], d: number, window = 25): number {
+export function bearingAlong(coords: LonLat[], cum: number[], d: number, window = 25, back = window): number {
   const total = cum[cum.length - 1] ?? 0;
-  const a = pointAlong(coords, cum, Math.max(0, d - window));
+  const a = pointAlong(coords, cum, Math.max(0, d - back));
   const b = pointAlong(coords, cum, Math.min(total, d + window));
   return bearing(a, b);
 }

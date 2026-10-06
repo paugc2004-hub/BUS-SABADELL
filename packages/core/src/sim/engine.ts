@@ -12,9 +12,11 @@
 import { bearingAlong, haversine, pointAlong, type LonLat } from '../geo.ts';
 import { hashString, mulberry32 } from '../prng.ts';
 import { addDays, dayTypeFor, localDate, serviceDayOrigin } from '../time.ts';
+import { enrich, journeyOf, type BaseVehicle } from '../vehicle.ts';
 import type {
   Arrival,
   DayType,
+  Journey,
   NetworkData,
   Pattern,
   Route,
@@ -78,12 +80,43 @@ interface DayTables {
   byStop: Map<string, { trip: Trip; idx: number }[]>;
 }
 
-/** Curva de velocidad seno: arranca y frena suave, monótona en [0,1]. */
-function ease(f: number): number {
-  return f - Math.sin(2 * Math.PI * f) / (2 * Math.PI);
-}
-function easeSpeedFactor(f: number): number {
-  return 1 - Math.cos(2 * Math.PI * f);
+/** aceleración y frenada típicas de un autobús urbano (m/s²) */
+export const ACCEL = 1.0;
+export const DECEL = 1.2;
+
+/**
+ * Perfil de velocidad trapezoidal entre dos paradas: arranca con aceleración
+ * constante, va a velocidad de crucero y frena hasta detenerse en la parada.
+ * Recorre `len` metros en `dur` segundos exactos. Si con esas aceleraciones no
+ * da tiempo (tramo muy corto o muy rápido), se usa un perfil triangular.
+ * Devuelve [metros recorridos, velocidad en m/s] en el instante `tau`.
+ */
+export function trapezoid(len: number, dur: number, tau: number, a = ACCEL, b = DECEL): [number, number] {
+  if (len <= 0 || dur <= 0) return [Math.max(0, len), 0];
+  const t = Math.min(dur, Math.max(0, tau));
+  const k = (1 / a + 1 / b) / 2;
+  const disc = dur * dur - 4 * k * len;
+  let v: number;
+  let ta: number;
+  let tb: number;
+  if (disc >= 0) {
+    v = (dur - Math.sqrt(disc)) / (2 * k);
+    ta = v / a;
+    tb = v / b;
+  } else {
+    // triangular: misma proporción de arranque y frenada, pico = 2·media
+    v = (2 * len) / dur;
+    ta = (dur * b) / (a + b);
+    tb = dur - ta;
+  }
+  const accA = v / ta;
+  const accB = v / tb;
+  if (t <= ta) return [0.5 * accA * t * t, accA * t];
+  if (t >= dur - tb) {
+    const r = dur - t;
+    return [len - 0.5 * accB * r * r, accB * r];
+  }
+  return [0.5 * accA * ta * ta + v * (t - ta), v];
 }
 
 /** Primer índice con arr[i] > x. */
@@ -323,7 +356,7 @@ export class SimEngine {
     const pp = trip.pattern;
     const d = pp.p.stopDist[0] ?? 0;
     const [lon, lat] = pointAlong(pp.coords, pp.p.cum, d);
-    return {
+    return this.out(pp, {
       ...this.base(b, vid, trip, origin, t),
       status: 'EN_CABECERA',
       dist: d,
@@ -334,7 +367,11 @@ export class SimEngine {
       nextStopIndex: 0,
       nextStopId: pp.p.stopIds[0] ?? null,
       etas: this.etasFrom(trip, 0, origin),
-    };
+    });
+  }
+
+  private out(pp: PreparedPattern, v: BaseVehicle): VehicleState {
+    return enrich(pp.p, v);
   }
 
   private atEnd(b: Block, vid: string, trip: Trip, origin: number, t: number): VehicleState {
@@ -342,7 +379,7 @@ export class SimEngine {
     const n = pp.p.stopIds.length;
     const d = pp.p.stopDist[n - 1] ?? pp.p.length;
     const [lon, lat] = pointAlong(pp.coords, pp.p.cum, d);
-    return {
+    return this.out(pp, {
       ...this.base(b, vid, trip, origin, t),
       status: 'RETIRADA',
       dist: d,
@@ -353,7 +390,7 @@ export class SimEngine {
       nextStopIndex: n - 1,
       nextStopId: null,
       etas: [],
-    };
+    });
   }
 
   /** Posición de un bus en ruta: interpolación por distancia a lo largo de la geometría. */
@@ -380,25 +417,44 @@ export class SimEngine {
     } else {
       const leave = o[i]! + trip.dwell[i]!;
       const dur = Math.max(1, o[i + 1]! - leave);
-      const f = Math.min(1, Math.max(0, (rel - leave) / dur));
       const segLen = sd[i + 1]! - sd[i]!;
-      dist = sd[i]! + ease(f) * segLen;
-      speed = (segLen / dur) * easeSpeedFactor(f) * 3.6;
+      const [run, ms] = trapezoid(segLen, dur, rel - leave);
+      dist = sd[i]! + Math.min(segLen, run);
+      speed = ms * 3.6;
       nextIdx = i + 1;
     }
     const [lon, lat] = pointAlong(pp.coords, pp.p.cum, dist);
-    return {
+    return this.out(pp, {
       ...this.base(b, vid, trip, origin, t),
       status,
       dist,
       lon,
       lat,
-      bearing: bearingAlong(pp.coords, pp.p.cum, dist),
+      // mirando más hacia delante que hacia atrás: gira con suavidad y no se retrasa en las curvas cerradas
+      bearing: bearingAlong(pp.coords, pp.p.cum, dist, 20, 8),
       speedKmh: Math.round(speed),
       nextStopIndex: nextIdx,
       nextStopId: pp.p.stopIds[nextIdx] ?? null,
       etas: this.etasFrom(trip, nextIdx, origin),
-    };
+    });
+  }
+
+  /**
+   * Línia temporal del trajecte actual d'un bus: hores de pas per totes les parades
+   * (les passades, simulades; les futures, les mateixes ETA que la fitxa i el panell de parada).
+   */
+  journey(id: string, t: number): Journey | null {
+    const v = this.vehicle(id, t);
+    if (!v) return null;
+    const sep = id.indexOf(':');
+    const date = id.slice(0, sep);
+    const blockId = id.slice(sep + 1);
+    const b = this.days.get(dayTypeFor(date, this.network.holidays))!.blocks.find((x) => x.id === blockId);
+    const trip = b?.trips.find((x) => x.key === v.tripKey);
+    const pp = this.patterns.get(v.patternId);
+    if (!trip || !pp) return null;
+    const origin = serviceDayOrigin(date);
+    return journeyOf(pp.p, v, trip.offsets.map((o) => origin + (trip.dep + o) * 1000));
   }
 
   /**

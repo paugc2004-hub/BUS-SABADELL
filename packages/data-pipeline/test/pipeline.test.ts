@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { SimEngine, cumulative, normalize, normalizeColour, type LonLat, type NetworkData } from '@bus/core';
-import { buildGeometry } from '../src/geometry.ts';
+import { buildGeometry, countSpikes, despike } from '../src/geometry.ts';
 import { reconstructTrips, parseTimes, smoothOffsets, quantize } from '../src/trips.ts';
 import { stitchRelation, type OsmNode, type OsmRel, type OsmWay } from '../src/osm.ts';
 import { checkFestius, FestiusSchema, loadYaml } from '../src/config.ts';
@@ -233,5 +233,19 @@ describe('correccions de xarxa', () => {
   it('un bucle tancat és circular encara que la primera i l’última parada siguin diferents', () => {
     expect(isCircular(['a', 'c'], [[2.1, 41.5], [2.12, 41.5], [2.11, 41.51], [2.1, 41.5]], stops)).toBe(true);
     expect(isCircular(['a', 'c'], [[2.1, 41.5], [2.12, 41.5]], stops)).toBe(false);
+  });
+});
+
+describe('punxes de tus.es', () => {
+  it('treu l’anada i tornada fins al pal de la parada però no les voltes reals', () => {
+    const stop = { id: 's', lon: 2.10012, lat: 41.50008 };
+    // carrer recte cap a l'est amb una punxa de ~10 m fins al pal
+    const withSpike: LonLat[] = [[2.1, 41.5], [2.1001, 41.5], [2.10012, 41.50009], [2.1001, 41.5], [2.1003, 41.5]];
+    const out = despike(withSpike, [stop]);
+    expect(out.removed).toBe(1);
+    expect(countSpikes(out.coords)).toBe(0);
+    // volta a una rotonda (~80 m) que torna al mateix punt: no és una punxa
+    const loop: LonLat[] = [[2.1, 41.5], [2.1003, 41.5], [2.1004, 41.5001], [2.1003, 41.5002], [2.1002, 41.5001], [2.1003, 41.5], [2.1, 41.5]];
+    expect(despike(loop, [stop]).removed).toBe(0);
   });
 });

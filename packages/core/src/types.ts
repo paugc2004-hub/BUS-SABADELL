@@ -12,7 +12,11 @@ export type DayType = 'feiner' | 'dissabte' | 'festiu';
 /** De dónde sale la posición de un vehículo. */
 export type DataSource = 'SIMULATED' | 'SCHEDULED' | 'REALTIME';
 
-export type VehicleStatus = 'EN_RUTA' | 'EN_PARADA' | 'EN_CABECERA' | 'RETIRADA' | 'DESVIAT';
+/**
+ * Estat d'un vehicle. RETRASADO i DESVIADO només els pot donar un proveïdor real
+ * (SAE/GTFS-RT): la simulació no s'inventa retards ni desviaments.
+ */
+export type VehicleStatus = 'EN_RUTA' | 'EN_PARADA' | 'EN_CABECERA' | 'RETRASADO' | 'DESVIADO' | 'RETIRADA';
 
 export interface SourceInfo {
   id: string;
@@ -123,6 +127,46 @@ export interface VehicleState {
   /** és l'última expedició del torn: després es retira */
   lastTrip: boolean;
   timestamp: number;
+  // ---- derivats (vehicle.ts: mateixa lògica per a simulació i temps real)
+  /** sentit del pattern (0 anada, 1 tornada) */
+  dir: 0 | 1;
+  /** capçalera d'origen i destinació del trajecte actual */
+  origin: string;
+  headsign: string;
+  /** fracció del trajecte recorreguda (0–1), per DISTÀNCIA sobre la geometria */
+  progress: number;
+  /** índex de l'última parada on ha arribat o que ha passat (-1 abans de sortir) */
+  prevStopIndex: number;
+  /** índex de la parada on està aturat ara mateix, si n'hi ha */
+  atStopIndex: number | null;
+  /** metres fins a la propera parada (null si s'ha retirat) */
+  distToNextM: number | null;
+  /** parades que li queden per fer, inclosa la propera */
+  stopsRemaining: number;
+  /** retard en segons respecte de l'horari; null = sense dada real (sempre a la simulació) */
+  delaySec: number | null;
+}
+
+/** Una parada del trajecte d'un bus, per a la línia temporal. */
+export interface JourneyStop {
+  stopId: string;
+  index: number;
+  /** distància sobre la geometria (m) */
+  dist: number;
+  /** hora de pas (epoch ms): prevista per a les futures, simulada/real per a les passades */
+  at: number | null;
+  state: 'passed' | 'current' | 'next' | 'upcoming';
+}
+
+export interface Journey {
+  vehicleId: string;
+  patternId: string;
+  stops: JourneyStop[];
+  progress: number;
+  /** distància total del trajecte entre la primera i l'última parada (m) */
+  lengthM: number;
+  /** distància recorreguda des de la primera parada (m) */
+  doneM: number;
 }
 
 export interface Arrival {

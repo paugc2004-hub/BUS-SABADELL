@@ -98,6 +98,16 @@ function slice(p: Pattern, a: number, b: number): LonLat[] {
   return out;
 }
 
+function segmentOkIn(
+  geo: Pick<Pattern, 'coords' | 'cum' | 'length' | 'stopDist'>,
+  p: Pattern,
+  i: number,
+  stops: Map<string, Stop>,
+  roads: SegmentGrid,
+): boolean {
+  return segmentOk({ ...p, ...geo }, i, stops, roads);
+}
+
 function segmentOk(p: Pattern, i: number, stops: Map<string, Stop>, roads: SegmentGrid): boolean {
   return (
     offroadRun(p, p.stopDist[i]!, p.stopDist[i + 1]!, roads) <= OFFROAD_RUN_ERR_M &&
@@ -121,12 +131,13 @@ export interface RepairNote {
 export function repairSegments(patterns: Pattern[], stops: Map<string, Stop>, roads: SegmentGrid): RepairNote[] {
   const notes: RepairNote[] = [];
   // índice de tramos válidos: "a>b" → [patrón, índice]
-  const good = new Map<string, { p: Pattern; i: number }[]>();
+  // la geometría del donante se copia ANTES de modificar nada: una reparación no encadena otra
+  const good = new Map<string, { p: Pattern; mid: LonLat[] }[]>();
   for (const p of patterns)
     for (let i = 0; i < p.stopIds.length - 1; i++)
       if (segmentOk(p, i, stops, roads)) {
         const k = `${p.stopIds[i]}>${p.stopIds[i + 1]}`;
-        good.set(k, [...(good.get(k) ?? []), { p, i }]);
+        good.set(k, [...(good.get(k) ?? []), { p, mid: slice(p, p.stopDist[i]!, p.stopDist[i + 1]!) }]);
       }
   for (const p of patterns) {
     for (let i = 0; i < p.stopIds.length - 1; i++) {
@@ -139,8 +150,8 @@ export function repairSegments(patterns: Pattern[], stops: Map<string, Stop>, ro
       const reason = run > OFFROAD_RUN_ERR_M ? `${run} m fora de carrer` : 'parada lluny del recorregut';
       const a = p.stopDist[i]!;
       const b = p.stopDist[i + 1]!;
-      const head = slice(p, p.stopDist[0]! > 0 ? 0 : 0, a).slice(0, -1);
-      const mid = slice(d.p, d.p.stopDist[d.i]!, d.p.stopDist[d.i + 1]!);
+      const head = slice(p, 0, a).slice(0, -1);
+      const mid = d.mid;
       const tail = slice(p, b, p.length).slice(1);
       // si el patrón empieza en la parada i, la cabeza es solo ese punto
       const coords = [...(head.length ? head : []), ...mid, ...tail];
@@ -149,10 +160,17 @@ export function repairSegments(patterns: Pattern[], stops: Map<string, Stop>, ro
       const midLen = cumulative(mid).at(-1)!;
       const shift = headLen + midLen - b;
       const stopDist = p.stopDist.map((x, j) => (j < i ? x : j === i ? headLen : x + shift));
+      const before = { coords: p.coords, cum: p.cum, length: p.length, stopDist: p.stopDist };
       p.coords = coords;
       p.cum = cum;
       p.length = cum[cum.length - 1]!;
       p.stopDist = stopDist;
+      // solo se acepta si el tramo nuevo valida y no estropea los vecinos
+      const neighboursOk = [i - 1, i + 1].every((j) => j < 0 || j >= p.stopIds.length - 1 || segmentOk(p, j, stops, roads) || !segmentOkIn(before, p, j, stops, roads));
+      if (!segmentOk(p, i, stops, roads) || !neighboursOk) {
+        Object.assign(p, before);
+        continue;
+      }
       notes.push({
         pattern: p.id,
         from: stops.get(p.stopIds[i]!)?.name ?? p.stopIds[i]!,
