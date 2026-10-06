@@ -8,7 +8,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
   use: {
-    baseURL: 'http://localhost:4173',
+    baseURL: process.env.BASE_URL ?? 'http://localhost:4173',
     timezoneId: 'Europe/Madrid',
     launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] },
   },
@@ -17,5 +17,5 @@ export default defineConfig({
     { name: 'iphone-13', use: { ...devices['iPhone 13'], browserName: 'chromium', locale: 'ca-ES' } },
     { name: 'android', use: { ...devices['Pixel 7'], locale: 'es-ES' } },
   ],
-  webServer: { command: 'npx vite preview --port 4173 --strictPort', port: 4173, reuseExistingServer: !process.env.CI },
+  webServer: process.env.BASE_URL ? undefined : { command: 'npx vite preview --port 4173 --strictPort', port: 4173, reuseExistingServer: !process.env.CI },
 });

@@ -1,0 +1,11 @@
+import { chromium } from '@playwright/test';
+const b = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const ctx = await b.newContext({ viewport: { width: 1280, height: 800 }, locale: 'ca-ES' });
+const p = await ctx.newPage();
+await p.goto('http://localhost:4173/?hora=08:15&dia=dimarts');
+await p.waitForFunction(() => navigator.serviceWorker?.controller != null, null, { timeout: 30000 });
+await ctx.setOffline(true);
+await p.reload();
+await p.waitForTimeout(5000);
+await p.screenshot({ path: process.argv[2] });
+await b.close();

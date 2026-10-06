@@ -9,6 +9,21 @@ import { addBusImages } from './icons.ts';
 import { loadBaseStyle } from './style.ts';
 
 const SABADELL: [number, number] = [2.1065, 41.5475];
+/** WebGL sin GPU real (SwiftShader, llvmpipe, Microsoft Basic Render): móvil muy modesto o VM. */
+export function softwareGL(): boolean {
+  try {
+    const gl = document.createElement('canvas').getContext('webgl');
+    if (!gl) return true;
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    const r = ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : '';
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return /swiftshader|llvmpipe|softpipe|basic render/i.test(r);
+  } catch {
+    return false;
+  }
+}
+const LOW_GPU = typeof document !== 'undefined' && softwareGL();
+
 const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
 type FC = GeoJSON.FeatureCollection;
@@ -137,6 +152,7 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
         attributionControl: false,
         interactive,
         fadeDuration: 0,
+        ...(LOW_GPU ? { pixelRatio: 1, antialias: false } : {}),
         maxBounds: [
           [1.9, 41.44],
           [2.32, 41.66],
@@ -148,6 +164,11 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
         new maplibregl.AttributionControl({ compact: true, customAttribution: base.id === 'fallback' ? `${base.attribution} · Dades: tus.es` : 'Dades de la xarxa: tus.es' }),
         'bottom-right',
       );
+      // imágenes del estilo base que no existen (p. ej. "wood-pattern"): transparente, sin ruido en consola
+      map.on('styleimagemissing', (e) => {
+        if (!map || map.hasImage(e.id)) return;
+        map.addImage(e.id, { width: 1, height: 1, data: new Uint8Array(4) });
+      });
       map.on('error', (e) => {
         // las teselas del mapa base pueden fallar sin romper nada: seguimos con nuestras capas
         console.warn('map error', e.error?.message);
@@ -307,7 +328,19 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
     let last = 0;
     let lastFollow = 0;
     let dayType = engine.dayTypeAt(clock.now());
-    let interval = prefersReducedMotion() ? 1000 : 50; // 20 Hz
+    // frecuencia de actualización según el zoom: a vista de ciudad un bus se mueve
+    // menos de 1 px en medio segundo, así que 2 Hz es visualmente idéntico a 60 Hz
+    let degraded = LOW_GPU;
+    if (LOW_GPU && map.getLayer('routes-glow')) map.setLayoutProperty('routes-glow', 'visibility', 'none');
+    const intervalFor = () => {
+      if (prefersReducedMotion()) return 1000;
+      const z = map.getZoom();
+      const base = z < 13 ? 500 : z < 14.5 ? 250 : z < 16 ? 110 : 66;
+      const speed = Math.max(1, clock.getSpeed());
+      return Math.max(LOW_GPU ? 1000 : degraded ? 200 : 40, base / Math.sqrt(speed));
+    };
+    let interval = intervalFor();
+    map.on('zoomend', () => (interval = intervalFor()));
     // degradación automática si el dispositivo va justo (bug 12.4-34)
     let slowFrames = 0;
     let prevFrame = performance.now();
@@ -317,11 +350,12 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
       prevFrame = now;
       if (dt > 40 && dt < 500) slowFrames++;
       else if (slowFrames > 0) slowFrames -= 0.25;
-      if (slowFrames > 90 && interval < 200) {
-        interval = 200;
+      if (slowFrames > 90 && !degraded) {
+        degraded = true;
+        interval = intervalFor();
         if (map.getLayer('routes-glow')) map.setLayoutProperty('routes-glow', 'visibility', 'none');
       }
-      if (now - last < interval) return;
+      if (now - last < interval || document.hidden) return;
       last = now;
       const t = clock.now();
       const st = useApp.getState();

@@ -1,0 +1,60 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      # build de dades amb els extractes versionats (sense xarxa)
+      - run: pnpm data:build
+      - run: git diff --exit-code apps/web/public/data/network.json || (echo "network.json no és determinista o no està actualitzat" && exit 1)
+      - run: pnpm test
+      - run: pnpm --filter @bus/web build
+      - run: node apps/api/scripts/bundle-vercel.mjs
+      - uses: actions/upload-artifact@v4
+        with: { name: gtfs, path: dist/gtfs.zip }
+
+  gtfs-validator:
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - run: pnpm install --frozen-lockfile && pnpm data:build
+      - name: Validador oficial de MobilityData
+        run: |
+          curl -sSL -o gtfs-validator.jar https://github.com/MobilityData/gtfs-validator/releases/download/v7.1.0/gtfs-validator-7.1.0-cli.jar
+          java -jar gtfs-validator.jar -i dist/gtfs.zip -o validation
+          node -e "const r=require('./validation/report.json');const e=r.notices.filter(n=>n.severity==='ERROR');console.log('errors',e.length,'warnings',r.notices.filter(n=>n.severity==='WARNING').length);for(const n of e)console.log(n.code,n.totalNotices);process.exit(e.length?1:0)"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: gtfs-validation, path: validation }
+
+  e2e:
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @bus/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @bus/web build
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: playwright-report, path: apps/web/playwright-report }

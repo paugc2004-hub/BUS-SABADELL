@@ -47,6 +47,7 @@ export default defineConfig({
   ],
   build: {
     target: 'es2022',
+    sourcemap: true,
     chunkSizeWarningLimit: 1200,
     rollupOptions: { output: { manualChunks: { maplibre: ['maplibre-gl'] } } },
   },

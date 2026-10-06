@@ -9,11 +9,21 @@
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <title>Bus Sabadell en directe</title>
-    <style>html,body{background:#08090b;color:#eceef1;margin:0}</style>
+    <style>
+      html,body{background:#08090b;color:#eceef1;margin:0;font-family:system-ui,-apple-system,'Segoe UI',sans-serif}
+      .shell-top{display:flex;align-items:center;gap:10px;height:60px;padding:0 14px;border-bottom:1px solid #22262e;font-weight:700;font-size:17px}
+      .shell-mark{width:34px;height:34px;border-radius:9px;background:#eceef1}
+      .shell-banner{min-height:30px;display:flex;align-items:center;justify-content:center;padding:4px 14px;background:#1a1407;border-bottom:1px solid #3a2a0c;color:#f2d39b;font-size:12px;text-align:center}
+      .shell-msg{display:grid;place-items:center;height:calc(100dvh - 92px);color:#b9bec7;font-size:14px}
+    </style>
   </head>
   <body>
     <noscript>Cal JavaScript per veure el mapa.</noscript>
-    <div id="root"></div>
+    <div id="root">
+      <div class="shell-top"><span class="shell-mark"></span>Bus Sabadell <span style="font-weight:500;color:#868c96">&nbsp;en directe</span></div>
+      <div class="shell-banner">Demo · posicions simulades a partir dels horaris publicats per TUS</div>
+      <div class="shell-msg">Carregant la xarxa…</div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

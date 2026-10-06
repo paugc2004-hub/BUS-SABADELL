@@ -1,0 +1,16 @@
+# Tot en local amb una comanda:  docker compose up --build
+#   web → http://localhost:8080   api → http://localhost:8787
+services:
+  api:
+    build: { context: ., dockerfile: Dockerfile.api }
+    environment:
+      CORS_ORIGIN: http://localhost:8080
+      PROVIDER: sim
+    ports: ["8787:8787"]
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args: { VITE_API_URL: "http://localhost:8787" }
+    ports: ["8080:80"]
+    depends_on: [api]

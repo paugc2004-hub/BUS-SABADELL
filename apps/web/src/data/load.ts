@@ -40,10 +40,21 @@ let es: EventSource | null = null;
 export function connectBackend(): void {
   if (!API || es) return;
   useApp.setState({ backend: 'connecting' });
-  fetch(`${API}/v1/meta`)
-    .then((r) => r.json() as Promise<{ serverTime: number }>)
-    .then((m) => clock.setServerSkew(m.serverTime))
-    .catch(() => undefined);
+  const sent = Date.now();
+  fetch(`${API}/v1/meta`, { cache: 'no-store' })
+    .then((r) => r.json() as Promise<{ serverTime: number; provider: string }>)
+    .then((m) => {
+      // hora del servidor corregida a mitja latència
+      clock.setServerSkew(m.serverTime + (Date.now() - sent) / 2);
+      useApp.setState({ backend: 'live' });
+      // l'stream només fa falta quan el servidor té posicions reals; la simulació ja corre aquí
+      if (m.provider === 'REALTIME') openStream();
+    })
+    .catch(() => useApp.setState({ backend: 'down' }));
+}
+
+function openStream(): void {
+  if (es) return;
   es = new EventSource(`${API}/v1/vehicles/stream`);
   es.addEventListener('snapshot', (ev) => {
     const d = JSON.parse((ev as MessageEvent).data) as { serverTime: number; source: string; vehicles: VehicleState[] };

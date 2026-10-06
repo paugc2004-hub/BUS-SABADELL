@@ -49,14 +49,15 @@ export function TopBar() {
       </div>
 
       <nav className="seg" aria-label="Vistes">
-        <button type="button" className={view.name === 'search' ? 'on' : ''} onClick={() => st.navigate({ name: 'search' })}>
+        <button type="button" aria-label={t.nav.search} className={view.name === 'search' ? 'on' : ''} onClick={() => st.navigate({ name: 'search' })}>
           {Icon.search} <span>{t.nav.search}</span>
         </button>
-        <button type="button" className={view.name === 'map' || view.name === 'stop' ? 'on' : ''} onClick={() => st.navigate({ name: 'map' })}>
+        <button type="button" aria-label={t.nav.map} className={view.name === 'map' || view.name === 'stop' ? 'on' : ''} onClick={() => st.navigate({ name: 'map' })}>
           {Icon.map} <span>{t.nav.map}</span>
         </button>
         <button
           type="button"
+          aria-label={t.nav.line}
           className={view.name === 'line' ? 'on' : ''}
           onClick={() => {
             const sel = st.selectedBus && engine ? engine.vehicle(st.selectedBus, clock.now())?.routeId : null;
@@ -74,7 +75,7 @@ export function TopBar() {
           {Icon.bell}
           {alerts > 0 && <span className="badge">{alerts}</span>}
         </IconButton>
-        <button type="button" className="lang-btn" aria-label={t.lang} onClick={() => st.setLang(lang === 'ca' ? 'es' : 'ca')}>
+        <button type="button" className="lang-btn" aria-label={`${lang === 'ca' ? 'ES' : 'CA'} · ${t.lang}`} onClick={() => st.setLang(lang === 'ca' ? 'es' : 'ca')}>
           {lang === 'ca' ? 'ES' : 'CA'}
         </button>
         <IconButton label={t.present} onClick={() => st.navigate({ name: 'present' })}>

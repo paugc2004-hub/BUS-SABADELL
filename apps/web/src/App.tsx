@@ -1,16 +1,18 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { clock, useApp } from './state/store.ts';
 import { detectLang, useT } from './i18n/index.ts';
 import { loadNetwork } from './data/load.ts';
 import { vehiclesAt } from './data/vehicles.ts';
-import { MapView } from './map/MapView.tsx';
 import { AboutModal, AlertsPanel, HonestyBanner, LineFilter, MapControls, TopBar } from './views/Chrome.tsx';
 import { BusCard } from './views/BusCard.tsx';
 import { StopPanel } from './views/StopPanel.tsx';
 import { SearchPanel } from './views/SearchPanel.tsx';
 import { LineView } from './views/LineView.tsx';
-import { Presentation } from './views/Presentation.tsx';
 import { RouteChip, hm, useNow } from './ui/common.tsx';
+
+// el mapa (MapLibre + CSS) i la presentació van en trossos a part: la carcassa es pinta abans
+const MapView = lazy(() => import('./map/MapView.tsx').then((m) => ({ default: m.MapView })));
+const Presentation = lazy(() => import('./views/Presentation.tsx').then((m) => ({ default: m.Presentation })));
 
 function NoService() {
   const t = useT();
@@ -81,7 +83,11 @@ export function App() {
     return (
       <>
         <Loading />
-        {ready && <Presentation />}
+        {ready && (
+          <Suspense fallback={null}>
+            <Presentation />
+          </Suspense>
+        )}
       </>
     );
 
@@ -90,7 +96,11 @@ export function App() {
       <TopBar />
       <HonestyBanner />
       <main className="stage">
-        {ready && <MapView />}
+        {ready && (
+          <Suspense fallback={null}>
+            <MapView />
+          </Suspense>
+        )}
         {ready && view.name !== 'line' && (
           <>
             <LineFilter />

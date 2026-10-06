@@ -1,0 +1,6 @@
+node_modules
+**/node_modules
+**/dist
+data/raw/tus/**/*.html
+data/raw/gtfs/*.zip
+.git
