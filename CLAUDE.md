@@ -5,13 +5,19 @@ Demo d'un mapa de la xarxa de bus urbà de Sabadell (TUS) amb autobusos moguts p
 per aconseguir dades reals (SAE/AVL). Especificació completa: `docs/SPEC.md`. Pla: `docs/PLAN.md`.
 
 Marca: **NextMobility Sabadell** (logo «N» de recorregut, `ui/Logo.tsx`, `public/icons/icon.svg`). Rutes: `/` landing
-(pública, no carrega el mapa), `/entra`, `/registre`, `/app` inici; la resta de vistes demanen sessió.
-**Comptes ficticis**: `auth/auth.ts` (`LocalAuthProvider`, localStorage, PBKDF2). Per a un servei real, una altra
-implementació d'`AuthProvider`. Paradas i viatge es guarden per usuari (`favs:<id>`, `myBus:<id>`).
-Captures de la landing: `node apps/web/scripts/landing-shots.mjs` (amb el dev server a :5199) i `og-image.mjs`.
+(pública, tema clar, no carrega ni la xarxa ni l'app: `AppMain.tsx` va en un tros a part), `/entra`, `/registre`,
+`/app` inici. **Sense barrera**: qui entra a l'app sense sessió ho fa amb el compte de demostració; el compte propi és
+opcional (les parades desades a la demo hi passen). **Comptes ficticis**: `auth/auth.ts` (`LocalAuthProvider`,
+localStorage, PBKDF2). Per a un servei real, una altra implementació d'`AuthProvider`. Parades i viatge per usuari
+(`favs:<id>`, `myBus:<id>`). Català per defecte (ES a un toc).
+Landing V2 (`views/Landing.tsx`): demo animada pròpia sobre la parada Rambla i la L2 reals, etiquetada «Demostració»;
+el fragment de mapa es genera amb `node apps/web/scripts/landing-map.mjs` (→ `views/landingMap.ts`). Contacte
+institucional només si `VITE_CONTACT_EMAIL` està definit. Captures: `landing-shots.mjs` (mapa), `og-image.mjs`,
+`full-shots.mjs` (pàgina sencera a diverses mides), `app-shot.mjs`. Documents: `docs/LANDING_*.md`,
+`docs/NEXTMOBILITY_V2_*.md`, `docs/FINAL_PRODUCT_AUDIT.md`.
 
 ## Regles que no es negocien
-- **Mai presentar una posició simulada com a real.** Banner fix, etiqueta d'origen a cada bus
+- **Mai presentar una posició simulada com a real.** Ni «en directe»/«temps real» en present per a dades simulades. Banner fix, etiqueta d'origen a cada bus
   (`SIMULATED` | `SCHEDULED` | `REALTIME`) i textos que ho diuen.
 - **Cap enginyeria inversa** de l'app de TUS/GeoActio ni de cap API privada. Només dades públiques
   (pàgines de línia de tus.es, OSM, GTFS de la Generalitat), descarregades rarament i citades.
@@ -74,7 +80,9 @@ pnpm test:e2e       # Playwright (apps/web)
   no fer `vercel deploy` a pèl dins `dist-deploy`, que crea un projecte nou).
 - API: **https://bus-sabadell-api.vercel.app** → `node apps/api/scripts/bundle-vercel.mjs` i
   `vercel deploy --prod --yes` dins `apps/api/.vercel-deploy` (projecte `bus-sabadell-api`).
-- Després de desplegar: `BASE_URL=https://bus-sabadell.vercel.app npx playwright test` (apps/web).
+- Després de desplegar: `BASE_URL=https://bus-sabadell.vercel.app npx playwright test` (apps/web). Ves amb compte:
+  massa peticions automàtiques seguides fan que el tallafoc de Vercel respongui 403 («punt de control») durant una estona.
+- Els e2e locals fan servir `vite preview` de `dist/`: fes `npm run build` abans.
 - Lighthouse (mòbil, laboratori sense GPU): rendiment ~70 pel WebGL per programari (TBT), accessibilitat 100,
   bones pràctiques 100. Amb GPU real va millor; no és representatiu d'un mòbil.
 
