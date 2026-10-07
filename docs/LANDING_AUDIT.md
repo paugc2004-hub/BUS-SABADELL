@@ -40,11 +40,11 @@ Eina: `node apps/web/scripts/full-shots.mjs <url> <dir> 390x844 393x852 768x1024
 ## Rendiment
 | Mesura | V1 | V2 |
 |---|---|---|
-| Lighthouse mòbil landing (prod., gzip) | rendiment **79**, LCP **5,4 s**, TBT 0 | pendent de repetir a prod. (vegeu nota) |
+| Lighthouse mòbil landing (prod., gzip, 3 passades) | rendiment **79**, FCP 1,8 s, LCP **5,4 s**, TBT 0, accessibilitat 100, bones pràctiques 100 | rendiment **90–92**, FCP 1,1–1,3 s, LCP **3,3–3,5 s**, TBT 0–10 ms, CLS 0, accessibilitat 100, bones pràctiques 100 |
 | Lighthouse mòbil landing (local, `vite preview` sense compressió) | — | rendiment **84**, FCP 3,3 s, LCP **3,5 s**, TBT 0, CLS 0 |
 | fps landing amb l'animació (perf-probe 20 s, escriptori i mòbil) | — | **60 fps**, 0 tasques llargues, 4 MB de heap |
 | JS que descarrega la landing | 440 KB (tota l'app) | 367 KB (115 KB gzip) |
-Nota: just després de desplegar, el tallafoc de Vercel va començar a respondre 403 («punt de control de seguretat»)
-a les peticions automàtiques des d'aquesta IP (Playwright/Lighthouse); 53/54 e2e havien passat a prod abans del
-bloqueig. Cal repetir Lighthouse a prod quan s'aixequi. El que queda de pes a la landing és React + luxon
+Notes: l'script en línia de la carcassa (fons clar a `/`) està permès a la CSP pel seu hash (`vercel.json`); sense
+això, bones pràctiques baixava a 93. Durant les proves el tallafoc de Vercel va respondre 403 («punt de control») una
+estona a les peticions automàtiques seguides des d'aquesta IP. El que queda de pes a la landing és React + luxon
 (el rellotge del store); separar-lo demana tocar el store i no s'ha fet.

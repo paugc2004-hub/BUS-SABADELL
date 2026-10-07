@@ -64,11 +64,10 @@ Cap logo ni marca de TUS. «TUS» només com a font de dades i en el text de no-
 
 ## Proves
 `pnpm typecheck` ✔ · `pnpm lint` ✔ · `pnpm test` 78/78 ✔ · `pnpm data:audit` 0 errors ✔ · build ✔ ·
-e2e local **54/54** ✔ (18 proves × escriptori, iPhone 13, Android). A prod, 53/54 abans que el tallafoc de Vercel
-bloquegés les peticions automàtiques (la que falla va rebre la pàgina de «punt de control»).
+e2e local **54/54** ✔ (18 proves × escriptori, iPhone 13, Android). A prod (després del darrer desplegament): 18/18 a escriptori; abans, 53/54 a les tres plataformes (la que va fallar va rebre el «punt de control» de Vercel, no un error de l’app).
+Lighthouse landing a prod: rendiment 90–92 (abans 79), LCP 3,3–3,5 s (abans 5,4 s), accessibilitat 100, bones pràctiques 100.
 
 ## Pendent / decisions de l'usuari
 - Adreça de contacte institucional (`VITE_CONTACT_EMAIL`): no s'ha publicat cap correu sense permís.
-- Repetir Lighthouse i e2e a prod quan Vercel deixi de demanar el punt de control.
 - Domini propi i repositori públic o privat.
 - Comptes reals (Supabase o similar) quan calgui: `AuthProvider` ja ho permet.

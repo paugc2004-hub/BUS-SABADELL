@@ -12,7 +12,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tiles.openfreemap.org https://*.cartocdn.com; font-src 'self' data:; connect-src 'self' https://tiles.openfreemap.org https://*.cartocdn.com https://*.vercel.app; worker-src 'self' blob:; child-src blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'none'"
+          "value": "default-src 'self'; script-src 'self' 'sha256-My2+UjpBYKgRQD7VBIJFul7YfL6oqxOtgadXqeN/6I8='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tiles.openfreemap.org https://*.cartocdn.com; font-src 'self' data:; connect-src 'self' https://tiles.openfreemap.org https://*.cartocdn.com https://*.vercel.app; worker-src 'self' blob:; child-src blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'none'"
         },
         {
           "key": "Strict-Transport-Security",
