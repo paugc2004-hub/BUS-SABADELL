@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { SimClock, forcedInstant, type NetworkData, type SimEngine } from '@bus/core';
+import { SimClock, forcedInstant, type Itinerary, type LonLat, type NetworkData, type SimEngine } from '@bus/core';
 import type { Lang } from '../i18n/index.ts';
 import { auth, type User } from '../auth/auth.ts';
 
@@ -11,6 +11,8 @@ export type View =
   | { name: 'map' }
   | { name: 'line'; ref: string | null }
   | { name: 'stop'; id: string }
+  /** com hi arribo: `to` = c<id de carrer> | p<id de parada>; `from` igual, o res = la meva ubicació */
+  | { name: 'route'; to: string; from?: string }
   | { name: 'network' }
   | { name: 'mine' }
   | { name: 'present' };
@@ -48,6 +50,8 @@ export function parseView(path: string): View {
   if (m) return { name: 'line', ref: m[1]?.toUpperCase() ?? null };
   m = /^\/parada\/([^/]+)$/.exec(p);
   if (m) return { name: 'stop', id: m[1]! };
+  m = /^\/ruta\/([cp][^/]+)$/.exec(p);
+  if (m) return { name: 'route', to: m[1]!, from: new URLSearchParams(location.search).get('de') ?? undefined };
   if (p === '/') return { name: 'landing' };
   if (p === '/entra') return { name: 'login', next: new URLSearchParams(location.search).get('next') ?? undefined };
   if (p === '/registre') return { name: 'register', next: new URLSearchParams(location.search).get('next') ?? undefined };
@@ -66,6 +70,8 @@ export function viewPath(v: View): string {
       return v.ref ? `/linia/${v.ref}` : '/linia';
     case 'stop':
       return `/parada/${encodeURIComponent(v.id)}`;
+    case 'route':
+      return `/ruta/${encodeURIComponent(v.to)}`;
     case 'landing':
       return '/';
     case 'login':
@@ -173,6 +179,8 @@ interface AppState {
   homeCollapsed: boolean;
   /** parada des d'on s'ha obert el bus: és on el viatger el vol agafar */
   boardHint: string | null;
+  /** la ruta triada al planificador, per dibuixar-la al mapa */
+  plan: { itinerary: Itinerary; from: LonLat; dest: LonLat; destName: string } | null;
   /** mode presentació actiu (es manté encara que la demo navegui a una parada) */
   presenting: boolean;
   base: BaseView;
@@ -229,6 +237,7 @@ export const useApp = create<AppState>((set, get) => ({
   toasts: [],
   homeCollapsed: false,
   boardHint: null,
+  plan: null,
   presenting: parseView(location.pathname).name === 'present',
   base: 'home',
   baseLine: null,
@@ -248,12 +257,14 @@ export const useApp = create<AppState>((set, get) => ({
   navigate(v, opts = {}) {
     const q = new URLSearchParams(location.search);
     if (v.name !== 'map' && v.name !== 'home' && v.name !== 'stop') q.delete('bus');
+    if (v.name === 'route' && v.from) q.set('de', v.from);
+    else q.delete('de');
     const qs = opts.keepQuery === false ? '' : q.toString();
     const url = viewPath(v) + (qs ? `?${qs}` : '');
     if (opts.replace) history.replaceState(null, '', url);
     else history.pushState(null, '', url);
     const base: BaseView | null = v.name === 'home' || v.name === 'map' || v.name === 'network' || v.name === 'mine' ? v.name : v.name === 'line' ? 'line' : null;
-    set({ view: v, ...(base ? { base, ...(base === 'line' && v.name === 'line' ? { baseLine: v.ref } : {}) } : {}), ...(v.name === 'present' ? { presenting: true } : {}) });
+    set({ view: v, ...(v.name !== 'route' ? { plan: null } : {}), ...(base ? { base, ...(base === 'line' && v.name === 'line' ? { baseLine: v.ref } : {}) } : {}), ...(v.name === 'present' ? { presenting: true } : {}) });
   },
   selectBus(id) {
     const q = new URLSearchParams(location.search);
@@ -351,7 +362,8 @@ export const useApp = create<AppState>((set, get) => ({
 if (import.meta.env.DEV) (window as unknown as { __app: typeof useApp }).__app = useApp;
 
 window.addEventListener('popstate', () => {
-  useApp.setState({ view: parseView(location.pathname), selectedBus: new URLSearchParams(location.search).get('bus') });
+  const view = parseView(location.pathname);
+  useApp.setState({ view, selectedBus: new URLSearchParams(location.search).get('bus'), ...(view.name !== 'route' ? { plan: null } : {}) });
 });
 window.addEventListener('online', () => useApp.setState({ online: true }));
 window.addEventListener('offline', () => useApp.setState({ online: false }));

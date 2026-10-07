@@ -66,3 +66,10 @@ Els avisos que TUS publica a cada parada (`msgincidencia`) s'afegeixen sols.
 - `TODO(DECISION: FESTIUS-LOCALS-2027)`: festes locals de Sabadell de 2027 (encara no publicades).
 - Validació del GTFS propi amb `gtfs-validator` de MobilityData: al CI (cal Java).
 - Horaris d'agost/estiu: tus.es publica variants d'estiu (p. ej. F15/L15) en PDF; l'extracte actual és el de setembre de 2026.
+
+## Carrers i municipis (planificador «Com hi arribo»)
+- `data/raw/osm/roads-2026-10-06.json`: carrers amb nom (la mateixa descàrrega que fa servir l'auditoria).
+- `data/raw/osm/municipis-2026-10-07.json`: límits municipals (`admin_level=8`) dins la caixa de la xarxa, Overpass
+  (`q-municipis.overpass`). Una sola descàrrega; © OpenStreetMap contributors, ODbL.
+- `pnpm data:streets` → `apps/web/public/data/streets.json`: només carrers a menys de ~850 m en línia recta d'una parada,
+  separats si el mateix nom apareix en llocs diferents, amb punts cada ~60 m i el municipi. No hi ha números de portal.

@@ -15,6 +15,7 @@ import { addDays, dayTypeFor, localDate, serviceDayOrigin } from '../time.ts';
 import { enrich, journeyOf, type BaseVehicle } from '../vehicle.ts';
 import type {
   Arrival,
+  DataSource,
   DayType,
   Journey,
   NetworkData,
@@ -77,6 +78,24 @@ export interface Trip {
   wobble: number[];
   vehicle: string;
   blockPos: number;
+}
+
+/** Una expedició que es pot agafar a una parada (planificador de rutes). */
+export interface Boarding {
+  /** identificador únic de l'expedició en aquell dia de servei */
+  tripKey: string;
+  routeId: string;
+  patternId: string;
+  headsign: string;
+  /** índex de la parada de pujada dins el pattern */
+  fromIndex: number;
+  /** hora estimada (epoch ms) a cada parada des de fromIndex fins al final */
+  times: number[];
+  /** hora programada (epoch ms), mateix ordre */
+  scheduled: number[];
+  /** el bus, si ja es pot seguir (null si encara ha d'acabar l'expedició anterior o sortir de capçalera) */
+  vehicleId: string | null;
+  source: DataSource;
 }
 
 export interface Block {
@@ -603,6 +622,48 @@ export class SimEngine {
     }
     out.sort((a, b) => a.at - b.at);
     return out.slice(0, limit);
+  }
+
+  /**
+   * Per al planificador de rutes: expedicions que passen per una parada dins una finestra, amb
+   * l'hora estimada (la mateixa de les llegades i la fitxa del bus) a la parada i a totes les que segueixen.
+   */
+  boardings(stopId: string, t: number, horizonMin = 60): Boarding[] {
+    const out: Boarding[] = [];
+    for (const sd of this.serviceDays(t, true)) {
+      const list = sd.tables.byStop.get(stopId);
+      if (!list) continue;
+      const s = (t - sd.origin) / 1000;
+      for (const { trip, idx } of list) {
+        const sched = trip.dep + trip.offsets[idx]!;
+        if (sched < s - MAX_DELAY_S) continue;
+        if (sched > s + horizonMin * 60 + MAX_EARLY_S) break;
+        const b = sd.tables.blockById.get(trip.vehicle);
+        const act = b ? this.actualOf(b, sd.date)[trip.blockPos]! : null;
+        const at = (i: number) => (act ? act.arr[i]! : trip.dep + trip.offsets[i]!);
+        if (at(idx) < s || at(idx) > s + horizonMin * 60) continue;
+        const times: number[] = [];
+        const scheduled: number[] = [];
+        for (let i = idx; i < trip.offsets.length; i++) {
+          times.push(Math.round(sd.origin + at(i) * 1000));
+          scheduled.push(sd.origin + (trip.dep + trip.offsets[i]!) * 1000);
+        }
+        const depAct = act ? act.dep : trip.dep;
+        out.push({
+          tripKey: `${sd.date}|${trip.key}`,
+          routeId: trip.pattern.route.id,
+          patternId: trip.pattern.p.id,
+          headsign: trip.pattern.p.headsign,
+          fromIndex: idx,
+          times,
+          scheduled,
+          vehicleId: s >= depAct - this.opts.preDepartureShowS ? `${sd.date}:${trip.vehicle}` : null,
+          source: 'SIMULATED',
+        });
+      }
+    }
+    out.sort((a, b) => a.times[0]! - b.times[0]!);
+    return out;
   }
 
   /** Resumen del día para una línea: primera/última salida y frecuencia actual. */

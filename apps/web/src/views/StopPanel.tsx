@@ -99,6 +99,10 @@ function TusStop({ id }: { id: string }) {
         </div>
       </header>
 
+      <button type="button" className="cta cta-wide plan-to-stop" onClick={() => st.navigate({ name: 'route', to: `p${stop.id}` })}>
+        {Icon.walk} {t.plan.title}
+      </button>
+
       {alerts.map((a) => (
         <div key={a.id} className="alert-inline">
           {Icon.bell} {a.text[lang]}

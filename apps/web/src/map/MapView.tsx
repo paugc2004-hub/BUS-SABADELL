@@ -43,9 +43,9 @@ export function mapPadding() {
   const wide = window.innerWidth > 760;
   const st = useApp.getState();
   // hi ha un panell obert (fitxa de bus o parada) que tapa part del mapa?
-  const sheet = st.selectedBus !== null || st.view.name === 'stop' || (st.view.name === 'line' && st.view.ref !== null);
+  const sheet = st.selectedBus !== null || st.view.name === 'stop' || st.view.name === 'route' || (st.view.name === 'line' && st.view.ref !== null);
   // panell esquerre de la vista de base (inici, línies, xarxa, els meus)
-  const base = st.view.name === 'stop' ? st.base : st.view.name;
+  const base = st.view.name === 'stop' || st.view.name === 'route' ? st.base : st.view.name;
   const leftPanel = !st.presenting && (base === 'home' || base === 'line' || base === 'network' || base === 'mine');
   if (wide) return { top: 40, bottom: 40, left: st.presenting ? 480 : leftPanel ? 450 : 40, right: sheet ? 470 : 40 };
   // mòbil: el full de baix tapa una part del mapa; el contingut es centra a la part visible
@@ -168,6 +168,7 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
   const selectedBus = useApp((s) => s.selectedBus);
   const follow = useApp((s) => s.follow);
   const view = useApp((s) => s.view);
+  const plan = useApp((s) => s.plan);
 
   // ---- creación del mapa
   useEffect(() => {
@@ -212,7 +213,7 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
         if (!map) return;
         addBusImages(map, network.routes);
         const dayType = engine.dayTypeAt(clock.now());
-        for (const id of ['routes', 'stops', 'buses', 'inter-lines', 'inter-stops', 'user', 'trip-done', 'trip-todo', 'approach', 'next-stop', 'my-stop'])
+        for (const id of ['routes', 'stops', 'buses', 'inter-lines', 'inter-stops', 'user', 'trip-done', 'trip-todo', 'approach', 'next-stop', 'my-stop', 'plan-walk', 'plan-bus', 'plan-pts'])
           map.addSource(id, { type: 'geojson', data: emptyFC() });
         (map.getSource('routes') as GeoJSONSource).setData(routeFeatures(network, engine, dayType));
         (map.getSource('stops') as GeoJSONSource).setData(stopFeatures(network));
@@ -299,6 +300,39 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
           source: 'trip-todo',
           layout: { 'line-cap': 'round', 'line-join': 'round' },
           paint: { 'line-color': ['get', 'color'], 'line-width': zw(3.5, 6, 9.5) },
+        });
+        // com hi arribo: trams a peu (puntejats) i en bus (color de la línia), parades i destí
+        map.addLayer({
+          id: 'plan-walk',
+          type: 'line',
+          source: 'plan-walk',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: { 'line-color': '#e6e9ee', 'line-width': zw(2.5, 3.5, 5), 'line-dasharray': [0.2, 1.8] },
+        });
+        map.addLayer({
+          id: 'plan-bus-casing',
+          type: 'line',
+          source: 'plan-bus',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: { 'line-color': '#08090b', 'line-width': zw(7, 10, 15) },
+        });
+        map.addLayer({
+          id: 'plan-bus',
+          type: 'line',
+          source: 'plan-bus',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: { 'line-color': ['get', 'color'], 'line-width': zw(4, 6.5, 10) },
+        });
+        map.addLayer({
+          id: 'plan-pts',
+          type: 'circle',
+          source: 'plan-pts',
+          paint: {
+            'circle-radius': ['match', ['get', 'kind'], 'dest', 9, 'from', 7, 5.5],
+            'circle-color': ['match', ['get', 'kind'], 'dest', '#ffb224', 'from', '#6cb6ff', '#ffffff'],
+            'circle-stroke-color': '#08090b',
+            'circle-stroke-width': ['match', ['get', 'kind'], 'dest', 3, 2.5],
+          },
         });
         // buses que vienen a la parada abierta: el tramo que les falta
         map.addLayer({
@@ -667,6 +701,14 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
     if (!ready || !map || !engine) return;
     const focus = focusRoute ?? (selectedBus ? vehicleById(engine, selectedBus, clock.now())?.routeId ?? null : null);
     const f = (id: string) => ['==', ['get', 'route'], id] as maplibregl.FilterSpecification;
+    if (plan && !selectedBus) {
+      // amb una ruta de «com hi arribo» a la vista: tota la xarxa atenuada perquè la ruta destaqui
+      for (const id of ['routes-focus', 'routes-focus-casing', 'routes-arrows']) map.setFilter(id, f(''));
+      map.setPaintProperty('routes-line', 'line-opacity', 0.12);
+      map.setPaintProperty('routes-glow', 'line-opacity', 0);
+      if (glyphs && map.getLayer('routes-label')) map.setFilter('routes-label', f(''));
+      return;
+    }
     map.setFilter('routes-focus', f(focus ?? ''));
     map.setFilter('routes-focus-casing', f(focus ?? ''));
     map.setFilter('routes-arrows', f(focus ?? ''));
@@ -678,7 +720,7 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
     map.setPaintProperty('routes-glow', 'line-opacity', focus ? ['case', ['==', ['get', 'route'], focus], 0.4, 0] : 0.24);
     if (glyphs && map.getLayer('routes-label'))
       map.setFilter('routes-label', focus ? (['all', ['==', ['get', 'main'], 1], ['==', ['get', 'route'], focus]] as maplibregl.FilterSpecification) : ['==', ['get', 'main'], 1]);
-  }, [ready, engine, focusRoute, selectedBus, glyphs]);
+  }, [ready, engine, focusRoute, selectedBus, glyphs, plan]);
 
   // ---- al enfocar una línea desde el filtro: encuadrarla entera
   useEffect(() => {
@@ -701,6 +743,51 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
       { padding: { ...mapPadding(), top: 60 }, duration: prefersReducedMotion() ? 0 : 900, maxZoom: 15 },
     );
   }, [ready, engine, network, focusRoute]);
+
+  // ---- com hi arribo: la ruta triada
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || !engine) return;
+    const src = (id: string) => map.getSource(id) as GeoJSONSource;
+    if (!plan) {
+      for (const id of ['plan-walk', 'plan-bus', 'plan-pts']) src(id).setData(emptyFC());
+      return;
+    }
+    const walks: { coords: [number, number][] }[] = [];
+    const buses: { coords: [number, number][]; props: Record<string, unknown> }[] = [];
+    const pts: { at: [number, number]; props: Record<string, unknown> }[] = [
+      { at: plan.from, props: { kind: 'from' } },
+      { at: plan.dest, props: { kind: 'dest' } },
+    ];
+    for (const l of plan.itinerary.legs) {
+      if (l.kind === 'walk') {
+        if (l.meters >= 15) walks.push({ coords: [l.from, l.to] });
+        continue;
+      }
+      const p = engine.patternById(l.patternId);
+      if (!p) continue;
+      buses.push({ coords: sliceLine(p.coords, p.cum, p.stopDist[l.boardIndex]!, p.stopDist[l.alightIndex]!), props: { color: engine.routes.get(l.routeId)?.color ?? '#fff' } });
+      for (const id of [l.boardStopId, l.alightStopId]) {
+        const s = engine.stops.get(id);
+        if (s) pts.push({ at: [s.lon, s.lat], props: { kind: 'stop' } });
+      }
+    }
+    src('plan-walk').setData(lineFC(walks));
+    src('plan-bus').setData(lineFC(buses));
+    src('plan-pts').setData(pointFC(pts));
+    const all = [...walks, ...buses].flatMap((f) => f.coords);
+    if (!all.length) return;
+    const lons = all.map((c) => c[0]);
+    const lats = all.map((c) => c[1]);
+    map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
+    map.fitBounds(
+      [
+        [Math.min(...lons), Math.min(...lats)],
+        [Math.max(...lons), Math.max(...lats)],
+      ],
+      { padding: { ...mapPadding(), top: 70 }, duration: prefersReducedMotion() ? 0 : 800, maxZoom: 16 },
+    );
+  }, [ready, engine, plan]);
 
   // ---- filtro de líneas (mostrar/ocultar)
   useEffect(() => {

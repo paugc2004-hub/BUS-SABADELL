@@ -10,6 +10,7 @@ import { vehiclesAt } from './data/vehicles.ts';
 import { AboutModal, AlertsPanel, BottomNav, HonestyBanner, LineFilter, MapControls, TopBar } from './views/Chrome.tsx';
 import { BusCard } from './views/BusCard.tsx';
 import { StopPanel } from './views/StopPanel.tsx';
+import { RoutePanel } from './views/Route.tsx';
 import { HomePanel } from './views/Home.tsx';
 import { LinePanel, LinesIndex } from './views/Lines.tsx';
 import { NetworkPanel } from './views/Network.tsx';
@@ -83,7 +84,7 @@ export function AppMain() {
   // /presentacio és el mapa amb el director de la demo a sobre
   const name = view.name === 'present' ? 'map' : view.name;
   // panell esquerre (escriptori) / pàgina (mòbil): la vista de base; una parada o un bus s'obren a sobre
-  const left = presenting ? (name === 'network' ? 'network' : null) : name === 'stop' ? base : name;
+  const left = presenting ? (name === 'network' ? 'network' : null) : name === 'stop' || name === 'route' ? base : name;
   const lineRef = view.name === 'line' ? view.ref : base === 'line' ? baseLine : null;
 
   return (
@@ -109,6 +110,7 @@ export function AppMain() {
         {ready && left === 'mine' && <MinePanel />}
         {ready && view.name === 'line' && lineRef && <LinePanel routeRef={lineRef} />}
         {ready && view.name === 'stop' && <StopPanel id={view.id} />}
+        {ready && view.name === 'route' && <RoutePanel to={view.to} from={view.from} />}
         {ready && <BusCard />}
         {ready && <TripPanel />}
         {ready && presenting && (

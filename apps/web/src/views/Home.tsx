@@ -100,7 +100,7 @@ function NextBusHero({ engine, stopId, example, now }: { engine: SimEngine; stop
             </span>
             <Punctuality delaySec={a.delaySec} source={a.source} />
             {/* hora programada vs prevista: la diferència és el retard (avui simulat) */}
-            <span className="dim">{Math.round((a.at - a.scheduledAt) / 60000) !== 0 ? t.schedVsEst(hm(a.scheduledAt), hm(a.at)) : t.estAt(hm(a.at))}</span>
+            <span className="dim">{hm(a.at) !== hm(a.scheduledAt) ? t.schedVsEst(hm(a.scheduledAt), hm(a.at)) : t.estAt(hm(a.at))}</span>
           </div>
           {seg.length > 1 && (
             <div className="hero-track" aria-hidden>

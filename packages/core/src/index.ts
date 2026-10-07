@@ -6,3 +6,4 @@ export * from './text.ts';
 export * from './sim/engine.ts';
 export * from './providers/provider.ts';
 export * from './vehicle.ts';
+export * from './plan.ts';

@@ -8,7 +8,7 @@
  * que el HybridProvider del core— i les llegades i la línia temporal es construeixen a partir
  * de les seves ETA, sense tocar cap component.
  */
-import { journeyOf, type Arrival, type Journey, type SimEngine, type VehicleState } from '@bus/core';
+import { journeyOf, planTrip, type Arrival, type Journey, type LonLat, type PlanResult, type SimEngine, type VehicleState } from '@bus/core';
 import { realtimeVehicles } from './load.ts';
 
 /** un vehicle de temps real es considera fresc durant 90 s */
@@ -72,4 +72,12 @@ export function journeyFor(engine: SimEngine, id: string, t: number): Journey | 
   const times = p.stopIds.map((_, i) => (i >= rt.nextStopIndex ? rt.etas[i - rt.nextStopIndex]?.at ?? null : null));
   const sched = p.stopIds.map((_, i) => (i >= rt.nextStopIndex ? rt.etas[i - rt.nextStopIndex]?.scheduledAt ?? null : null));
   return journeyOf(p, rt, times, sched);
+}
+
+/**
+ * Com hi arribo: rutes en bus d'un punt a un destí (un carrer són molts punts). Avui sobre les hores
+ * estimades de la simulació; amb temps real, el planificador hauria de llegir les ETA reals (mateixa interfície).
+ */
+export function planFor(engine: SimEngine, from: LonLat, to: LonLat[], t: number): PlanResult {
+  return planTrip(engine, from, to, t);
 }

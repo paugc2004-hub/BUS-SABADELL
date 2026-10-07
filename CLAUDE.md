@@ -15,6 +15,13 @@ el fragment de mapa es genera amb `node apps/web/scripts/landing-map.mjs` (→ `
 `full-shots.mjs` (pàgina sencera a diverses mides), `app-shot.mjs`. Documents: `docs/LANDING_*.md`,
 `docs/NEXTMOBILITY_V2_*.md`, `docs/FINAL_PRODUCT_AUDIT.md`.
 
+**Com hi arribo** (`/ruta/<c id carrer | p id parada>?de=…`, `views/Route.tsx`): escrius el carrer al cercador
+(«On vas?»), l'origen és la teva ubicació (només al dispositiu) o el lloc que triïs; `packages/core/src/plan.ts`
+(`planTrip`: a peu ≤ 1,1 km → bus → com a molt 1 transbord → a peu) sobre `engine.boardings()`, les mateixes hores
+estimades que la resta de l'app; s'accedeix via `planFor` de `data/vehicles.ts`. Carrers: `public/data/streets.json`
+(OSM, 1.680 carrers de Sabadell i voltants a l'abast de la xarxa, amb municipi) generat per `pnpm data:streets`
+(`data-pipeline/src/streets.ts`, també al final de `data:build`). Es baixa la primera vegada que es cerca.
+
 ## Regles que no es negocien
 - **Mai presentar una posició simulada com a real.** Ni «en directe»/«temps real» en present per a dades simulades. Banner fix, etiqueta d'origen a cada bus
   (`SIMULATED` | `SCHEDULED` | `REALTIME`) i textos que ho diuen.
@@ -28,6 +35,7 @@ el fragment de mapa es genera amb `node apps/web/scripts/landing-map.mjs` (→ `
 pnpm install
 pnpm data:build     # data/raw → apps/web/public/data/network.json + dist/gtfs + dist/report.md
 pnpm data:refresh   # torna a descarregar tus.es, Overpass i GTFS (rarament!)
+pnpm data:streets   # carrers d'OSM → apps/web/public/data/streets.json (planificador)
 pnpm data:audit     # validació línia per línia → docs/LINE_AUDIT.md (falla si hi ha errors)
 # mesures: node apps/web/scripts/perf-probe.mjs <url> 20 [desktop|mobile] · node apps/web/scripts/lighthouse.mjs <url>
 pnpm dev            # web a http://localhost:5173

@@ -41,6 +41,7 @@ import { refreshAll } from './fetch.ts';
 import { loadDirected, loadRoads } from './audit.ts';
 import { assignDirections, isCircular, repairSegments } from './repair.ts';
 import { buildInterurbans } from './interurbans.ts';
+import { writeStreets } from './streets.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const RAW = join(ROOT, 'data/raw');
@@ -383,6 +384,7 @@ export async function build(opts: { refresh?: boolean } = {}) {
   mkdirSync(WEB_DATA, { recursive: true });
   mkdirSync(DIST, { recursive: true });
   writeFileSync(join(WEB_DATA, 'network.json'), JSON.stringify(network));
+  writeStreets(network);
   writeGtfs(network, engine, join(DIST, 'gtfs'));
   const inter = await buildInterurbans(RAW, join(WEB_DATA, 'interurbans.json'));
   if (inter.warning) report.warnings.push(inter.warning);

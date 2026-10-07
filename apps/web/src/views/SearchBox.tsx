@@ -1,10 +1,12 @@
-/** Cercador global: línies, parades (per zona) i destinacions. Navegable amb el teclat. */
-import { useMemo, useRef, useState } from 'react';
+/** Cercador global: carrers (on vas → com hi arribo), línies, parades (per zona) i destinacions. Navegable amb el teclat. */
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { areaOf } from '../data/derive.ts';
 import { searchAll } from '../data/search.ts';
 import { Icon, RouteChip } from '../ui/common.tsx';
+import { loadStreets, searchStreets } from '../data/streets.ts';
+import { placeWhere } from './Route.tsx';
 
 export function SearchBox({ autoFocus = false }: { autoFocus?: boolean }) {
   const t = useT();
@@ -15,10 +17,17 @@ export function SearchBox({ autoFocus = false }: { autoFocus?: boolean }) {
   const ref = useRef<HTMLInputElement>(null);
   const st = useApp.getState();
   const res = useMemo(() => (network && engine ? searchAll(network, q, (id) => areaOf(engine, id)) : null), [network, engine, q]);
+  // carrers: es baixen la primera vegada que s'escriu alguna cosa
+  const [streetList, setStreetList] = useState<Awaited<ReturnType<typeof loadStreets>> | null>(null);
+  useEffect(() => {
+    if (q.trim() && !streetList) void loadStreets().then(setStreetList).catch(() => undefined);
+  }, [q, streetList]);
+  const streets = useMemo(() => (streetList && q.trim().length >= 2 ? searchStreets(streetList, q, 5) : []), [streetList, q]);
   if (!network || !engine || !res) return null;
 
   type Item = { key: string; go: () => void };
   const items: Item[] = [
+    ...streets.map((x) => ({ key: `c${x.id}`, go: () => st.navigate({ name: 'route', to: `c${x.id}` }) })),
     ...res.routes.map((r) => ({ key: `r${r.id}`, go: () => st.navigate({ name: 'line', ref: r.id }) })),
     ...res.stops.map((s) => ({ key: `s${s.stop.id}`, go: () => st.navigate({ name: 'stop', id: s.stop.id }) })),
     ...res.destinations.map((d) => ({ key: `d${d.name.replace(/\W+/g, '-')}`, go: () => st.navigate({ name: 'line', ref: d.routes[0]! }) })),
@@ -40,8 +49,8 @@ export function SearchBox({ autoFocus = false }: { autoFocus?: boolean }) {
           autoFocus={autoFocus}
           type="search"
           value={q}
-          placeholder={t.searchAll}
-          aria-label={t.searchAll}
+          placeholder={t.plan.searchPlaceholder}
+          aria-label={t.plan.searchPlaceholder}
           role="combobox"
           aria-autocomplete="list"
           aria-expanded={open}
@@ -66,6 +75,22 @@ export function SearchBox({ autoFocus = false }: { autoFocus?: boolean }) {
       {open && (
         <div id="search-results" className="search-results" role="listbox" aria-label={t.searchAll}>
           {items.length === 0 && <div className="sr-empty">{t.searchEmpty}</div>}
+          {streets.length > 0 && <div className="sr-group">{t.plan.streets}</div>}
+          {streets.map((x) => {
+            const i = row();
+            return (
+              <button key={x.id} id={`sr-c${x.id}`} type="button" role="option" aria-selected={i === active} className={`sr-item${i === active ? ' on' : ''}`} onMouseEnter={() => setActive(i)} onClick={() => pick(i)}>
+                <span className="sr-dest" aria-hidden>
+                  {Icon.home}
+                </span>
+                <span className="sr-main">
+                  {x.name}
+                  <span className="sr-sub">{placeWhere(x, t)}</span>
+                </span>
+                <span className="sr-go">{t.plan.title} ›</span>
+              </button>
+            );
+          })}
           {res.routes.length > 0 && <div className="sr-group">{t.results.lines}</div>}
           {res.routes.map((r) => {
             const i = row();

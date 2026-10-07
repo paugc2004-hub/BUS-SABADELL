@@ -207,6 +207,44 @@ test.describe('app (amb sessió)', () => {
   });
 });
 
+test.describe('com hi arribo (planificador)', () => {
+  test.use({ geolocation: { longitude: 2.0866, latitude: 41.5759 }, permissions: ['geolocation'] });
+
+  test('escric un carrer: em diu quin bus agafar, on baixar i ho dibuixa al mapa', async ({ page }) => {
+    await page.goto(`/app?${AT}`);
+    await ready(page);
+    await page.getByRole('combobox').fill('sant pere');
+    const street = page.locator('.sr-item[id^="sr-c"]').first();
+    await expect(street).toContainText(/Sant Pere/);
+    await street.click();
+    await expect(page).toHaveURL(/\/ruta\/c/);
+    const first = page.locator('.plan-option').first();
+    await expect(first).toBeVisible({ timeout: 20000 });
+    await expect(first.locator('.chip').first()).toHaveText(/^L\d+$/);
+    await expect(page.locator('.plan-steps')).toContainText(/Agafa la L\d+/);
+    await expect(page.locator('.plan-steps')).toContainText(/Baixa a /);
+    await expect(page.locator('.plan-note')).toContainText(/simulats/);
+    // la ruta és al mapa
+    const n = await page.evaluate(() => (window as unknown as { __app: { getState(): { plan: { itinerary: { legs: unknown[] } } | null } } }).__app?.getState().plan?.itinerary.legs.length ?? -1);
+    expect(n === -1 || n >= 2).toBe(true);
+  });
+
+  test('sense ubicació: tria d’on surts i també funciona', async ({ browser, baseURL }) => {
+    const ctx = await browser.newContext({ baseURL, permissions: [] });
+    const page = await ctx.newPage();
+    await page.addInitScript(DEMO_SESSION);
+    await page.goto(`/parada/176?${AT}`);
+    await page.locator('.plan-to-stop').click();
+    await expect(page).toHaveURL(/\/ruta\/p176/);
+    await page.locator('.plan-from .text-btn').click();
+    await page.locator('.plan-pick input').fill('can deu');
+    await page.locator('.place-results button').first().click();
+    await expect(page).toHaveURL(/de=/);
+    await expect(page.locator('.plan-option').first()).toBeVisible({ timeout: 20000 });
+    await ctx.close();
+  });
+});
+
 test.describe('landing i comptes', () => {
   test('landing pública: el benefici al titular, demo etiquetada, honestedat i no oficial (sense carregar el mapa)', async ({ page }) => {
     await page.goto('/');

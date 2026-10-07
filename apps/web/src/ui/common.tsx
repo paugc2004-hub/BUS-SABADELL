@@ -151,6 +151,12 @@ export const Icon = {
       <rect x="4" y="15.5" width="16" height="5" rx="2" stroke="currentColor" strokeWidth="1.8" fill="none" />
     </svg>
   ),
+  walk: (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
+      <circle cx="13" cy="4.5" r="2.2" fill="currentColor" />
+      <path d="M10 21l2-6 3 3v3M12 15l-1-5 4-1 2 4h3M11 10l-3 2v3" stroke="currentColor" strokeWidth="1.9" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
   home: (
     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
       <path d="M12 3a6 6 0 016 6c0 4.5-6 11-6 11S6 13.5 6 9a6 6 0 016-6z" stroke="currentColor" strokeWidth="1.8" fill="none" />

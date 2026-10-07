@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsx src/build.ts",
     "audit": "tsx src/audit.ts",
+    "streets": "tsx src/streets.ts",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
