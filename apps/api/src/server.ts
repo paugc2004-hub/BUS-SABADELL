@@ -21,6 +21,7 @@ export interface ServerOptions {
   logger?: boolean;
   heartbeatMs?: number;
   rateLimitMax?: number;
+  maxSseClients?: number;
 }
 
 const DISCLAIMER =
@@ -127,11 +128,16 @@ export async function buildServer(opts: ServerOptions): Promise<{ app: FastifyIn
    */
   let eventId = 0;
   const clients = new Set<(event: string, data: unknown) => void>();
+  const maxSseClients = Math.max(1, Math.min(opts.maxSseClients ?? 100, 1000));
   provider.subscribe((diff: VehicleDiff) => {
     for (const send of clients) send('diff', diff);
   });
 
   app.get('/v1/vehicles/stream', (req, reply) => {
+    if (clients.size >= maxSseClients) {
+      reply.code(503).header('retry-after', '10').send({ error: 'massa connexions en temps real' });
+      return;
+    }
     reply.raw.writeHead(200, {
       'content-type': 'text/event-stream; charset=utf-8',
       'cache-control': 'no-store, no-transform',
@@ -146,11 +152,16 @@ export async function buildServer(opts: ServerOptions): Promise<{ app: FastifyIn
     reply.raw.write('retry: 3000\n\n');
     send('snapshot', { serverTime: now(), source: provider.source, vehicles: vehiclesNow() });
     clients.add(send);
-    const hb = setInterval(() => reply.raw.write(`: heartbeat ${now()}\n\n`), opts.heartbeatMs ?? 15000);
-    req.raw.on('close', () => {
+    const hb = setInterval(() => {
+      if (!reply.raw.destroyed) reply.raw.write(`: heartbeat ${now()}\n\n`);
+    }, opts.heartbeatMs ?? 15000);
+    const cleanup = () => {
       clearInterval(hb);
       clients.delete(send);
-    });
+    };
+    req.raw.on('close', cleanup);
+    reply.raw.on('close', cleanup);
+    reply.raw.on('error', cleanup);
   });
 
   app.addHook('onClose', async () => {
