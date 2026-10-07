@@ -78,6 +78,18 @@ pnpm test:e2e       # Playwright (apps/web)
 - `data/raw` — extractes fetxats (l'HTML de tus.es i el ZIP GTFS no es versionen; els JSON extrets sí).
 - `data/config` — `festius.yaml`, `avisos.yaml`, `overrides.yaml` (editats a mà, validats amb zod).
 
+## Ubicació i cerca de destins (2026-10-07)
+- **Ubicació**: només `apps/web/src/location/location.ts` (LocationService) crida `navigator.geolocation`. Estats:
+  `locating/ok/denied/timeout/unavailable/unsupported`. UI: `views/LocationStatus.tsx`. Mai es desa ni s'envia.
+- **Cerca universal**: `data/places.ts` (client: debounce 350 ms, mínim 3 lletres, cancel·lació, ordre per proximitat
+  al mòbil) + `apps/web/api/places.mjs` (funció serverless del mateix origen: Photon per defecte; Google Places si hi
+  ha `GOOGLE_PLACES_API_KEY` a l'entorn del **servidor** de Vercel). El servidor només rep el text, mai la ubicació.
+  Destí a la ruta: `/ruta/g<lon>,<lat>,<base64url([nom,zona])>` (validat per `parseGeoCode`).
+- `deploy.sh` copia `api/places.mjs` a `dist-deploy/api/` (sense els tests). En local, `vite` i `vite preview` la serveixen.
+- e2e: `/api/places` es simula amb `page.route` i `serviceWorkers: 'block'` (si no, el SW se la salta).
+- Seguretat: `docs/SECURITY_AUDIT.md`, `SECURITY_THREAT_MODEL.md`, `SECURITY_HARDENING.md`. Sense mapes de codi en producció.
+- Dependències: respectar la política d'antiguitat mínima de pnpm (no afegir `minimumReleaseAgeExclude`).
+
 ## Decisions clau
 - Font principal de la xarxa i horaris: **pàgines públiques de línia de tus.es** (JSON `trayectos` incrustat:
   recorregut, parades i hores de pas). Cobreix les 23 línies; OSM només en té 13. OSM s'usa com a contrast.
@@ -106,4 +118,5 @@ pnpm test:e2e       # Playwright (apps/web)
 
 ## Documents
 `docs/EVOLUTION_AUDIT.md` (auditoria i pla), `docs/LINE_AUDIT.md` (generat), `docs/IMPLEMENTATION_SUMMARY.md`,
-`docs/PITCH.md` (per a TUS), `docs/DATA.md`, `docs/PLAN.md`, `docs/SPEC.md`.
+`docs/PITCH.md` (per a TUS), `docs/DATA.md`, `docs/PLAN.md`, `docs/SPEC.md`. Fase ubicació + cerca universal:
+`docs/FINAL_APP_AUDIT.md`, `GEOLOCATION_*`, `PLACES_*`, `TRANSIT_ROUTING.md`, `SECURITY_*`.

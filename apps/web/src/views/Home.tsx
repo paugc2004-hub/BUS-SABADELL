@@ -10,6 +10,8 @@ import { useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { areaOf, liveArrivals, type LiveArrival } from '../data/derive.ts';
 import { Icon, useNow } from '../ui/common.tsx';
+import { locationService } from '../location/location.ts';
+import { LocationStatus } from './LocationStatus.tsx';
 import { SearchBox } from './SearchBox.tsx';
 import { ArrivalRow } from './StopPanel.tsx';
 
@@ -123,16 +125,9 @@ export function NearStops({ skip = null }: { skip?: string | null }) {
   const engine = useApp((s) => s.engine);
   const userPos = useApp((s) => s.userPos);
   const now = useNow(1000);
-  const st = useApp.getState();
   const near = useMemo(() => (engine && userPos ? nearestStops(engine, userPos) : []), [engine, userPos]);
   if (!engine) return null;
-  const locate = () => {
-    navigator.geolocation?.getCurrentPosition(
-      (p) => st.set({ userPos: [p.coords.longitude, p.coords.latitude] }),
-      () => undefined,
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
-  };
+  const locate = () => void locationService.locate();
   return (
     <section className="home-sec">
       <h2 className="sec-title">
@@ -192,24 +187,7 @@ export function HomePanel({ autoFocus = false }: { autoFocus?: boolean }) {
   const userPos = useApp((s) => s.userPos);
   const user = useApp((s) => s.user);
   const now = useNow(5000);
-  const st = useApp.getState();
-  const [geo, setGeo] = useState<'asking' | 'denied' | 'ok'>(userPos ? 'ok' : 'asking');
-  const locate = () => {
-    if (!navigator.geolocation) return setGeo('denied');
-    setGeo('asking');
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        st.set({ userPos: [p.coords.longitude, p.coords.latitude] });
-        setGeo('ok');
-      },
-      () => setGeo('denied'),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
-    );
-  };
-  // en obrir l'app, on ets (la ubicació no surt del dispositiu)
-  useEffect(() => {
-    if (!userPos) locate();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // on ets: ho porta LocationService (s'engega en obrir l'app; la ubicació no surt del dispositiu)
   const near = useMemo(() => {
     if (!engine || !userPos) return null;
     const id = nearestStops(engine, userPos, 1)[0];
@@ -224,21 +202,7 @@ export function HomePanel({ autoFocus = false }: { autoFocus?: boolean }) {
   return (
     <aside className="home home-simple" aria-label={t.nav2.home}>
       <p className="simple-hello">{first ? t.simple.helloName(first) : t.simple.hello}</p>
-      <div className={`simple-loc${geo === 'denied' ? ' off' : ''}`} role="status">
-        {Icon.locate}
-        {userPos && near ? (
-          <span>{near.m < 1500 ? t.simple.youAreNear(near.name) : t.simple.outside}</span>
-        ) : geo === 'denied' ? (
-          <>
-            <span>{t.simple.noLocation}</span>
-            <button type="button" className="text-btn" onClick={locate}>
-              {t.simple.activate}
-            </button>
-          </>
-        ) : (
-          <span>{t.simple.locating}</span>
-        )}
-      </div>
+      <LocationStatus okText={near ? (near.m < 1500 ? t.simple.youAreNear(near.name) : t.simple.outside) : undefined} />
 
       <h1 className="simple-title">{t.simple.title}</h1>
       <SearchBox autoFocus={autoFocus} toRoute placeholder={t.simple.placeholder} />

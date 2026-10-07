@@ -78,3 +78,13 @@ Mapa (Què passa ara?) ── xarxa en directe, filtres
 Parades ── les meves parades · a prop · compte
 Control (operador, fosc) ── xarxa: KPI, puntualitat, flota · presentació
 ```
+
+---
+## Revisió 2026-10-07 — ubicació automàtica i cerca universal
+| Problema | Impacte | Correcció |
+|---|---|---|
+| La ubicació «no funcionava»: un temps esgotat es mostrava com «denegada» (vegeu `GEOLOCATION_AUDIT.md`) | Crític: sense origen, l'app no diu quin bus agafar | LocationService: ràpida + precisa, estats diferenciats, reintent, seguiment |
+| El cercador només trobava el que hi havia al nomenclàtor local (carrers i ~1.355 llocs) | Alt: «Info Express», «Decathlon», «Bonpreu»… no es trobaven si no hi eren | Cerca universal (`/api/places`), amb proximitat |
+| El resultat no deia a quina distància és el destí de la parada | Mitjà | «📍 X és a 130 m de la parada» |
+| El seguiment del bus no deia on és ara | Mitjà | «El bus és a · Propera parada» |
+| «No hi ha cap parada a prop d'aquest destí» | Baix | «No trobem cap ruta en bus TUS fins a aquest destí: no hi ha cap parada a prop.» |

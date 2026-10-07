@@ -1379,3 +1379,32 @@ html:has(.landing), body:has(.landing), #root:has(.landing) { height: auto; min-
 .alt-main { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .alt-main strong { font-size: var(--fs-small); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .alt-min { font-weight: 800; font-size: var(--fs-card); white-space: nowrap; }
+/* app instal·lada a l'ordinador amb la barra de títol integrada (window-controls-overlay):
+   la barra superior no queda sota els botons de la finestra i s'hi pot arrossegar la finestra */
+@media (display-mode: window-controls-overlay) {
+  .topbar, .lnd-nav {
+    padding-left: max(14px, env(titlebar-area-x, 0px));
+    padding-right: max(14px, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)));
+    min-height: env(titlebar-area-height, 0px);
+    -webkit-app-region: drag;
+    app-region: drag;
+  }
+  .topbar button, .topbar a, .topbar input, .lnd-nav button, .lnd-nav a { -webkit-app-region: no-drag; app-region: no-drag; }
+}
+/* ---------- ubicació (LocationService) i cerca universal */
+.loc-block { flex-wrap: wrap; align-items: flex-start; }
+.loc-block > span:not(.loc-actions) { flex: 1; min-width: 0; }
+.loc-help { display: block; margin-top: 2px; }
+.loc-actions { display: flex; gap: 14px; width: 100%; padding-left: 26px; }
+.loc-pulse { width: 10px; height: 10px; margin: 0 4px; border-radius: 50%; background: var(--focus); animation: loc-pulse 1.2s ease-in-out infinite; flex: none; }
+@keyframes loc-pulse { 0%, 100% { opacity: 0.35; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.15); } }
+@media (prefers-reduced-motion: reduce) { .loc-pulse { animation: none; } }
+.sr-more { padding: 8px 14px; }
+.sr-attr { padding: 8px 14px 10px; font-size: 11px; color: var(--dim); border-top: 1px solid var(--line); }
+.sr-empty strong { display: block; }
+.seg-dest { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; font-size: var(--fs-small); color: var(--text-2); }
+.seg-dest svg { width: 16px; height: 16px; flex: none; }
+.tf-where { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 0; }
+.tf-where div { min-width: 0; }
+.tf-where dt { font-size: var(--fs-meta); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--dim); }
+.tf-where dd { margin: 2px 0 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

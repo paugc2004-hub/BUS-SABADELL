@@ -17,6 +17,7 @@ import { NetworkPanel } from './views/Network.tsx';
 import { MinePanel } from './views/Mine.tsx';
 import { Toasts, TripMonitor, TripPanel } from './views/Trip.tsx';
 import { RouteChip, hm, useNow } from './ui/common.tsx';
+import { locationService, useLocation } from './location/location.ts';
 
 // el mapa (MapLibre + CSS) i la presentació van en trossos a part: la carcassa es pinta abans
 const MapView = lazy(() => import('./map/MapView.tsx').then((m) => ({ default: m.MapView })));
@@ -78,6 +79,21 @@ export function AppMain() {
   // la xarxa (116 KB) només es carrega quan s'entra a l'app, no a la landing
   useEffect(() => {
     if (useApp.getState().loadState !== 'ready' && !useApp.getState().network) void loadNetwork();
+  }, []);
+
+  // on ets: en obrir l'app (si el permís ja està denegat, no es torna a demanar) i, mentre és oberta, seguint-te
+  useEffect(() => {
+    let stop = () => {};
+    let live = true;
+    void locationService.getPermissionState().then((p) => {
+      if (!live) return;
+      if (p === 'denied') useLocation.setState({ status: 'denied' });
+      else void locationService.locate().then(() => live && (stop = locationService.watch()));
+    });
+    return () => {
+      live = false;
+      stop();
+    };
   }, []);
 
   const base = useApp((s) => s.base);

@@ -1,10 +1,22 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import type { Connect } from 'vite';
+
+/** en local (dev i preview), la mateixa funció serverless de /api/places que a Vercel */
+const placesApi: Connect.NextHandleFunction = (req, res) => {
+  // @ts-expect-error mòdul JS de la funció serverless (sense tipus)
+  void import('./api/places.mjs').then((m: { default: (q: unknown, s: unknown) => Promise<void> }) => m.default(req, res));
+};
 
 export default defineConfig({
   plugins: [
     react(),
+    {
+      name: 'api-places-local',
+      configureServer: (s) => void s.middlewares.use('/api/places', placesApi),
+      configurePreviewServer: (s) => void s.middlewares.use('/api/places', placesApi),
+    },
     VitePWA({
       registerType: 'autoUpdate',
       // registre del service worker amb un <script> a l'HTML (el detecten PWABuilder i les botigues)
@@ -20,7 +32,8 @@ export default defineConfig({
         start_url: '/app',
         scope: '/',
         display: 'standalone',
-        display_override: ['standalone', 'minimal-ui'],
+        // 'tabbed' encara no és als tipus de vite-plugin-pwa
+        display_override: ['window-controls-overlay', 'tabbed', 'standalone', 'minimal-ui'] as unknown as ['standalone'],
         orientation: 'portrait',
         background_color: '#f6f5f1',
         theme_color: '#ffffff',
@@ -60,10 +73,10 @@ export default defineConfig({
         globIgnores: ['screenshots/**'],
         navigateFallback: '/index.html',
         // mai a la memòria cau: l'stream de vehicles ni l'API en directe
-        navigateFallbackDenylist: [/^\/v1\//, /^\/health/],
+        navigateFallbackDenylist: [/^\/v1\//, /^\/health/, /^\/api\//],
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => url.pathname.startsWith('/v1/'),
+            urlPattern: ({ url }) => url.pathname.startsWith('/v1/') || url.pathname.startsWith('/api/'),
             handler: 'NetworkOnly',
           },
           {
@@ -77,7 +90,8 @@ export default defineConfig({
   ],
   build: {
     target: 'es2022',
-    sourcemap: true,
+    // sense mapes de codi en producció: no publiquem el codi font (el repositori és privat)
+    sourcemap: false,
     chunkSizeWarningLimit: 1200,
     rollupOptions: { output: { manualChunks: { maplibre: ['maplibre-gl'] } } },
   },

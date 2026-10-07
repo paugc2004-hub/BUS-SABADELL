@@ -37,3 +37,12 @@
 Tema clar (sistema existent: 32/24/18/16/14/12 + 48 per als minuts). Etiquetes de secció en majúscules petites
 («PUJA A», «BAIXA A»), xip de línia gran + «Direcció …» (mai només color). Estats: «Ara mateix», «Arriba en 3 min»,
 «A l'hora», «2 min tard», «Retard important». Bus al mapa: silueta amb codi i rumb.
+
+---
+## 2026-10-07 — «Digues on vols anar»
+- **Origen = la teva ubicació**, sempre per defecte. Mai un formulari Origen + Destí; «Canvia» és secundari (prova, planificar des d'un altre lloc, no voler compartir el GPS).
+- **Destí = qualsevol cosa real**: un lloc, un comerç, una adreça, un carrer, un barri o una parada. Placeholder: «Busca un lloc, un carrer o una adreça».
+- Resultats: «Info Express · Can Oriach · Sabadell · a 1,2 km». Si n'hi ha diversos, cadascun amb el seu barri i la seva distància, del més proper al més llunyà.
+- Si no es troba: «No hem trobat aquest lloc. Prova amb una adreça, un carrer o un altre nom.» No s'inventa res.
+- Resultat: Millor opció → **Puja a / Arriba en / Baixa a** + «📍 Destí és a N m de la parada» → **Segueix aquest bus**.
+- Estats de la ubicació amb text i acció (vegeu `GEOLOCATION_IMPLEMENTATION.md`); mai bloquegen l'app.

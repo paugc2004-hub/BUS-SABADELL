@@ -129,6 +129,20 @@ export function TripFocus({ engine, v, trip, now }: { engine: SimEngine; v: Vehi
           ) : null}
         </div>
       </div>
+      {same && p && phase !== 'arrived' && (
+        <dl className="tf-where">
+          <div>
+            <dt>{t.trip.busAt}</dt>
+            <dd>{engine.stops.get(p.stopIds[v.atStopIndex ?? Math.max(0, v.prevStopIndex)]!)?.name ?? '—'}</dd>
+          </div>
+          {v.nextStopIndex < p.stopIds.length && v.atStopIndex === null && (
+            <div>
+              <dt>{t.trip.nextStop}</dt>
+              <dd>{engine.stops.get(p.stopIds[v.nextStopIndex]!)?.name ?? '—'}</dd>
+            </div>
+          )}
+        </dl>
+      )}
       <div className={`tf-away${away !== null && away <= 2 ? ' near' : ''}`}>
         {phase === 'missed' ? t.trip.missed : phase === 'gone' ? t.trip.gone : away !== null ? t.stopsAway(away) : t.finishingTrip}
         {same && <Punctuality delaySec={v.delaySec} source={v.source} />}

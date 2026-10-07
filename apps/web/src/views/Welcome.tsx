@@ -7,6 +7,7 @@ import { useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { Logo } from '../ui/Logo.tsx';
 import { Icon } from '../ui/common.tsx';
+import { locationService } from '../location/location.ts';
 
 const KEY = 'nextmobility.locAsked';
 
@@ -35,16 +36,9 @@ export function LocationStep({ onDone }: { onDone: () => void }) {
     onDone();
   };
   const allow = () => {
-    if (!navigator.geolocation) return done();
     setBusy(true);
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        useApp.getState().set({ userPos: [p.coords.longitude, p.coords.latitude] });
-        done();
-      },
-      () => done(),
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
-    );
+    // si falla (denegada, sense senyal), l'inici ho explica i deixa tornar-ho a provar
+    void locationService.locate().finally(done);
   };
   const first = user && !user.demo ? user.name.split(' ')[0] : null;
   return (

@@ -27,3 +27,14 @@
 
 ## Navegació
 Barra inferior (mòbil) / superior (escriptori): **Inici · Mapa · Línies · Compte**.
+
+---
+## 2026-10-07 — rutes i codis de destí
+| Codi a `/ruta/<codi>` | Què és | D'on surt |
+|---|---|---|
+| `p<id>` | Parada TUS | Xarxa (`network.json`) |
+| `c<id>` | Carrer | Nomenclàtor local (`streets.json`, OSM) |
+| `l<id>` | Lloc conegut (equipament, club, estació…) | Nomenclàtor local |
+| `g<lon>,<lat>,<b64>` | **Qualsevol lloc** del cercador universal | `/api/places` (Photon / Google) |
+
+Capes: **PlacesProvider** (on és el destí) ≠ **TransitProvider** (quin bus). Vegeu `PLACES_SEARCH_ARCHITECTURE.md` i `TRANSIT_ROUTING.md`.

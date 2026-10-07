@@ -11,6 +11,9 @@ import { loadStreets, placeById, searchPlaces, streetById, type Gazetteer, type 
 import { planFor, vehicleById } from '../data/vehicles.ts';
 import { Icon, IconButton, Punctuality, RouteChip, hm, useNow } from '../ui/common.tsx';
 import { Sheet } from '../ui/Sheet.tsx';
+import { dedupe, geoCode, parseGeoCode, rankPlaces, useRemotePlaces } from '../data/places.ts';
+import { useLocation } from '../location/location.ts';
+import { LocationStatus } from './LocationStatus.tsx';
 
 export interface Place {
   code: string;
@@ -26,7 +29,7 @@ export const poiWhere = (p: Poi, t: ReturnType<typeof useT>) => [t.plan.kinds[p.
 
 const minutes = (ms: number) => Math.max(0, Math.round(ms / 60000));
 
-/** Un lloc a partir del seu codi: c<id> = carrer, l<id> = lloc (OSM), p<id> = parada. */
+/** Un lloc a partir del seu codi: c<id> = carrer, l<id> = lloc (OSM), p<id> = parada, g<lon>,<lat>,<nom> = lloc del cercador universal. */
 function usePlace(code: string | undefined): Place | null | undefined {
   const t = useT();
   const engine = useApp((s) => s.engine);
@@ -43,6 +46,10 @@ function usePlace(code: string | undefined): Place | null | undefined {
     };
   }, [needs]);
   if (!code) return null;
+  if (code.startsWith('g')) {
+    const g = parseGeoCode(code);
+    return g ? { code, name: g.name, where: g.label, pts: [g.pt] } : null;
+  }
   if (code.startsWith('p')) {
     const s = engine?.stops.get(code.slice(1));
     return s ? { code, name: s.name, where: t.stop, pts: [[s.lon, s.lat]] } : null;
@@ -65,6 +72,9 @@ export function PlaceSearch({ placeholder, onPick, autoFocus = false }: { placeh
   useEffect(() => {
     void loadStreets().then(setGz).catch(() => undefined);
   }, []);
+  const lang = useApp((s) => s.lang);
+  const userPos = useApp((s) => s.userPos);
+  const remote = useRemotePlaces(q, lang);
   const res = useMemo(() => {
     if (!q.trim() || !engine) return { streets: [] as Street[], places: [] as Poi[], stops: [] as { id: string; name: string }[] };
     const nq = normalize(q);
@@ -90,6 +100,17 @@ export function PlaceSearch({ placeholder, onPick, autoFocus = false }: { placeh
               </button>
             </li>
           ))}
+          {rankPlaces(dedupe(remote.data?.results ?? [], res.places), q, userPos)
+            .slice(0, 4)
+            .map((p) => (
+              <li key={p.id}>
+                <button type="button" onClick={() => onPick(geoCode(p))}>
+                  {Icon.home}
+                  <span className="sr-main">{p.name}</span>
+                  <span className="dim small">{p.label}</span>
+                </button>
+              </li>
+            ))}
           {res.streets.map((s) => (
             <li key={`c${s.id}`}>
               <button type="button" onClick={() => onPick(`c${s.id}`)}>
@@ -108,7 +129,8 @@ export function PlaceSearch({ placeholder, onPick, autoFocus = false }: { placeh
               </button>
             </li>
           ))}
-          {res.streets.length === 0 && res.places.length === 0 && res.stops.length === 0 && <li className="dim sr-empty">{t.searchEmpty}</li>}
+          {remote.status === 'loading' && <li className="dim sr-empty">{t.find.searching}</li>}
+          {res.streets.length === 0 && res.places.length === 0 && res.stops.length === 0 && remote.status !== 'loading' && !remote.data?.results.length && <li className="dim sr-empty">{t.find.notFound}</li>}
         </ul>
       )}
     </div>
@@ -125,7 +147,7 @@ function busStatus(engine: SimEngine, leg: BusLeg, now: number, t: ReturnType<ty
 }
 
 /** «PUJA A / BAIXA A»: una pujada i una baixada per tram de bus (amb transbord, dos). */
-function BusSegment({ leg, engine, now, first, walkToBoard }: { leg: BusLeg; engine: SimEngine; now: number; first: boolean; walkToBoard: number }) {
+function BusSegment({ leg, engine, now, first, walkToBoard, destAway }: { leg: BusLeg; engine: SimEngine; now: number; first: boolean; walkToBoard: number; destAway?: { name: string; m: number } | null }) {
   const t = useT();
   const route = engine.routes.get(leg.routeId);
   const name = (id: string) => engine.stops.get(id)?.name ?? id;
@@ -164,6 +186,11 @@ function BusSegment({ leg, engine, now, first, walkToBoard }: { leg: BusLeg; eng
         </div>
         <span className="seg-time mono">{hm(leg.arrive)}</span>
       </div>
+      {destAway && (
+        <p className="seg-dest">
+          {Icon.locate} {t.res.destAway(destAway.name, destAway.m)}
+        </p>
+      )}
     </div>
   );
 }
@@ -186,7 +213,7 @@ function RideStops({ leg, engine }: { leg: BusLeg; engine: SimEngine }) {
 }
 
 /** La millor opció: què agafar, on pujar, quan passa, on baixar; i les accions. */
-function BestOption({ it, engine, now }: { it: Itinerary; engine: SimEngine; now: number }) {
+function BestOption({ it, engine, now, destName }: { it: Itinerary; engine: SimEngine; now: number; destName: string }) {
   const t = useT();
   const st = useApp.getState();
   const [showRoute, setShowRoute] = useState(false);
@@ -194,13 +221,15 @@ function BestOption({ it, engine, now }: { it: Itinerary; engine: SimEngine; now
   const first = buses[0]!;
   const last = buses[buses.length - 1]!;
   const walkToBoard = it.legs[0]?.kind === 'walk' ? it.legs[0].meters : 0;
+  const lastLeg = it.legs[it.legs.length - 1];
+  const destAway = destName ? { name: destName, m: lastLeg?.kind === 'walk' ? lastLeg.meters : 0 } : null;
   // «On és el bus» només si el bus ja fa el trajecte que agafaràs (si no, encara fa l'anterior, en sentit contrari)
   const live = Boolean(first.vehicleId && vehicleById(engine, first.vehicleId, now)?.patternId === first.patternId);
   return (
     <section className="best" aria-label={t.res.best}>
       <div className="best-tag">{t.res.best}</div>
       {buses.map((leg, i) => (
-        <BusSegment key={leg.tripKey} leg={leg} engine={engine} now={now} first={i === 0} walkToBoard={walkToBoard} />
+        <BusSegment key={leg.tripKey} leg={leg} engine={engine} now={now} first={i === 0} walkToBoard={walkToBoard} destAway={i === buses.length - 1 ? destAway : null} />
       ))}
       <p className="best-summary">
         {t.res.ride(minutes(last.arrive - first.depart))} · {t.res.arriveAt(hm(it.arrive))}
@@ -217,7 +246,7 @@ function BestOption({ it, engine, now }: { it: Itinerary; engine: SimEngine; now
               st.navigate({ name: 'map' });
             }}
           >
-            {Icon.board} {t.takeBusShort}
+            {Icon.board} {t.res.followBus}
           </button>
         )}
         {live && (
@@ -281,21 +310,13 @@ export function RoutePanel({ to, from }: { to: string; from?: string }) {
   const st = useApp.getState();
   const dest = usePlace(to);
   const fromPlace = usePlace(from);
-  const [denied, setDenied] = useState(false);
+  const locStatus = useLocation((s) => s.status);
+  const denied = locStatus === 'denied' || locStatus === 'timeout' || locStatus === 'unavailable' || locStatus === 'unsupported' || locStatus === 'prompt';
   const [picking, setPicking] = useState(false);
   const [sel, setSel] = useState(0);
   const [result, setResult] = useState<PlanResult | null>(null);
 
-  // la meva ubicació (només al dispositiu)
-  useEffect(() => {
-    if (from || userPos) return;
-    if (!navigator.geolocation) return setDenied(true);
-    navigator.geolocation.getCurrentPosition(
-      (p) => st.set({ userPos: [p.coords.longitude, p.coords.latitude] }),
-      () => setDenied(true),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
-    );
-  }, [from, userPos]); // eslint-disable-line react-hooks/exhaustive-deps
+  // la meva ubicació: la porta LocationService (s'engega en obrir l'app; només al dispositiu)
 
   const origin: Origin = from
     ? fromPlace
@@ -359,7 +380,7 @@ export function RoutePanel({ to, from }: { to: string; from?: string }) {
       </div>
       {(picking || origin.status === 'denied' || result?.reason === 'origin-far') && (
         <div className="plan-pick">
-          {origin.status === 'denied' && <p className="dim">{t.plan.denied}</p>}
+          {origin.status === 'denied' && <LocationStatus />}
           {result?.reason === 'origin-far' && <p className="dim">{t.plan.originFar}</p>}
           <PlaceSearch placeholder={t.plan.chooseFrom} onPick={(c) => setFrom(c)} autoFocus={picking} />
           {from && (
@@ -374,7 +395,7 @@ export function RoutePanel({ to, from }: { to: string; from?: string }) {
       {result?.reason === 'destination-far' && <p className="plan-msg">{t.plan.destFar}</p>}
       {result?.reason === 'no-service' && <p className="plan-msg">{t.plan.none}</p>}
 
-      {chosen && <BestOption key={chosen.legs.map((l) => (l.kind === 'bus' ? l.tripKey : '')).join('>')} it={chosen} engine={engine} now={now} />}
+      {chosen && dest && <BestOption key={chosen.legs.map((l) => (l.kind === 'bus' ? l.tripKey : '')).join('>')} it={chosen} engine={engine} now={now} destName={dest.code.startsWith('p') ? '' : dest.name} />}
       {result?.walk && result.walkIsBetter && <p className="walk-note">{t.res.walkNote(minutes(result.walk.end - result.walk.start))}</p>}
       {options.length > 1 && (
         <section className="alts" aria-label={t.res.others}>

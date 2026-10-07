@@ -312,6 +312,116 @@ test.describe('el flux de l’app', () => {
   });
 });
 
+/** proveïdor de llocs simulat: les proves no depenen de Photon/Google (ni de la xarxa) */
+const PLACES = {
+  source: 'photon',
+  attribution: '© OpenStreetMap contributors · Photon',
+  results: [
+    { id: 'osm:N1', name: 'Info Express', label: 'Can Oriach · Sabadell', kind: 'computer', lon: 2.123, lat: 41.5505 },
+    { id: 'osm:N2', name: 'Info Express', label: 'Terrassa', kind: 'computer', lon: 2.03, lat: 41.56 },
+  ],
+};
+async function stubPlaces(page: Page, calls: string[] = []) {
+  await page.route('**/api/places**', (route) => {
+    calls.push(route.request().url());
+    const q = new URL(route.request().url()).searchParams.get('q') ?? '';
+    return route.fulfill({ json: /info/i.test(q) ? PLACES : { ...PLACES, results: [] } });
+  });
+}
+
+test.describe('cerca universal i ubicació', () => {
+  // sense service worker: si no, les peticions a /api/places no passen pel proveïdor simulat
+  test.use({ geolocation: { longitude: 2.1035, latitude: 41.5463 }, permissions: ['geolocation'], serviceWorkers: 'block' });
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(DEMO_SESSION);
+  });
+
+  test('«Info Express» (un comerç, no una parada) → quin bus, on pujar, quan, on baixar i a quants metres', async ({ page }) => {
+    const calls: string[] = [];
+    await stubPlaces(page, calls);
+    await page.goto(`/app?${AT}`);
+    await expect(page.locator('.simple-loc')).toHaveAttribute('data-loc', 'ok');
+    await page.getByRole('combobox').pressSequentially('Info Express', { delay: 40 });
+    const hit = page.locator('.sr-item[id^="sr-g"]').first();
+    await expect(hit).toContainText('Info Express');
+    await expect(hit).toContainText(/Can Oriach/);
+    // el més proper primer, amb la distància
+    await expect(hit).toContainText(/a \d|km/);
+    await expect(page.locator('.sr-attr')).toContainText('OpenStreetMap');
+    // debounce: escriure 12 lletres no fa 12 peticions
+    expect(calls.length).toBeLessThanOrEqual(2);
+    // la ubicació no s'envia al servidor de llocs
+    for (const c of calls) expect(c).not.toMatch(/lat=|lon=|2\.10|41\.54/);
+    await hit.click();
+    await expect(page).toHaveURL(/\/ruta\/g/);
+    await expect(page.locator('.route-panel .stop-name')).toHaveText('Info Express');
+    const best = page.locator('.best');
+    await expect(best).toBeVisible({ timeout: 20000 });
+    await expect(best.locator('.chip').first()).toHaveText(/^L\d+$/);
+    await expect(best).toContainText(/Puja a|Sube en/);
+    await expect(best).toContainText(/Baixa a|Baja en/);
+    await expect(best.locator('.seg-dest')).toContainText(/Info Express (és|está)/);
+  });
+
+  test('lloc que no existeix → «No hem trobat aquest lloc», sense inventar res', async ({ page }) => {
+    await stubPlaces(page);
+    await page.goto(`/app?${AT}`);
+    await page.getByRole('combobox').fill('zzqx botiga inexistent');
+    await expect(page.locator('.sr-empty')).toContainText(/No hem trobat|No hemos encontrado/);
+  });
+
+  test('enllaços manipulats: codi de lloc fals i URL mal codificada no peten', async ({ page }) => {
+    await page.goto(`/ruta/g2.1,41.5,%3Cscript%3E?${AT}`);
+    await expect(page.locator('.route-panel .stop-name')).toHaveText('—');
+    // URL mal codificada dins l'app (enllaç intern o historial): a l'inici, sense petar
+    await page.evaluate(() => {
+      history.pushState(null, '', '/ruta/%E0%A4%A');
+      dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await expect(page.locator('.simple-title')).toBeVisible();
+    // un nom amb HTML es mostra com a text
+    const evil = 'g2.110000,41.556000,' + Buffer.from(JSON.stringify(['<img src=x onerror=alert(1)>', ''])).toString('base64url');
+    await page.goto(`/ruta/${evil}?${AT}`);
+    await expect(page.locator('.route-panel .stop-name')).toHaveText('<img src=x onerror=alert(1)>');
+    expect(await page.locator('.route-panel img').count()).toBe(0);
+  });
+});
+
+test.describe('ubicació denegada', () => {
+  test('l’app no es bloqueja: explica com activar-la i deixa triar d’on surts', async ({ browser }) => {
+    const ctx = await browser.newContext({ permissions: [] });
+    const page = await ctx.newPage();
+    await page.addInitScript(() => {
+      localStorage.setItem('nextmobility.session', JSON.stringify({ userId: 'demo', at: Date.now() }));
+      localStorage.setItem('nextmobility.locAsked', '1');
+      // simula «Bloquejar» al diàleg del navegador
+      const deny = (_ok: unknown, err: (e: { code: number }) => void) => setTimeout(() => err({ code: 1 }), 50);
+      Object.defineProperty(navigator, 'geolocation', { value: { getCurrentPosition: deny, watchPosition: () => 0, clearWatch: () => {} } });
+    });
+    await page.goto(`/app?${AT}`);
+    await expect(page.locator('.simple-loc')).toHaveAttribute('data-loc', 'denied');
+    await expect(page.locator('.simple-loc')).toContainText(/No podem accedir|No podemos acceder/);
+    await expect(page.locator('.simple-title')).toBeVisible();
+    await page.goto(`/ruta/p278?${AT}`);
+    await expect(page.locator('.plan-pick')).toBeVisible();
+    await expect(page.locator('.plan-pick input')).toBeVisible();
+    await ctx.close();
+  });
+});
+
+test.describe('seguretat', () => {
+  for (const next of ['/' + String.fromCharCode(92) + 'evil.example', '//evil.example', 'https://evil.example']) {
+    test(`després d'entrar, ?next=${next} no surt de l'app`, async ({ page }) => {
+      await page.addInitScript(() => localStorage.setItem('nextmobility.locAsked', '1'));
+      await page.goto(`/entra?next=${encodeURIComponent(next)}&${AT}`);
+      await page.getByRole('button', { name: /sense compte|sin cuenta/i }).click();
+      await expect(page.locator('.simple-title')).toBeVisible();
+      expect(new URL(page.url()).host).toBe('localhost:4173');
+      expect(new URL(page.url()).pathname).toBe('/app');
+    });
+  }
+});
+
 test.describe('landing i comptes', () => {
   test('landing pública: el benefici al titular, demo etiquetada, honestedat i no oficial (sense carregar el mapa)', async ({ page }) => {
     await page.goto('/');

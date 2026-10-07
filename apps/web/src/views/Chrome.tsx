@@ -7,6 +7,7 @@ import { vehicleById } from '../data/vehicles.ts';
 import { Icon, IconButton, RouteChip, hm, useNow } from '../ui/common.tsx';
 import { Logo } from '../ui/Logo.tsx';
 import { auth } from '../auth/auth.ts';
+import { locationService } from '../location/location.ts';
 
 type NavKey = 'home' | 'map' | 'line' | 'mine';
 
@@ -281,18 +282,13 @@ export function MapControls() {
   const [msg, setMsg] = useState<string | null>(null);
   const st = useApp.getState();
   const locate = () => {
-    if (!navigator.geolocation) return setMsg(t.locateError);
     setMsg(t.locating);
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        const pos: [number, number] = [p.coords.longitude, p.coords.latitude];
-        st.set({ userPos: pos });
+    void locationService.locate().then((pos) => {
+      if (pos) {
         st.requestFly(pos, 16);
         setMsg(null);
-      },
-      () => setMsg(t.locateError),
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
+      } else setMsg(t.locateError);
+    });
   };
   return (
     <div className="map-controls">

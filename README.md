@@ -38,13 +38,14 @@ pnpm data:audit     # validació línia per línia
 Desplegament: vegeu [CLAUDE.md](CLAUDE.md#desplegament-vercel-equip-paugc2004-4556s-projects).
 
 ## Qualitat
-- 73 tests unitaris/API (inclosa l'auditoria de la xarxa) + 42 e2e, en local i contra producció.
+- 100 tests unitaris/API (inclosa l'auditoria de la xarxa i `/api/places`) + 87 e2e (escriptori, iPhone, Android).
 - Lighthouse mòbil (producció, laboratori sense GPU): rendiment 68–69, accessibilitat 100, bones pràctiques 100,
   FCP/LCP 1,2–1,8 s. 60 fps en règim estable a totes les vistes (`scripts/perf-probe.mjs`).
 
 ## Documentació
 [Auditoria i pla](docs/EVOLUTION_AUDIT.md) · [Resum d'implementació](docs/IMPLEMENTATION_SUMMARY.md) ·
-[Proposta per a TUS](docs/PITCH.md) · [Dades i llicències](docs/DATA.md) · [Decisions](docs/PLAN.md)
+[Proposta per a TUS](docs/PITCH.md) · [Dades i llicències](docs/DATA.md) · [Decisions](docs/PLAN.md) ·
+[Auditoria final](docs/FINAL_APP_AUDIT.md) · [Cerca de llocs](docs/PLACES_SEARCH_ARCHITECTURE.md) · [Seguretat](docs/SECURITY_AUDIT.md)
 
 ## Llicències i atribucions
 - Xarxa, parades i horaris: informació pública de [tus.es](https://www.tus.es). No és una aplicació oficial de TUS

@@ -45,12 +45,17 @@ function readClockParams(): void {
 readClockParams();
 
 export function parseView(path: string): View {
-  const p = decodeURIComponent(path).replace(/\/+$/, '') || '/';
+  let p: string;
+  try {
+    p = decodeURIComponent(path).replace(/\/+$/, '') || '/';
+  } catch {
+    return { name: 'home' }; // URL mal codificada (%E0…): a l'inici, sense petar
+  }
   let m = /^\/linia(?:\/([^/]+))?$/.exec(p);
   if (m) return { name: 'line', ref: m[1]?.toUpperCase() ?? null };
   m = /^\/parada\/([^/]+)$/.exec(p);
   if (m) return { name: 'stop', id: m[1]! };
-  m = /^\/ruta\/([clp][^/]+)$/.exec(p);
+  m = /^\/ruta\/([clpg][^/]+)$/.exec(p);
   if (m) return { name: 'route', to: m[1]!, from: new URLSearchParams(location.search).get('de') ?? undefined };
   if (p === '/') return { name: 'landing' };
   if (p === '/entra') return { name: 'login', next: new URLSearchParams(location.search).get('next') ?? undefined };

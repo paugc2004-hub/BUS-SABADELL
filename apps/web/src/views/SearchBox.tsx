@@ -1,4 +1,8 @@
-/** Cercador global: carrers (on vas → com hi arribo), línies, parades (per zona) i destinacions. Navegable amb el teclat. */
+/**
+ * Cercador «On vols anar?»: qualsevol lloc. Primer el que ja és al mòbil (llocs, carrers, parades, línies);
+ * després el cercador universal (/api/places: comerços, adreces amb número, equipaments…), ordenat per proximitat
+ * aquí mateix. Navegable amb el teclat.
+ */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
@@ -7,6 +11,8 @@ import { searchAll } from '../data/search.ts';
 import { Icon, RouteChip } from '../ui/common.tsx';
 import { loadStreets, searchPlaces, type Gazetteer } from '../data/streets.ts';
 import { placeWhere, poiWhere } from './Route.tsx';
+import { haversine } from '@bus/core';
+import { dedupe, geoCode, rankLocal, rankPlaces, useRemotePlaces } from '../data/places.ts';
 
 export function SearchBox({ autoFocus = false, toRoute = false, placeholder }: { autoFocus?: boolean; toRoute?: boolean; placeholder?: string }) {
   const t = useT();
@@ -31,12 +37,21 @@ export function SearchBox({ autoFocus = false, toRoute = false, placeholder }: {
   useEffect(() => {
     if (q.trim() && !gz) void loadStreets().then(setGz).catch(() => undefined);
   }, [q, gz]);
-  const { streets, places } = useMemo(() => (gz && q.trim().length >= 2 ? searchPlaces(gz, q, 4) : { streets: [], places: [] }), [gz, q]);
+  const lang = useApp((s) => s.lang);
+  const userPos = useApp((s) => s.userPos);
+  const { streets, places } = useMemo(() => {
+    if (!gz || q.trim().length < 2) return { streets: [], places: [] };
+    const r = searchPlaces(gz, q, 8);
+    return { streets: r.streets.slice(0, 4), places: rankLocal(r.places, q, userPos).slice(0, 4) };
+  }, [gz, q, userPos]);
+  const remote = useRemotePlaces(q, lang);
+  const found = useMemo(() => rankPlaces(dedupe(remote.data?.results ?? [], places), q, userPos).slice(0, 5), [remote.data, places, q, userPos]);
   if (!network || !engine || !res) return null;
 
   type Item = { key: string; go: () => void };
   const items: Item[] = [
     ...places.map((x) => ({ key: `l${x.id}`, go: () => st.navigate({ name: 'route', to: `l${x.id}` }) })),
+    ...found.map((x, k) => ({ key: `g${k}`, go: () => st.navigate({ name: 'route', to: geoCode(x) }) })),
     ...streets.map((x) => ({ key: `c${x.id}`, go: () => st.navigate({ name: 'route', to: `c${x.id}` }) })),
     ...res.routes.map((r) => ({ key: `r${r.id}`, go: () => st.navigate({ name: 'line', ref: r.id }) })),
     ...res.stops.map((s) => ({ key: `s${s.stop.id}`, go: () => st.navigate(toRoute ? { name: 'route', to: `p${s.stop.id}` } : { name: 'stop', id: s.stop.id }) })),
@@ -84,8 +99,19 @@ export function SearchBox({ autoFocus = false, toRoute = false, placeholder }: {
       </label>
       {open && (
         <div id="search-results" className="search-results" role="listbox" aria-label={t.searchAll}>
-          {items.length === 0 && <div className="sr-empty">{t.searchEmpty}</div>}
-          {places.length > 0 && <div className="sr-group">{t.plan.places}</div>}
+          {items.length === 0 && remote.status !== 'loading' && (
+            <div className="sr-empty">
+              {remote.status === 'error' && typeof navigator !== 'undefined' && navigator.onLine === false ? (
+                t.find.offline
+              ) : (
+                <>
+                  <strong>{t.find.notFound}</strong>
+                  <span className="dim small"> {t.find.tryWith}</span>
+                </>
+              )}
+            </div>
+          )}
+          {(places.length > 0 || found.length > 0) && <div className="sr-group">{t.plan.places}</div>}
           {places.map((x) => {
             const i = row();
             return (
@@ -95,12 +121,28 @@ export function SearchBox({ autoFocus = false, toRoute = false, placeholder }: {
                 </span>
                 <span className="sr-main">
                   {x.name}
-                  <span className="sr-sub">{poiWhere(x, t)}</span>
+                  <span className="sr-sub">{[poiWhere(x, t), userPos ? t.find.dist(haversine(userPos, x.pt)) : null].filter(Boolean).join(' · ')}</span>
                 </span>
                 <span className="sr-go">{t.plan.title} ›</span>
               </button>
             );
           })}
+          {found.map((x, k) => {
+            const i = row();
+            return (
+              <button key={x.id} id={`sr-g${k}`} type="button" role="option" aria-selected={i === active} className={`sr-item${i === active ? ' on' : ''}`} onMouseEnter={() => setActive(i)} onClick={() => pick(i)}>
+                <span className="sr-dest" aria-hidden>
+                  {Icon.locate}
+                </span>
+                <span className="sr-main">
+                  {x.name}
+                  <span className="sr-sub">{[x.label, userPos ? t.find.dist(haversine(userPos, [x.lon, x.lat])) : null].filter(Boolean).join(' · ')}</span>
+                </span>
+                <span className="sr-go">{t.plan.title} ›</span>
+              </button>
+            );
+          })}
+          {remote.status === 'loading' && <div className="sr-more dim small">{t.find.searching}</div>}
           {streets.length > 0 && <div className="sr-group">{t.plan.streets}</div>}
           {streets.map((x) => {
             const i = row();
@@ -159,6 +201,7 @@ export function SearchBox({ autoFocus = false, toRoute = false, placeholder }: {
               </button>
             );
           })}
+          {found.length > 0 && remote.data?.attribution && <div className="sr-attr">{t.find.source(remote.data.attribution)}</div>}
         </div>
       )}
     </div>

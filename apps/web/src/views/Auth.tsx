@@ -11,7 +11,10 @@ import { Logo } from '../ui/Logo.tsx';
 /** Després d'entrar: on volia anar l'usuari (només camins interns de l'app). */
 function goNext(next: string | undefined) {
   const st = useApp.getState();
-  const safe = next && next.startsWith('/') && !next.startsWith('//') && !/^\/(entra|registre)?$/.test(next.split('?')[0]!) ? next : '/app';
+  // només camins interns: res de //host, /<barra invertida>host (el navegador el llegeix com //host), ni caràcters de control
+  const BACKSLASH = String.fromCharCode(92);
+  const internal = next && next.startsWith('/') && !next.startsWith('//') && !next.includes(BACKSLASH) && ![...next].some((c) => c.charCodeAt(0) < 32) && next.length < 300;
+  const safe = internal && !/^\/(entra|registre)?$/.test(next.split('?')[0]!) ? next : '/app';
   const [path, qs] = safe.split('?');
   history.replaceState(null, '', path + (qs ? `?${qs}` : location.search));
   st.navigate(parseView(path!), { replace: true });
