@@ -12,7 +12,16 @@ export function SearchBox({ autoFocus = false, toRoute = false, placeholder }: {
   const t = useT();
   const network = useApp((s) => s.network);
   const engine = useApp((s) => s.engine);
-  const [q, setQ] = useState('');
+  // compartit des d'una altra app o enllaç web+nextmobility: /cercar?text=…
+  const [q, setQ] = useState(() => {
+    const p = new URLSearchParams(location.search);
+    const raw = (p.get('text') || p.get('title') || '').replace(/^web\+nextmobility:/i, '');
+    try {
+      return decodeURIComponent(raw).trim().slice(0, 80);
+    } catch {
+      return raw.trim().slice(0, 80);
+    }
+  });
   const [active, setActive] = useState(0);
   const ref = useRef<HTMLInputElement>(null);
   const st = useApp.getState();

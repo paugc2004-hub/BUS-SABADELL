@@ -12,7 +12,5 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
-// PWA: cachea la app y la red (nunca el stream de vehículos)
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  import('virtual:pwa-register').then(({ registerSW }) => registerSW({ immediate: true })).catch(() => undefined);
-}
+// PWA: el service worker es registra amb un <script> a l'HTML (vite-plugin-pwa, injectRegister: 'script-defer').
+// Cacheja l'app i la xarxa (mai l'stream de vehicles).
