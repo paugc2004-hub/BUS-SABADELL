@@ -5,6 +5,18 @@
     ],
     "target": {
       "namespace": "android_app",
+      "package_name": "app.nextmobility.sabadell",
+      "sha256_cert_fingerprints": [
+        "3F:49:D8:7B:40:F2:65:8E:FC:D9:CF:B0:AF:60:51:5A:23:1A:4E:1F:B9:49:0F:66:E5:2F:BB:5E:BC:60:57:95"
+      ]
+    }
+  },
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
       "package_name": "app.vercel.bus_sabadell.twa",
       "sha256_cert_fingerprints": [
         "AC:77:4D:7D:E2:99:4C:AD:A5:10:99:19:82:33:B1:85:4C:80:69:5A:48:2E:8A:48:E1:3B:E1:F9:3A:5C:EA:1D"
