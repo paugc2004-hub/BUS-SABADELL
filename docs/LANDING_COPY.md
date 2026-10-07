@@ -85,3 +85,5 @@ Dades de la xarxa: tus.es · Mapa: © OpenStreetMap contributors · Ja tens comp
 Rambla és una parada real per on passen L1, L2, L3, L11 i L80; Massagué → Manresa → Dr. Robert → Casal Pere Quart →
 Rambla és l'ordre real de la L2 cap a Creu de Barberà; el fragment de mapa es genera de `network.json`
 (`scripts/landing-map.mjs`). Els minuts són il·lustratius i la targeta ho diu («Demostració»).
+
+> **Actualització 2026-10-07:** a petició de l'usuari s'han tret de la landing el flux «Del prototip al temps real», la caixa «Prototip en desenvolupament», la crida final «Prova-ho amb la teva parada» i el bloc «Parlem del projecte» (i, per tant, `VITE_CONTACT_EMAIL`). La transparència queda al hero, a «El projecte» i al peu.

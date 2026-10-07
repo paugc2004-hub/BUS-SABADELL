@@ -22,14 +22,9 @@
 5. **La meva parada**: la funció de retenció (parada de cada dia amb diverses línies reals: L2, L1, L80 a Rambla).
 6. **Segueix el bus que vols agafar**: avís «a 2 parades» + línia temporal passat/present/futur.
 7. **Tota la xarxa**: captura real del mapa (lazy) + «Explora el mapa».
-8. **El projecte** + flux **Informació pública → Prototip (avui) → Dades operatives → Temps real**, i la nota
-   «no substitueix cap sistema del servei».
-9. **Transparència**: «Prototip en desenvolupament», sense alarmisme, i «Projecte independent · no és una
-   aplicació oficial de TUS ni de l'Ajuntament de Sabadell».
-10. **Crida final** ciutadana.
-11. **Crida institucional**: «Parlem del projecte» → *Veure la presentació* (`/presentacio`) i, si hi ha adreça
-    configurada (`VITE_CONTACT_EMAIL`), *Parlem* (`mailto:`). No hi ha backend de contacte inventat.
-12. **Peu**: no oficial, fonts, «Ja tens compte? Entra».
+8. **El projecte**: prototip independent, informació pública i vehicles simulats, i «Projecte independent · no és
+   una aplicació oficial de TUS ni de l'Ajuntament de Sabadell».
+9. **Peu**: no oficial, fonts, «Ja tens compte? Entra».
 
 Fora del flux principal (deliberadament): arquitectura, API, SSE, GTFS, MapLibre, proveïdors, «105 variants».
 Viuen a la presentació i als documents.
@@ -49,3 +44,9 @@ per a dades simulades. Català natural, frases de producte («Saps quan arriba»
 ## Identitat
 Mateixa marca (NextMobility Sabadell, «N» de recorregut). Landing en tema clar (fons `#f6f5f1`, tinta `#0e1116`);
 el color només on informa: color de línia, verd «a l'hora», ambre «el bus». L'app es queda fosca (millor per al mapa).
+
+## Canvi 2026-10-07 (petició de l'usuari)
+Fora de la landing: el flux «Del prototip al temps real», la caixa «Prototip en desenvolupament», la crida final i el
+bloc «Parlem del projecte». La transparència es manté al hero («Prototip independent · posicions simulades…»), a la
+secció del projecte i al peu. El flux de dades i l'arquitectura queden a la presentació (`/presentacio`).
+Al mapa del hero, el cercle groc és ara el bus de l'app (mateixa silueta, orientat pel carrer).

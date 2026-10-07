@@ -11,8 +11,7 @@ opcional (les parades desades a la demo hi passen). **Comptes ficticis**: `auth/
 localStorage, PBKDF2). Per a un servei real, una altra implementació d'`AuthProvider`. Parades i viatge per usuari
 (`favs:<id>`, `myBus:<id>`). Català per defecte (ES a un toc).
 Landing V2 (`views/Landing.tsx`): demo animada pròpia sobre la parada Rambla i la L2 reals, etiquetada «Demostració»;
-el fragment de mapa es genera amb `node apps/web/scripts/landing-map.mjs` (→ `views/landingMap.ts`). Contacte
-institucional només si `VITE_CONTACT_EMAIL` està definit. Captures: `landing-shots.mjs` (mapa), `og-image.mjs`,
+el fragment de mapa es genera amb `node apps/web/scripts/landing-map.mjs` (→ `views/landingMap.ts`). Captures: `landing-shots.mjs` (mapa), `og-image.mjs`,
 `full-shots.mjs` (pàgina sencera a diverses mides), `app-shot.mjs`. Documents: `docs/LANDING_*.md`,
 `docs/NEXTMOBILITY_V2_*.md`, `docs/FINAL_PRODUCT_AUDIT.md`.
 

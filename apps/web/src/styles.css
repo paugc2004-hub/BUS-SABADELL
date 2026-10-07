@@ -828,9 +828,9 @@ html:has(.landing), body:has(.landing), #root:has(.landing) { height: auto; min-
 .lnd-map-stop { fill: #fff; stroke: #004996; stroke-width: 3; }
 .lnd-map-stop.mine { fill: #0e1116; stroke: #fff; stroke-width: 3.5; }
 .lnd-map-label { font: 700 15px var(--font); fill: #0e1116; paint-order: stroke; stroke: #ecebe5; stroke-width: 4px; }
-.lnd-map-bus { offset-rotate: 0deg; transition: offset-distance 1.5s cubic-bezier(0.55, 0, 0.25, 1); }
+.lnd-map-bus { transition: offset-distance 1.5s cubic-bezier(0.55, 0, 0.25, 1); }
 .lnd-map-bus.jump { transition: none; }
-.lnd-map-bus circle { fill: #ffb224; stroke: #0e1116; stroke-width: 3; }
+.lnd-map-bus { offset-rotate: auto; }
 .demo-card { position: absolute; right: 6%; bottom: 7%; width: min(330px, 64%); padding: 18px 18px 16px; border-radius: var(--r-lg); background: #fff; color: #0e1116; box-shadow: 0 1px 2px #0e11160f, 0 18px 48px #0e111624; }
 .demo-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .demo-eyebrow { font-size: var(--fs-meta); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--dim); }
@@ -929,28 +929,9 @@ html:has(.landing), body:has(.landing), #root:has(.landing) { height: auto; min-
 .lnd-shot img { display: block; width: 100%; height: auto; }
 
 .lnd-project { padding-top: 24px; padding-bottom: 96px; }
+.lnd-official { margin: 18px 0 0; max-width: 40em; font-size: var(--fs-small); font-weight: 600; color: var(--text-2); }
 .lnd-project-text { margin: 0; max-width: 40em; font-size: var(--fs-card); line-height: 1.55; color: var(--text-2); }
-.lnd-flow-title { margin: 48px 0 18px; font-size: var(--fs-card); }
-.lnd-flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin: 0; padding: 0; list-style: none; counter-reset: f; }
-.lnd-flow li { position: relative; display: grid; gap: 4px; align-content: start; padding: 20px 20px 20px 0; box-shadow: 0 -3px 0 var(--line-2); font-size: var(--fs-small); color: var(--text-2); }
-.lnd-flow li strong { color: var(--text); font-size: var(--fs-body); }
-.lnd-flow li.today { box-shadow: 0 -3px 0 #0e1116; }
-.lnd-flow li:nth-child(n + 3) { color: var(--dim); }
-.lnd-flow li:nth-child(n + 3) strong { color: var(--text-2); }
-.lnd-today { position: absolute; top: -30px; left: 0; font-size: var(--fs-meta); font-weight: 700; color: #92400e; background: #fef3c7; padding: 2px 8px; border-radius: 999px; }
-.lnd-flow-note { margin: 18px 0 0; max-width: 46em; color: var(--text-2); font-size: var(--fs-small); }
-.lnd-honest-box { margin-top: 48px; padding: 22px 24px; border-radius: var(--r-lg); background: var(--surface-2); }
-.lnd-honest-box strong { font-size: var(--fs-body); }
-.lnd-honest-box p { margin: 6px 0 0; max-width: 52em; color: var(--text-2); font-size: var(--fs-small); line-height: 1.55; }
-.lnd-honest-box .lnd-official { margin-top: 10px; color: var(--text); font-weight: 600; }
 
-.lnd-final { padding-top: 24px; padding-bottom: 72px; text-align: center; }
-.lnd-final .lnd-h2 { margin-bottom: 26px; }
-.lnd-inst { display: flex; align-items: center; justify-content: space-between; gap: 28px; margin-bottom: 72px !important; padding-top: 28px !important; padding-bottom: 28px !important; border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--shadow); max-width: 1112px !important; }
-.lnd-inst h2 { margin: 0 0 6px; font-size: var(--fs-title); letter-spacing: -0.02em; }
-.lnd-inst p { margin: 0; max-width: 36em; color: var(--text-2); font-size: var(--fs-body); }
-.lnd-inst-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.lnd-inst-actions a { text-decoration: none; }
 .lnd-footer { display: grid; justify-items: center; gap: 8px; padding: 36px 24px calc(40px + var(--safe-b)); text-align: center; color: var(--text-2); font-size: var(--fs-meta); box-shadow: 0 -1px 0 var(--line); }
 .lnd-footer p { margin: 0; max-width: 46em; }
 
@@ -979,11 +960,6 @@ html:has(.landing), body:has(.landing), #root:has(.landing) { height: auto; min-
   .lnd-split.rev .lnd-split-copy { order: 0; }
   .lnd-split-copy p, .lnd-map-sec > p, .lnd-project-text { font-size: var(--fs-body); }
   .lnd-shot { margin: 32px -16px 0; border-radius: 0; }
-  .lnd-flow { grid-template-columns: 1fr; gap: 0; margin-top: 30px; }
-  .lnd-flow li { padding: 14px 0 14px 18px; box-shadow: -3px 0 0 var(--line-2); }
-  .lnd-flow li.today { box-shadow: -3px 0 0 #0e1116; }
-  .lnd-today { position: static; justify-self: start; }
-  .lnd-inst { flex-direction: column; align-items: flex-start; margin: 0 16px 56px !important; padding: 22px 20px !important; }
 }
 @media (max-width: 560px) {
   .lnd-ctas .btn-lg { flex: 1 1 auto; }

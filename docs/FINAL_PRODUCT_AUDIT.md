@@ -71,3 +71,5 @@ Lighthouse landing a prod: rendiment 90–92 (abans 79), LCP 3,3–3,5 s (abans 
 - Adreça de contacte institucional (`VITE_CONTACT_EMAIL`): no s'ha publicat cap correu sense permís.
 - Domini propi i repositori públic o privat.
 - Comptes reals (Supabase o similar) quan calgui: `AuthProvider` ja ho permet.
+
+> **Actualització 2026-10-07:** a petició de l'usuari s'han tret de la landing el flux «Del prototip al temps real», la caixa «Prototip en desenvolupament», la crida final «Prova-ho amb la teva parada» i el bloc «Parlem del projecte» (i, per tant, `VITE_CONTACT_EMAIL`). La transparència queda al hero, a «El projecte» i al peu.

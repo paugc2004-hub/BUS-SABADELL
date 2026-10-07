@@ -1,0 +1,358 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-07-28T02:16:18Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "relation",
+  "id": 339616,
+  "bounds": {
+    "minlat": 41.5803696,
+    "minlon": 2.0252057,
+    "maxlat": 41.6667629,
+    "maxlon": 2.1187018
+  },
+  "tags": {
+    "admin_level": "8",
+    "border_type": "municipi",
+    "boundary": "administrative",
+    "idee:name": "Castellar del Vallès",
+    "ine:municipio": "08051",
+    "name": "Castellar del Vallès",
+    "name:ca": "Castellar del Vallès",
+    "population": "25395",
+    "population:date": "2025",
+    "postal_code": "08211",
+    "ref:idescat": "080517",
+    "ref:ine": "08051000000",
+    "source": "BDLL25, EGRN, Instituto Geográfico Nacional",
+    "source:population": "https://www.idescat.cat/codis/?id=50&n=9&c=080517",
+    "type": "boundary",
+    "wikidata": "Q13918",
+    "wikipedia": "ca:Castellar del Vallès"
+  }
+},
+{
+  "type": "relation",
+  "id": 341730,
+  "bounds": {
+    "minlat": 41.5056560,
+    "minlon": 2.1097778,
+    "maxlat": 41.5339186,
+    "maxlon": 2.1626614
+  },
+  "tags": {
+    "admin_level": "8",
+    "border_type": "municipi",
+    "boundary": "administrative",
+    "idee:name": "Barberà del Vallès",
+    "ine:municipio": "08252",
+    "name": "Barberà del Vallès",
+    "name:ca": "Barberà del Vallès",
+    "population": "34031",
+    "population:date": "2025",
+    "postal_code": "08210",
+    "ref:idescat": "082520",
+    "ref:ine": "08252000000",
+    "source": "BDLL25, EGRN, Instituto Geográfico Nacional",
+    "type": "boundary",
+    "wikidata": "Q13916",
+    "wikipedia": "ca:Barberà del Vallès"
+  }
+},
+{
+  "type": "relation",
+  "id": 342210,
+  "bounds": {
+    "minlat": 41.5162980,
+    "minlon": 1.9436103,
+    "maxlat": 41.6488301,
+    "maxlon": 2.0688191
+  },
+  "tags": {
+    "admin_level": "8",
+    "border_type": "municipi",
+    "boundary": "administrative",
+    "idee:name": "Terrassa",
+    "ine:municipio": "08279",
+    "name": "Terrassa",
+    "name:ar": "تاراسا",
+    "name:ca": "Terrassa",
+    "name:el": "Τεράσα",
+    "name:es": "Tarrasa",
+    "name:lt": "Terasa",
+    "population": "232676",
+    "population:date": "2025",
+    "ref:idescat": "082798",
+    "ref:ine": "08279000000",
+    "source": "BDLL25, EGRN, Instituto Geográfico Nacional",
+    "type": "boundary",
+    "wikidata": "Q13939",
+    "wikipedia": "ca:Terrassa"
+  }
+},
+{
+  "type": "relation",
+  "id": 342912,
+  "bounds": {
+    "minlat": 41.5067445,
+    "minlon": 2.0315405,
+    "maxlat": 41.5430539,
+    "maxlon": 2.0991460
+  },
+  "tags": {
+    "admin_level": "8",
+    "border_type": "municipi",
+    "boundary": "administrative",
+    "idee:name": "Sant Quirze del Vallès",
+    "ine:municipio": "08238",
+    "name": "Sant Quirze del Vallès",
+    "name:ca": "Sant Quirze del Vallès",
+    "old_name:es": "San Quirce del Vallés",
+    "old_name:es:1857-1976": "San Quirico de Tarrasa",
+    "population": "20175",
+    "population:date": "2025",
+    "ref:idescat": "082384",
+    "ref:ine": "08238000000",
+    "source": "BDLL25, EGRN, Instituto Geográfico Nacional",
+    "type": "boundary",
+    "wikidata": "Q13935",
+    "wikimedia_commons": "Category:Sant Quirze del Vallès",
+    "wikipedia": "ca:Sant Quirze del Vallès"
+  }
+},
+{
+  "type": "relation",
+  "id": 342959,
+  "bounds": {
+    "minlat": 41.5027107,
+    "minlon": 2.1082007,
+    "maxlat": 41.5182270,
+    "maxlon": 2.1259982
+  },
+  "tags": {
+    "admin_level": "8",
+    "border_type": "municipi",
+    "boundary": "administrative",
+    "ele": "117",
+    "idee:name": "Badia del Vallès",
+    "ine:municipio": "08904",
+    "name": "Badia del Vallès",
+    "name:ca": "Badia del Vallès",
+    "population": "13058",
+    "population:date": "2025",
+    "ref:idescat": "089045",
+    "ref:ine": "08904000000",
+    "type": "boundary",
+    "wikidata": "Q13913",
+    "wikipedia": "ca:Badia del Vallès"
+  }
+},
+{
+  "type": "relation",
+  "id": 344202,
+  "bounds": {
+    "minlat": 41.5065718,
+    "minlon": 2.0468946,
+    "maxlat": 41.5905502,
+    "maxlon": 2.1501629
+  },
+  "tags": {
+    "admin_level": "8",
+    "border_type": "municipi",
+    "boundary": "administrative",
+    "idee:name": "Sabadell",
+    "ine:municipio": "08187",
+    "name": "Sabadell",
+    "name:ca": "Sabadell",
+    "population": "224589",
+    "population:date": "2025",
+    "ref:idescat": "081878",
+    "ref:ine": "08187000000",
+    "short_name": "SBD",
+    "source": "BDLL25, EGRN, Instituto Geográfico Nacional",
+    "type": "boundary",
+    "wikidata": "Q12258",
+    "wikimedia_commons": "Category:Sabadell",
+    "wikipedia": "ca:Sabadell"
+  }
+},
+{
+  "type": "relation",
+  "id": 344203,
+  "bounds": {
+    "minlat": 41.4880350,
+    "minlon": 2.1346150,
+    "maxlat": 41.5113526,
+    "maxlon": 2.1734046
+  },
+  "tags": {
+    "admin_level": "8",
+    "border_type": "municipi",
+    "boundary": "administrative",
+    "idee:name": "Ripollet",
+    "ine:municipio": "08180",
+    "name": "Ripollet",
+    "name:ca": "Ripollet",
+    "population": "39773",
+    "population:date": "2025",
+    "ref:idescat": "081803",
+    "ref:ine": "08180000000",
+    "source": "BDLL25, EGRN, Instituto Geográfico Nacional",
+    "type": "boundary",
+    "wikidata": "Q13933",
+    "wikipedia": "ca:Ripollet"
+  }
+},
+{
+  "type": "relation",
+  "id": 345701,
+  "bounds": {
+    "minlat": 41.5367268,
+    "minlon": 2.1263358,
+    "maxlat": 41.5761285,
+    "maxlon": 2.1741292
+  },
+  "tags": {
+    "admin_level": "8",
+    "border_type": "municipi",
+    "boundary": "administrative",
+    "idee:name": "Polinyà",
+    "ine:municipio": "08167",
+    "name": "Polinyà",
+    "name:ca": "Polinyà",
+    "population": "8572",
+    "population:date": "2025",
+    "ref:idescat": "081672",
+    "ref:ine": "08167000000",
+    "source": "BDLL25, EGRN, Instituto Geográfico Nacional",
+    "source:population": "https://www.idescat.cat/codis/?id=50&n=9&c=081672",
+    "type": "boundary",
+    "wikidata": "Q13925",
+    "wikipedia": "ca:Polinyà"
+  }
+},
+{
+  "type": "relation",
+  "id": 346441,
+  "bounds": {
+    "minlat": 41.5740797,
+    "minlon": 2.0908722,
+    "maxlat": 41.6595851,
+    "maxlon": 2.1642589
+  },
+  "tags": {
+    "admin_level": "8",
+    "border_type": "municipi",
+    "boundary": "administrative",
+    "idee:name": "Sentmenat",
+    "ine:municipio": "08267",
+    "name": "Sentmenat",
+    "name:ca": "Sentmenat",
+    "old_name:es": "Senmanat",
+    "population": "9528",
+    "population:date": "2025",
+    "postal_code": "08181",
+    "ref:idescat": "082671",
+    "ref:ine": "08267000000",
+    "source": "BDLL25, EGRN, Instituto Geográfico Nacional",
+    "source:population": "https://www.idescat.cat/codis/?id=50&n=9&c=082671",
+    "type": "boundary",
+    "wikidata": "Q13943",
+    "wikipedia": "ca:Sentmenat"
+  }
+},
+{
+  "type": "relation",
+  "id": 346442,
+  "bounds": {
+    "minlat": 41.4431170,
+    "minlon": 2.0743622,
+    "maxlat": 41.5111084,
+    "maxlon": 2.1600469
+  },
+  "tags": {
+    "admin_level": "8",
+    "border_type": "municipi",
+    "boundary": "administrative",
+    "idee:name": "Cerdanyola del Vallès",
+    "ine:municipio": "08266",
+    "name": "Cerdanyola del Vallès",
+    "name:ar": "ساردانيولا ديل فاليس",
+    "name:ca": "Cerdanyola del Vallès",
+    "name:es": "Cerdanyola del Vallès",
+    "name:ru": "Серданьола-дель-Вальес",
+    "name:zh": "萨尔达尼奥拉-德尔巴列斯",
+    "population": "58264",
+    "population:date": "2025",
+    "ref:idescat": "082665",
+    "ref:ine": "08266000000",
+    "short_name": "Cerdanyola",
+    "source": "BDLL25, EGRN, Instituto Geográfico Nacional",
+    "type": "boundary",
+    "wikidata": "Q13922",
+    "wikimedia_commons": "Category:Cerdanyola del Vallès",
+    "wikipedia": "ca:Cerdanyola del Vallès"
+  }
+},
+{
+  "type": "relation",
+  "id": 346444,
+  "bounds": {
+    "minlat": 41.5149906,
+    "minlon": 2.1378501,
+    "maxlat": 41.5572775,
+    "maxlon": 2.2079124
+  },
+  "tags": {
+    "admin_level": "8",
+    "border_type": "municipi",
+    "boundary": "administrative",
+    "idee:name": "Santa Perpètua de Mogoda",
+    "ine:municipio": "08260",
+    "name": "Santa Perpètua de Mogoda",
+    "name:ca": "Santa Perpètua de Mogoda",
+    "population": "26101",
+    "population:date": "2025",
+    "ref:idescat": "082606",
+    "ref:ine": "08260000000",
+    "short_name": "Santa Perpètua",
+    "source": "Idescat",
+    "type": "boundary",
+    "wikidata": "Q13941",
+    "wikipedia": "ca:Santa Perpètua de Mogoda"
+  }
+},
+{
+  "type": "relation",
+  "id": 347540,
+  "bounds": {
+    "minlat": 41.4150450,
+    "minlon": 1.9996610,
+    "maxlat": 41.5196078,
+    "maxlon": 2.1298560
+  },
+  "tags": {
+    "admin_level": "8",
+    "border_type": "municipi",
+    "boundary": "administrative",
+    "idee:name": "Sant Cugat del Vallès",
+    "ine:municipio": "08205",
+    "name": "Sant Cugat del Vallès",
+    "name:ca": "Sant Cugat del Vallès",
+    "population": "97959",
+    "population:date": "2025",
+    "ref:idescat": "082055",
+    "ref:ine": "08205000000",
+    "short_name": "Sant Cugat",
+    "source": "BDLL25, EGRN, Instituto Geográfico Nacional",
+    "type": "boundary"
+  }
+}
+
+  ]
+}

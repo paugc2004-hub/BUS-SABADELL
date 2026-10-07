@@ -48,3 +48,5 @@ Notes: l'script en línia de la carcassa (fons clar a `/`) està permès a la CS
 això, bones pràctiques baixava a 93. Durant les proves el tallafoc de Vercel va respondre 403 («punt de control») una
 estona a les peticions automàtiques seguides des d'aquesta IP. El que queda de pes a la landing és React + luxon
 (el rellotge del store); separar-lo demana tocar el store i no s'ha fet.
+
+> **Actualització 2026-10-07:** a petició de l'usuari s'han tret de la landing el flux «Del prototip al temps real», la caixa «Prototip en desenvolupament», la crida final «Prova-ho amb la teva parada» i el bloc «Parlem del projecte» (i, per tant, `VITE_CONTACT_EMAIL`). La transparència queda al hero, a «El projecte» i al peu.

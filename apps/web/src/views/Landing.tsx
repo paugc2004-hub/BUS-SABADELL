@@ -11,6 +11,7 @@ import { useApp, type View } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { Logo } from '../ui/Logo.tsx';
 import { BusVehicleMarker } from '../ui/BusVehicleMarker.tsx';
+import { BUS_GEOMETRY as G } from '../ui/busGeometry.ts';
 import { RouteChip } from '../ui/common.tsx';
 import { L2_RUN, L2_STOPS, MAP_PATHS } from './landingMap.ts';
 
@@ -19,9 +20,6 @@ const LINE = (id: string, color: string, longName: string): Route => ({ id, ref:
 const L2 = LINE('L2', '#004996', 'Can Deu - Creu de Barberà');
 const L1 = LINE('L1', '#e63027', 'Can Deu - Estació Sud');
 const L80 = LINE('L80', '#9b338a', 'Plaça de Picasso - La Plana del Pintor');
-
-/** adreça de contacte institucional: només si s'ha configurat (no se n'inventa cap) */
-const CONTACT = (import.meta.env.VITE_CONTACT_EMAIL as string | undefined)?.trim() || null;
 
 /** Entra a l'app: sense compte, amb el de demostració (no hi ha barrera de registre). */
 async function enterApp(view: View = { name: 'home' }) {
@@ -57,6 +55,28 @@ function useReducedMotion() {
     return () => m?.removeEventListener('change', on);
   }, []);
   return r;
+}
+
+/**
+ * El bus del mapa del hero: la mateixa silueta que a l'app (ui/busGeometry.ts), centrada a l'origen i amb
+ * el morro cap a +x, perquè `offset-rotate: auto` l'orienti segons el carrer per on va.
+ */
+function MapBus({ color }: { color: string }) {
+  const { body, glass, rear, roof, nose } = G;
+  return (
+    <g transform={`rotate(90) scale(0.9) translate(${-G.w / 2} ${-G.h / 2})`}>
+      {/* vora blanca: que es distingeixi sobre la línia del mateix color */}
+      <rect x={body.x - 3.5} y={body.y - 3.5} width={body.w + 7} height={body.h + 7} rx={body.r + 3} fill="#fff" />
+      <rect x={body.x} y={body.y} width={body.w} height={body.h} rx={body.r} fill={color} stroke="#0e1116" strokeWidth={2.4} />
+      <rect x={body.x + 1.1} y={body.y + 1.1} width={body.w - 2.2} height={body.h - 2.2} rx={body.r - 1} fill="none" stroke="#fff" strokeOpacity={0.9} strokeWidth={1} />
+      <rect x={glass.x} y={glass.y} width={glass.w} height={glass.h} rx={glass.r} fill="#0b0d10" />
+      <rect x={rear.x} y={rear.y} width={rear.w} height={rear.h} rx={rear.r} fill="#0b0d10" />
+      {roof.map((r, i) => (
+        <rect key={i} x={r.x} y={r.y} width={r.w} height={r.h} rx={1.5} fill="#fff" fillOpacity={0.28} />
+      ))}
+      <path d={`M${nose.map((q) => q.join(' ')).join(' L')} Z`} fill="#fff" stroke="#0e1116" strokeWidth={1} />
+    </g>
+  );
 }
 
 /** Hero: «La meva parada · Rambla» amb el bus que s'acosta. */
@@ -97,7 +117,7 @@ function HeroDemo() {
           <circle key={s.id} cx={s.x} cy={s.y} r={k === last ? 7 : 4.2} className={`lnd-map-stop${k === last ? ' mine' : ''}${k <= at ? ' done' : ''}`} />
         ))}
         <g className={`lnd-map-bus${jump ? ' jump' : ''}`} style={{ offsetPath: `path('${L2_RUN}')`, offsetDistance: `${(f * 100).toFixed(1)}%` }}>
-          <circle r="11" />
+          <MapBus color={L2.color} />
         </g>
         <text x={L2_STOPS[last]!.x - 14} y={L2_STOPS[last]!.y + 5} textAnchor="end" className="lnd-map-label">
           {L2_STOPS[last]!.name}
@@ -237,7 +257,6 @@ export function Landing() {
   }, []);
 
   const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  const mail = CONTACT ? `mailto:${CONTACT}?subject=${encodeURIComponent(L.mailSubject)}` : null;
 
   return (
     <div className="landing theme-light">
@@ -392,48 +411,9 @@ export function Landing() {
           <span className="lnd-kicker">{L.projectEyebrow}</span>
           <h2 className="lnd-h2">{L.projectTitle}</h2>
           <p className="lnd-project-text">{L.projectText}</p>
-          <h3 className="lnd-flow-title">{L.flowTitle}</h3>
-          <ol className="lnd-flow">
-            {L.flow.map((s, k) => (
-              <li key={s.title} className={k === 1 ? 'today' : ''}>
-                {'today' in s && <span className="lnd-today">{s.today}</span>}
-                <strong>{s.title}</strong>
-                <span>{s.text}</span>
-              </li>
-            ))}
-          </ol>
-          <p className="lnd-flow-note">{L.flowNote}</p>
-          <div className="lnd-honest-box">
-            <strong>{L.honestTitle}</strong>
-            <p>{L.honestText}</p>
-            <p className="lnd-official">{L.notOfficial}</p>
-          </div>
+          <p className="lnd-official">{L.notOfficial}</p>
         </Reveal>
 
-        <Reveal className="lnd-final">
-          <h2 className="lnd-h2">{L.finalTitle}</h2>
-          <button type="button" className="btn-primary btn-lg" onClick={() => void enterApp()}>
-            {L.cta} <span aria-hidden>→</span>
-          </button>
-          <p className="lnd-sub">{L.ctaSub}</p>
-        </Reveal>
-
-        <Reveal className="lnd-inst">
-          <div>
-            <h2>{L.instTitle}</h2>
-            <p>{L.instText}</p>
-          </div>
-          <div className="lnd-inst-actions">
-            <button type="button" className="btn-ghost" onClick={() => void enterApp({ name: 'present' })}>
-              {L.instDeck}
-            </button>
-            {mail && (
-              <a className="btn-primary" href={mail}>
-                {L.instMail}
-              </a>
-            )}
-          </div>
-        </Reveal>
       </main>
 
       <footer className="lnd-footer">
