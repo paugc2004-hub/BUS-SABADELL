@@ -8,7 +8,7 @@ import { Icon, RouteChip } from '../ui/common.tsx';
 import { loadStreets, searchPlaces, type Gazetteer } from '../data/streets.ts';
 import { placeWhere, poiWhere } from './Route.tsx';
 
-export function SearchBox({ autoFocus = false }: { autoFocus?: boolean }) {
+export function SearchBox({ autoFocus = false, toRoute = false, placeholder }: { autoFocus?: boolean; toRoute?: boolean; placeholder?: string }) {
   const t = useT();
   const network = useApp((s) => s.network);
   const engine = useApp((s) => s.engine);
@@ -30,7 +30,7 @@ export function SearchBox({ autoFocus = false }: { autoFocus?: boolean }) {
     ...places.map((x) => ({ key: `l${x.id}`, go: () => st.navigate({ name: 'route', to: `l${x.id}` }) })),
     ...streets.map((x) => ({ key: `c${x.id}`, go: () => st.navigate({ name: 'route', to: `c${x.id}` }) })),
     ...res.routes.map((r) => ({ key: `r${r.id}`, go: () => st.navigate({ name: 'line', ref: r.id }) })),
-    ...res.stops.map((s) => ({ key: `s${s.stop.id}`, go: () => st.navigate({ name: 'stop', id: s.stop.id }) })),
+    ...res.stops.map((s) => ({ key: `s${s.stop.id}`, go: () => st.navigate(toRoute ? { name: 'route', to: `p${s.stop.id}` } : { name: 'stop', id: s.stop.id }) })),
     ...res.destinations.map((d) => ({ key: `d${d.name.replace(/\W+/g, '-')}`, go: () => st.navigate({ name: 'line', ref: d.routes[0]! }) })),
   ];
   const pick = (i: number) => {
@@ -50,8 +50,8 @@ export function SearchBox({ autoFocus = false }: { autoFocus?: boolean }) {
           autoFocus={autoFocus}
           type="search"
           value={q}
-          placeholder={t.plan.searchPlaceholder}
-          aria-label={t.plan.searchPlaceholder}
+          placeholder={placeholder ?? t.plan.searchPlaceholder}
+          aria-label={placeholder ?? t.plan.searchPlaceholder}
           role="combobox"
           aria-autocomplete="list"
           aria-expanded={open}

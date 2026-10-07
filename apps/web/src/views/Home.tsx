@@ -4,14 +4,12 @@
  * pàgina sense mapa: el mapa és una eina, no l'inici (docs/APP_UX_STRATEGY.md).
  * Les parades suggerides són parades reals de la xarxa (no s'inventen).
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { haversine, normalize, type SimEngine } from '@bus/core';
 import { useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { areaOf, liveArrivals, type LiveArrival } from '../data/derive.ts';
-import { journeyFor, vehiclesAt } from '../data/vehicles.ts';
-import { Icon, Punctuality, RouteChip, hm, useNow } from '../ui/common.tsx';
-import { BusVehicleMarker } from '../ui/BusVehicleMarker.tsx';
+import { Icon, useNow } from '../ui/common.tsx';
 import { SearchBox } from './SearchBox.tsx';
 import { ArrivalRow } from './StopPanel.tsx';
 
@@ -41,106 +39,6 @@ export function nearestStops(engine: SimEngine, pos: [number, number], n = 3): s
     if (out.length >= n) break;
   }
   return out;
-}
-
-/** Primera llegada amb bus identificat (si n'hi ha) a la zona d'una parada. */
-function firstArrival(engine: SimEngine, stopId: string, now: number): LiveArrival | null {
-  const list = liveArrivals(engine, areaOf(engine, stopId), now, 60, 20);
-  return list.find((a) => a.vehicleId && a.stopsAway !== null && a.stopsAway >= 0) ?? list[0] ?? null;
-}
-
-/** "El teu proper bus": la peça principal de l'inici. */
-function NextBusHero({ engine, stopId, example, now }: { engine: SimEngine; stopId: string; example: boolean; now: number }) {
-  const t = useT();
-  const st = useApp.getState();
-  const tick = Math.floor(now / 5000);
-  const a = useMemo(() => firstArrival(engine, stopId, now), [engine, stopId, tick]); // eslint-disable-line react-hooks/exhaustive-deps
-  const stop = engine.stops.get(stopId)!;
-  const route = a ? engine.routes.get(a.routeId) : undefined;
-  const v = a?.vehicle && a.vehicle.patternId === a.patternId ? a.vehicle : null;
-  const j = v ? journeyFor(engine, v.id, now) : null;
-  // tram que li falta al bus fins a la parada: de l'última parada feta a la nostra
-  const from = v ? Math.max(0, v.prevStopIndex) : 0;
-  const to = a?.stopIndex ?? 0;
-  const seg = j && v && to > from ? j.stops.slice(from, to + 1) : [];
-  const p = v ? engine.patternById(v.patternId) : null;
-  const span = p && seg.length > 1 ? p.stopDist[to]! - p.stopDist[from]! : 0;
-  const busPct = p && span > 0 ? Math.min(100, Math.max(0, ((v!.dist - p.stopDist[from]!) / span) * 100)) : 0;
-  const mins = a ? Math.max(0, Math.floor((a.at - now) / 60000)) : 0;
-
-  return (
-    <section className="hero" aria-label={t.hero.title} style={{ ['--c' as string]: route?.color ?? 'var(--text)' }}>
-      <div className="hero-top">
-        <span className="hero-eyebrow">{t.hero.title}</span>
-        <button type="button" className="hero-stop" onClick={() => st.navigate({ name: 'stop', id: stopId })}>
-          {example && <span className="hero-example">{t.hero.example} · </span>}
-          {t.hero.atStop(stop.name)} ›
-        </button>
-      </div>
-      {!a ? (
-        <p className="hero-none">{t.hero.none}</p>
-      ) : (
-        <>
-          <button type="button" className="hero-main" onClick={() => a.vehicleId && (st.set({ boardHint: a.stopId }), st.navigate({ name: 'stop', id: a.stopId }), st.selectBus(a.vehicleId))} disabled={!a.vehicleId}>
-            <div className="hero-line">
-              <RouteChip route={route} size="lg" />
-              <span className="hero-dest">{a.headsign}</span>
-            </div>
-            <div className="hero-eta">
-              <span className={`hero-min${mins <= 0 ? ' now' : ''}`}>{mins <= 0 ? t.nowLabel : mins >= 60 ? hm(a.at) : mins}</span>
-              {mins > 0 && mins < 60 && <span className="hero-unit">min</span>}
-            </div>
-          </button>
-          <div className="hero-meta">
-            <span className={a.stopsAway !== null && a.stopsAway <= 2 ? 'near' : ''}>
-              {a.stopsAway !== null ? t.stopsAway(a.stopsAway) : a.status === 'PENDENT_SORTIDA' ? t.pendingAtTerminal(hm(a.at)) : t.finishingTrip}
-            </span>
-            <Punctuality delaySec={a.delaySec} source={a.source} />
-            {/* hora programada vs prevista: la diferència és el retard (avui simulat) */}
-            <span className="dim">{hm(a.at) !== hm(a.scheduledAt) ? t.schedVsEst(hm(a.scheduledAt), hm(a.at)) : t.estAt(hm(a.at))}</span>
-          </div>
-          {seg.length > 1 && (
-            <div className="hero-track" aria-hidden>
-              <div className="hero-rail">
-                <span style={{ width: `${busPct.toFixed(1)}%` }} />
-              </div>
-              {seg.map((s, k) => (
-                <span key={s.index} className={`hero-dot${k === seg.length - 1 ? ' mine' : ''}`} style={{ left: `${p ? ((p.stopDist[s.index]! - p.stopDist[from]!) / span) * 100 : 0}%` }} />
-              ))}
-              <span className="hero-bus" style={{ left: `${busPct.toFixed(1)}%` }}>
-                <BusVehicleMarker route={route} status={v!.status} heading={90} size={22} showLabel={false} />
-              </span>
-            </div>
-          )}
-          {v && (
-            <div className="hero-ctas">
-              <button
-                type="button"
-                className="cta cta-primary"
-                onClick={() => {
-                  st.startTrip({ vehicleId: v.id, patternId: v.patternId, routeId: v.routeId, boardIndex: a.stopIndex, boardStopId: a.stopId, alightIndex: null });
-                  st.setFollow(true);
-                  st.navigate({ name: 'map' });
-                }}
-              >
-                {Icon.board} {t.takeBusShort}
-              </button>
-              <button
-                type="button"
-                className="text-btn"
-                onClick={() => {
-                  st.navigate({ name: 'map' });
-                  st.selectBus(v.id);
-                }}
-              >
-                {Icon.map} {t.seeWhere}
-              </button>
-            </div>
-          )}
-        </>
-      )}
-    </section>
-  );
 }
 
 function StopBlock({ engine, stopId, now }: { engine: SimEngine; stopId: string; now: number }) {
@@ -255,46 +153,97 @@ export function NearStops({ skip = null }: { skip?: string | null }) {
   );
 }
 
+interface InstallPrompt extends Event {
+  prompt(): Promise<void>;
+}
+
+/** Instal·lar l'app (PWA): Android/Chrome amb el diàleg del navegador; iPhone, amb la instrucció. */
+function InstallButton() {
+  const t = useT();
+  const [evt, setEvt] = useState<InstallPrompt | null>(null);
+  const standalone = typeof window !== 'undefined' && (window.matchMedia?.('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone === true);
+  const ios = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
+  useEffect(() => {
+    const on = (e: Event) => {
+      e.preventDefault();
+      setEvt(e as InstallPrompt);
+    };
+    window.addEventListener('beforeinstallprompt', on);
+    return () => window.removeEventListener('beforeinstallprompt', on);
+  }, []);
+  if (standalone) return null;
+  if (evt)
+    return (
+      <button type="button" className="install-btn" onClick={() => void evt.prompt().then(() => setEvt(null))}>
+        {Icon.board} {t.simple.install}
+      </button>
+    );
+  if (ios) return <p className="install-hint">{t.simple.installIos}</p>;
+  return null;
+}
+
+/**
+ * Inici: «On vols anar?». Res més: la ubicació es detecta sola (al dispositiu) i, quan tries un lloc,
+ * un carrer o una parada, la ruta et diu quin bus agafar, quan passa i per on va.
+ */
 export function HomePanel({ autoFocus = false }: { autoFocus?: boolean }) {
   const t = useT();
   const engine = useApp((s) => s.engine);
-  const network = useApp((s) => s.network);
-  const favorites = useApp((s) => s.favorites);
   const userPos = useApp((s) => s.userPos);
-  const now = useNow(1000);
   const st = useApp.getState();
-  const suggestions = useMemo(() => (engine ? suggestedStops(engine) : []), [engine]);
-  const near = useMemo(() => (engine && userPos ? nearestStops(engine, userPos) : []), [engine, userPos]);
-  const fleet = useMemo(() => {
-    if (!engine) return { n: 0, l: 0 };
-    const vs = vehiclesAt(engine, now).filter((v) => v.status !== 'RETIRADA');
-    return { n: vs.length, l: new Set(vs.map((v) => v.routeId)).size };
-  }, [engine, Math.floor(now / 10000)]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!engine || !network) return null;
-  const favs = favorites.filter((id) => engine.stops.has(id));
-  // el proper bus: de la primera parada desada; si no n'hi ha, de la més propera; si no, un exemple real
-  const heroStop = favs[0] ?? near[0] ?? suggestions[0]!;
-  const example = !favs[0] && !near[0];
+  const [geo, setGeo] = useState<'asking' | 'denied' | 'ok'>(userPos ? 'ok' : 'asking');
+  const locate = () => {
+    if (!navigator.geolocation) return setGeo('denied');
+    setGeo('asking');
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        st.set({ userPos: [p.coords.longitude, p.coords.latitude] });
+        setGeo('ok');
+      },
+      () => setGeo('denied'),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    );
+  };
+  // en obrir l'app, on ets (la ubicació no surt del dispositiu)
+  useEffect(() => {
+    if (!userPos) locate();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const near = useMemo(() => {
+    if (!engine || !userPos) return null;
+    const id = nearestStops(engine, userPos, 1)[0];
+    const s = id ? engine.stops.get(id) : null;
+    return s ? { name: s.name, m: haversine(userPos, [s.lon, s.lat]) } : null;
+  }, [engine, userPos]);
+  if (!engine) return null;
 
   return (
-    <aside className="home" aria-label={t.nav2.home}>
-      <SearchBox autoFocus={autoFocus} />
-      {heroStop && <NextBusHero engine={engine} stopId={heroStop} example={example} now={now} />}
+    <aside className="home home-simple" aria-label={t.nav2.home}>
+      <h1 className="simple-title">{t.simple.title}</h1>
+      <SearchBox autoFocus={autoFocus} toRoute placeholder={t.simple.placeholder} />
+      <p className="simple-examples">{t.simple.examples}</p>
 
-      <HomeStops skip={heroStop} />
+      <div className={`simple-loc${geo === 'denied' ? ' off' : ''}`} role="status">
+        {Icon.locate}
+        {userPos && near ? (
+          <span>{near.m < 1500 ? t.simple.youAreNear(near.name) : t.simple.outside}</span>
+        ) : geo === 'denied' ? (
+          <>
+            <span>{t.simple.noLocation}</span>
+            <button type="button" className="text-btn" onClick={locate}>
+              {t.simple.activate}
+            </button>
+          </>
+        ) : (
+          <span>{t.simple.locating}</span>
+        )}
+      </div>
 
-      <NearStops skip={heroStop} />
-
-      <button type="button" className="map-entry" onClick={() => st.navigate({ name: 'map' })}>
-        <span className="map-entry-ico" aria-hidden>
-          {Icon.map}
-        </span>
-        <span>
-          <strong>{t.mapEntry}</strong>
-          <span className="dim">{t.mapEntrySub(fleet.n, fleet.l)}</span>
-        </span>
-        <span aria-hidden>›</span>
-      </button>
+      <div className="simple-foot">
+        <InstallButton />
+        <button type="button" className="text-btn" onClick={() => st.navigate({ name: 'map' })}>
+          {Icon.map} {t.simple.seeMap}
+        </button>
+      </div>
     </aside>
   );
 }

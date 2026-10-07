@@ -17,8 +17,8 @@ el fragment de mapa es genera amb `node apps/web/scripts/landing-map.mjs` (→ `
 
 **App V3** (docs/APP_UX_*.md, FINAL_APP_UX_AUDIT.md): ciutadà **clar** (`.app.citizen`, tokens al final de
 `styles.css`; mapa base clar OpenFreeMap *positron*) i **NextMobility Control fosc** (`.app.control`: `/xarxa` i la
-presentació; s'hi entra des del menú de l'avatar). Navegació: Inici · Mapa · Línies · Parades. Al mòbil l'inici és
-una pàgina (el mapa és un botó). Una acció per bus: «Agafaré aquest bus» → la fitxa es converteix en «El teu viatge»
+presentació; s'hi entra des del menú de l'avatar). Navegació: Inici · Mapa · Línies. **Inici = «On vols anar?»** (cerca + ubicació,
+res més; una parada triada porta a la ruta). `/meus` existeix però no és a la navegació. Una acció per bus: «Agafaré aquest bus» → la fitxa es converteix en «El teu viatge»
 (`TripFocus` a `views/Trip.tsx`). Estats: A l'hora · N min tard · Retard important (≥ 5 min) · Fora de servei.
 Recorregut visual: `node apps/web/scripts/ux-tour.mjs <dir> 390x844 <prefix>`.
 

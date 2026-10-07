@@ -196,7 +196,10 @@ export function planTrip(engine: SimEngine, from: LonLat, to: LonLat[], t: numbe
   const result = (itineraries: Itinerary[], reason: PlanResult['reason']): PlanResult => ({
     itineraries,
     walk: walkLeg,
-    walkIsBetter: Boolean(walkLeg && (itineraries.length === 0 || walkLeg.end <= itineraries[0]!.arrive || walkLeg.meters < 450)),
+    // a peu només si és curt: < 450 m, o arribes abans i no passa de ~15 min caminant
+    walkIsBetter: Boolean(
+      walkLeg && (walkLeg.meters < 450 || (walkLeg.meters <= 15 * WALK_M_PER_MIN && (itineraries.length === 0 || walkLeg.end <= itineraries[0]!.arrive))),
+    ),
     reason,
   });
   if (origins.length === 0) return result([], 'origin-far');

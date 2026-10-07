@@ -24,6 +24,8 @@ export const placeWhere = (s: Street, t: ReturnType<typeof useT>) => [s.muni, s.
 /** «Piscina · Sabadell · Can Llong» */
 export const poiWhere = (p: Poi, t: ReturnType<typeof useT>) => [t.plan.kinds[p.kind] ?? null, p.muni, p.barri ?? t.plan.near(p.near)].filter(Boolean).join(' · ');
 
+const firstBusOf = (it: Itinerary) => it.legs.find((l): l is BusLeg => l.kind === 'bus')!;
+
 const minutes = (ms: number) => Math.max(0, Math.round(ms / 60000));
 
 /** Un lloc a partir del seu codi: c<id> = carrer, l<id> = lloc (OSM), p<id> = parada. */
@@ -112,38 +114,6 @@ export function PlaceSearch({ placeholder, onPick, autoFocus = false }: { placeh
         </ul>
       )}
     </div>
-  );
-}
-
-/** Resum d'una opció: 🚶 3 › L2 › 🚶 2 */
-function LegsSummary({ it, engine }: { it: Itinerary; engine: SimEngine }) {
-  const items = it.legs.flatMap((l, i) => {
-    if (l.kind === 'walk') {
-      const m = minutes(l.end - l.start);
-      return m < 1
-        ? []
-        : [
-            <span key={i} className="legs-walk">
-              {Icon.walk}
-              {m}
-            </span>,
-          ];
-    }
-    return [<RouteChip key={i} route={engine.routes.get(l.routeId)} size="sm" />];
-  });
-  return (
-    <span className="legs">
-      {items.map((el, i) => (
-        <span key={i} className="legs-item">
-          {i > 0 && (
-            <span className="legs-sep" aria-hidden>
-              ›
-            </span>
-          )}
-          {el}
-        </span>
-      ))}
-    </span>
   );
 }
 
@@ -359,8 +329,14 @@ export function RoutePanel({ to, from }: { to: string; from?: string }) {
               <li key={it.legs.map((l) => (l.kind === 'bus' ? l.tripKey : '')).join('>')} className={`plan-option${on ? ' on' : ''}`}>
                 <button type="button" className="plan-option-head" aria-expanded={on} onClick={() => setSel(i)}>
                   <span className="plan-leave">
-                    <strong>{it.leaveAt - now < 60 * 60000 ? t.plan.leaveIn(leave) : t.plan.leaveAt(hm(it.leaveAt))}</strong>
-                    <LegsSummary it={it} engine={engine} />
+                    <span className="plan-take">
+                      {it.legs.flatMap((l) => (l.kind === 'bus' ? [<RouteChip key={l.tripKey} route={engine.routes.get(l.routeId)} size="lg" />] : []))}
+                      <strong>{t.plan.passesIn(minutes(firstBusOf(it).depart - now))}</strong>
+                    </span>
+                    <span className="dim small">
+                      {t.plan.fromStop(engine.stops.get(firstBusOf(it).boardStopId)?.name ?? '', minutes(it.legs[0]!.kind === 'walk' ? it.legs[0]!.end - it.legs[0]!.start : 0))}
+                      {leave > 0 && it.leaveAt - now < 60 * 60000 ? ` · ${t.plan.leaveIn(leave).toLowerCase()}` : ''}
+                    </span>
                   </span>
                   <span className="plan-arrive">
                     <strong className="mono">{hm(it.arrive)}</strong>

@@ -38,6 +38,12 @@ export function App() {
   useEffect(() => {
     document.title = presenting ? 'NextMobility Sabadell · Presentació' : view.name === 'landing' ? t.landingTitle : 'NextMobility Sabadell';
   }, [presenting, lang, view.name, t]);
+  // l'app instal·lada (o dins d'un contenidor d'app) s'obre directament a l'app, no a la landing
+  const installed = typeof window !== 'undefined' && (window.matchMedia?.('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone === true);
+  if (view.name === 'landing' && installed) {
+    queueMicrotask(() => useApp.getState().navigate({ name: 'home' }, { replace: true }));
+    return null;
+  }
   if (view.name === 'landing') return <Landing />;
   if (view.name === 'login' || view.name === 'register') return <AuthScreen mode={view.name} next={view.next} />;
   if (!user) return null;

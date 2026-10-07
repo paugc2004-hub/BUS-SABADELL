@@ -25,7 +25,6 @@ function useNavItems() {
     { key: 'home' as const, label: t.nav2.home, icon: Icon.home, go: () => st.navigate({ name: 'home' }) },
     { key: 'map' as const, label: t.nav2.map, icon: Icon.map, go: () => st.navigate({ name: 'map' }) },
     { key: 'line' as const, label: t.nav2.lines, icon: Icon.line, go: () => st.navigate({ name: 'line', ref: null }) },
-    { key: 'mine' as const, label: t.nav2.mine, icon: Icon.star(false), go: () => st.navigate({ name: 'mine' }) },
   ];
 }
 
@@ -112,7 +111,7 @@ export function BottomNav() {
         <button key={i.key} type="button" aria-current={tab === i.key ? 'page' : undefined} className={tab === i.key ? 'on' : ''} onClick={i.go}>
           <span className="bn-icon" aria-hidden>
             {i.icon}
-            {i.key === 'mine' && trip && <span className="bn-badge" />}
+            {i.key === 'map' && trip && <span className="bn-badge" />}
           </span>
           <span>{i.label}</span>
         </button>

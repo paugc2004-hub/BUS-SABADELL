@@ -71,8 +71,9 @@ test.describe('app (amb sessió)', () => {
     const res = page.locator('.sr-item[id^="sr-s"]', { hasText: 'La Creu Alta' }).first();
     await expect(res).toBeVisible();
     await res.click();
-    await expect(page).toHaveURL(/\/parada\//);
-    await expect(page.locator('.stop-name')).toHaveText('La Creu Alta');
+    // a l'inici, una parada és un destí: et diu quin bus agafar per anar-hi
+    await expect(page).toHaveURL(/\/ruta\/p/);
+    await expect(page.locator('.route-panel .stop-name')).toHaveText('La Creu Alta');
   });
 
   test('canvi d’idioma', async ({ page }) => {
@@ -183,33 +184,24 @@ test.describe('app (amb sessió)', () => {
     await context.setOffline(false);
   });
 
-  test('inici: el teu proper bus, amb minuts, puntualitat i accions', async ({ page, isMobile }) => {
+  test('inici senzill: «On vols anar?», on ets i res més; una parada porta a la ruta', async ({ page, isMobile }) => {
     await page.goto(`/app?${AT}`);
     await ready(page);
-    const hero = page.locator('.hero');
-    await expect(hero).toContainText(/proper bus|próximo bus/i);
-    await expect(hero.locator('.hero-min')).toHaveText(/\d|Ara|Ahora/);
-    await expect(hero.locator('.punct')).toBeVisible();
-    await expect(hero.locator('.cta-primary')).toBeVisible();
-    // navegació: barra inferior al mòbil, a dalt a l'escriptori
-    await expect(page.locator(isMobile ? '.bottomnav' : '.topnav')).toBeVisible();
-    await expect(page.locator('.demo-pill')).toBeVisible();
-    // la navegació ciutadana no barreja l'operador: Inici · Mapa · Línies · Parades
+    await expect(page.locator('.simple-title')).toContainText(/On vols anar|Adónde quieres ir/);
+    await expect(page.locator('.simple-loc')).toBeVisible();
+    // res de proper bus, preferides ni suggeriments a l'inici
+    await expect(page.locator('.hero')).toHaveCount(0);
+    await expect(page.locator('.home-stop')).toHaveCount(0);
+    // navegació: Inici · Mapa · Línies, sense l'operador
     const nav = page.locator(isMobile ? '.bottomnav' : '.topnav');
-    await expect(nav.locator('button')).toHaveCount(4);
+    await expect(nav).toBeVisible();
+    await expect(nav.locator('button')).toHaveCount(3);
     await expect(nav).not.toContainText(/Xarxa|Red/);
-    // al mòbil l'inici és una pàgina: el mapa és un botó
-    await expect(page.locator('.map-entry')).toBeVisible();
-  });
-
-  test('NextMobility Control: s’hi entra des del menú i és fosc', async ({ page }) => {
-    await page.goto(`/app?${AT}`);
-    await ready(page);
-    await page.locator('.avatar').click();
-    await page.getByRole('menuitem', { name: /NextMobility Control/ }).click();
-    await expect(page).toHaveURL(/\/xarxa/);
-    await expect(page.locator('.app.control')).toBeVisible();
-    await expect(page.locator('.honesty')).toContainText(/simulad/i);
+    await expect(page.locator('.demo-pill')).toBeVisible();
+    // escric una parada → em diu quin bus agafar
+    await page.getByRole('combobox').fill('estació centre');
+    await page.locator('.sr-item[id^="sr-s"]').first().click();
+    await expect(page).toHaveURL(/\/ruta\/p/);
   });
 
   test('xarxa en directe: mètriques derivades de la flota simulada, etiquetades', async ({ page }) => {
@@ -297,7 +289,7 @@ test.describe('landing i comptes', () => {
     await page.goto(`/?${AT}`);
     await page.locator('.lnd-hero .btn-primary').click();
     await expect(page).toHaveURL(/\/app/);
-    await expect(page.locator('.hero')).toBeVisible();
+    await expect(page.locator('.simple-title')).toBeVisible();
     // enllaç directe a una parada, sense sessió: entra amb la demostració (no porta a /entra)
     await page.evaluate(() => localStorage.removeItem('nextmobility.session'));
     await page.goto(`/parada/176?${AT}`);
@@ -333,7 +325,7 @@ test.describe('landing i comptes', () => {
     await page.getByLabel(/Contrasenya|Contraseña/).fill('una-contrasenya-llarga');
     await page.getByRole('button', { name: /Crea el compte|Crear la cuenta/ }).click();
     await expect(page).toHaveURL(/\/app/);
-    await expect(page.locator('.hero')).toBeVisible();
+    await expect(page.locator('.simple-title')).toBeVisible();
     // sortir des d'«Els meus»
     await page.goto('/meus');
     await expect(page.locator('.account-card')).toContainText(email);

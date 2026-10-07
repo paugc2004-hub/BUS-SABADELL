@@ -1,26 +1,29 @@
 # NextMobility Sabadell
 
-**El teu bus, en directe.** App (web instal·lable) amb la xarxa de bus urbà de Sabadell: tots els autobusos en
-moviment, «el teu proper bus», seguiment d'un bus i mode viatge. **Demo independent**: les posicions dels vehicles són **simulades** a partir
+**On vols anar? Quin bus agafar, quan passa i per on va.** App (web instal·lable) del bus urbà de Sabadell. **Demo independent**: les posicions dels vehicles són **simulades** a partir
 dels horaris publicats; la xarxa, les parades i els horaris són dades públiques de tus.es i OpenStreetMap.
 
-- Landing: **https://bus-sabadell.vercel.app** · App: **/app** (cal iniciar sessió; hi ha un compte de demostració)
+- Landing: **https://bus-sabadell.vercel.app** · App: **https://bus-sabadell.vercel.app/app** (sense registre)
 - Presentació guiada (10 escenes, 2–3 min): **https://bus-sabadell.vercel.app/presentacio**
 - API: https://bus-sabadell-api.vercel.app (`/v1/meta`, `/v1/vehicles`, `/v1/vehicles/stream`, `/v1/stops/:id/arrivals`…)
 
-## Què fa
-- 23 línies, 105 variants, 408 parades, validades una per una ([docs/LINE_AUDIT.md](docs/LINE_AUDIT.md)).
-- Inici amb **«El teu proper bus»**: minuts, a quantes parades és, puntualitat (+2 min / a l'hora) i accions.
-- Cercador global (línies, parades, destinacions), panell de línia (sentit, propers busos, freqüència, recorregut
-  amb els busos), panell de parada, fitxa de bus amb línia temporal, seguir bus i «Vaig a agafar aquest bus».
-- **Xarxa en directe** (/xarxa): la vista per a TUS, amb mètriques derivades de la flota simulada.
-- Autobús vectorial que gira amb el rumb i circula pel recorregut real, amb arrencada, crucero i frenada;
-  retards simulats deterministes i acotats.
-- 105 variants validades contra els carrers i els sentits únics d'OSM.
-- Funciona sense connexió (PWA) i sense servidor (la simulació corre al navegador); s'instal·la com una app.
-- **Comptes (de moment ficticis):** registre i inici de sessió amb correu i contrasenya, obligatori per entrar a
-  l'app. Es guarden **només al navegador** (contrasenyes amb PBKDF2, mai en clar) i ho diu la pantalla.
-  Preparat per canviar a un servei real (Supabase, Firebase…) implementant `AuthProvider` (`apps/web/src/auth/auth.ts`).
+## Què fa (app)
+Obres l'app, et detecta la ubicació (no surt del mòbil) i escrius **on vols anar** —un lloc, un carrer o una
+parada—. Et diu **quina línia agafar, quan passa, on pujar i on baixar**, i et dibuixa **per on va el bus** al mapa.
+Pots seguir el bus fins que arriba («Agafaré aquest bus»). Només autobusos urbans de Sabadell (TUS); res de trens.
+
+- Navegació: Inici («On vols anar?») · Mapa · Línies.
+- 23 línies, 105 variants, 408 parades validades ([docs/LINE_AUDIT.md](docs/LINE_AUDIT.md)); 1.680 carrers i
+  ~1.350 llocs (OpenStreetMap) per buscar on vas.
+- Sense registre: s'entra amb un compte de demostració. Els comptes són ficticis (al navegador).
+- Funciona sense connexió i sense servidor (la simulació corre al dispositiu). PWA instal·lable.
+
+## Estructura (per connectar-hi eines com Lovable)
+- Monorepo **pnpm**. **L'app és a `apps/web`** (Vite + React + TypeScript + MapLibre + Zustand).
+- `apps/web` depèn de `packages/core` (`@bus/core`, motor de simulació i planificador) via `workspace:*`:
+  cal instal·lar des de l'arrel (`pnpm install`), no només dins `apps/web`.
+- Build de l'app: `pnpm --filter @bus/web build` → `apps/web/dist` (estàtic). Dades: `apps/web/public/data/`.
+- `apps/api` (Fastify) i `packages/data-pipeline` són opcionals per a l'app.
 
 ## Comandes
 ```bash
