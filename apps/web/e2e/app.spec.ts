@@ -5,6 +5,8 @@ const AT = 'hora=08:15&dia=dimarts';
 
 async function ready(page: Page) {
   await expect(page.locator('canvas.maplibregl-canvas')).toBeVisible();
+  // no n'hi ha prou amb el canvas: el mapa s'ha de pintar (worker de MapLibre carregat, capes llestes)
+  await expect(page.locator('[data-map-ready="1"]')).toHaveCount(1, { timeout: 30000 });
   await expect(page.locator('.fullscreen-msg')).toHaveCount(0);
 }
 

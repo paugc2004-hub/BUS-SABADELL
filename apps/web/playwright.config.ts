@@ -5,6 +5,8 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 15_000 },
   fullyParallel: true,
+  // el mapa es pinta de debò (WebGL per programari): massa en paral·lel satura l'equip i fa proves inestables
+  workers: process.env.CI ? 2 : 4,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
   use: {

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import type { GeoJSONSource, Map as MLMap } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+// MapLibre 6 busca el seu worker al costat del fitxer del bundle (que no existeix): el compilem nosaltres i li diem on és
+import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import type * as GeoJSON from 'geojson';
 import { sliceLine, type DayType, type NetworkData, type SimEngine, type VehicleState } from '@bus/core';
 import { clock, useApp } from '../state/store.ts';
@@ -9,6 +11,8 @@ import { vehicleById, vehiclesAt } from '../data/vehicles.ts';
 import { areaOf, liveArrivals } from '../data/derive.ts';
 import { addBusImages } from './icons.ts';
 import { loadBaseStyle } from './style.ts';
+
+maplibregl.setWorkerUrl(mapWorkerUrl);
 
 const SABADELL: [number, number] = [2.1065, 41.5475];
 /** WebGL sin GPU real (SwiftShader, llvmpipe, Microsoft Basic Render): móvil muy modesto o VM. */
@@ -25,6 +29,13 @@ export function softwareGL(): boolean {
   }
 }
 const LOW_GPU = typeof document !== 'undefined' && softwareGL();
+const NARROW = typeof window !== 'undefined' ? window.matchMedia('(max-width: 760px)') : null;
+/** al mòbil, l'inici, «Compte» i la llista de línies tapen el mapa sencer: no cal moure busos que no es veuen */
+function mapCovered(st: ReturnType<typeof useApp.getState>): boolean {
+  if (!NARROW?.matches || st.presenting || st.selectedBus) return false;
+  const v = st.view;
+  return v.name === 'home' || v.name === 'mine' || (v.name === 'line' && !v.ref);
+}
 
 const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
@@ -213,6 +224,8 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
       });
       map.on('load', () => {
         if (!map) return;
+        // el mapa s'ha pintat de debò (teselles i capes, amb el worker): ho comproven els e2e
+        map.once('idle', () => ref.current?.setAttribute('data-map-ready', '1'));
         addBusImages(map, network.routes);
         const dayType = engine.dayTypeAt(clock.now());
         for (const id of ['routes', 'stops', 'buses', 'inter-lines', 'inter-stops', 'user', 'trip-done', 'trip-todo', 'approach', 'next-stop', 'my-stop', 'plan-walk', 'plan-bus', 'plan-pts'])
@@ -604,9 +617,11 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
         if (map.getLayer('routes-glow')) map.setLayoutProperty('routes-glow', 'visibility', 'none');
       }
       if (now - last < interval || document.hidden) return;
+      const st = useApp.getState();
+      // tapat per una pàgina (mòbil): ni càlcul ni repintat; en destapar-lo, s'actualitza al moment
+      if (mapCovered(st)) return;
       last = now;
       const t = clock.now();
-      const st = useApp.getState();
       const vs = vehiclesAt(engine, t);
       const byId = new Map(vs.map((v) => [v.id, v]));
       const sel = st.selectedBus ? byId.get(st.selectedBus) ?? null : null;

@@ -70,7 +70,7 @@ export default defineConfig({
         skipWaiting: true,
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         // les captures del manifest no cal tenir-les sense connexió
-        globIgnores: ['screenshots/**'],
+        globIgnores: ['screenshots/**', 'data/interurbans.json'],
         navigateFallback: '/index.html',
         // mai a la memòria cau: l'stream de vehicles ni l'API en directe
         navigateFallbackDenylist: [/^\/v1\//, /^\/health/, /^\/api\//],
@@ -88,6 +88,8 @@ export default defineConfig({
       },
     }),
   ],
+  // el worker de MapLibre 6 és un mòdul ES (amb imports): es compila com a mòdul
+  worker: { format: 'es' },
   build: {
     target: 'es2022',
     // sense mapes de codi en producció: no publiquem el codi font (el repositori és privat)

@@ -206,7 +206,6 @@ export function HomePanel({ autoFocus = false }: { autoFocus?: boolean }) {
 
       <h1 className="simple-title">{t.simple.title}</h1>
       <SearchBox autoFocus={autoFocus} toRoute placeholder={t.simple.placeholder} />
-      <p className="simple-examples">{t.simple.examples}</p>
 
       {/* si ja ets a la parada: què hi passa (secundari, no competeix amb el cercador) */}
       {near && near.m < 1500 && nearIds.length > 0 && (

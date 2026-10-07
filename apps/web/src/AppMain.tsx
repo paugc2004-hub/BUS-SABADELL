@@ -2,7 +2,7 @@
  * L'app (mapa, inici, línies, xarxa, parada, bus, viatge, presentació). Va en un tros a part:
  * la landing (/) no la descarrega.
  */
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { clock, useApp } from './state/store.ts';
 import { useT } from './i18n/index.ts';
 import { loadNetwork } from './data/load.ts';
@@ -76,6 +76,16 @@ export function AppMain() {
   const presenting = useApp((s) => s.presenting);
   const busOpen = useApp((s) => s.selectedBus !== null);
 
+  // al mòbil, l'inici tapa el mapa: primer es pinta l'inici i el mapa (WebGL, ~1,5 MB) arrenca quan el mòbil està lliure
+  const [mapOn, setMapOn] = useState(() => !(window.matchMedia('(max-width: 760px)').matches && ['home', 'mine', 'line'].includes(view.name)));
+  useEffect(() => {
+    if (mapOn) return;
+    if (!['home', 'mine', 'line'].includes(view.name)) return setMapOn(true);
+    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+    const id = ric ? ric(() => setMapOn(true), { timeout: 2500 }) : window.setTimeout(() => setMapOn(true), 1200);
+    return () => (ric ? (window as unknown as { cancelIdleCallback: (n: number) => void }).cancelIdleCallback(id) : clearTimeout(id));
+  }, [mapOn, view.name]);
+
   // la xarxa (116 KB) només es carrega quan s'entra a l'app, no a la landing
   useEffect(() => {
     if (useApp.getState().loadState !== 'ready' && !useApp.getState().network) void loadNetwork();
@@ -111,7 +121,7 @@ export function AppMain() {
       <TopBar />
       {control && <HonestyBanner />}
       <main className="stage">
-        {ready && (
+        {ready && mapOn && (
           <Suspense fallback={null}>
             <MapView />
           </Suspense>

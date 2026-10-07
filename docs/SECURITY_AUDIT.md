@@ -42,3 +42,11 @@ Model d'amenaces: `SECURITY_THREAT_MODEL.md`. Mesures aplicades: `SECURITY_HARDE
 2. Si s'activa Google Places: **límit de pressupost** i alertes a Google Cloud, i clau restringida a l'API Places.
 3. Autenticació real al servidor abans de tenir usuaris reals.
 4. Treure `lighthouse` de les dependències de desenvolupament si ja no es fa servir; passar a vitest 4.
+
+## Revisió 2026-10-07 (tarda)
+- **Regressió de la correcció #1**: MapLibre 6 carrega el seu *worker* com un fitxer a part, al costat del bundle. Vite no el publicava i el mapa quedava en blanc a tots els dispositius. **Corregit**: el worker es compila amb Vite (`?worker&url`, `worker.format: 'es'`) i es passa a `setWorkerUrl`. Ara l'e2e exigeix `data-map-ready` (el mapa s'ha pintat), no només que hi hagi un canvas.
+- Re-auditoria: `pnpm audit --prod` 0. Cap superfície nova: el worker és del mateix origen i la CSP (`worker-src 'self' blob:`) ja el cobreix.
+- Rendiment (mòbil):
+  - el mapa no calcula ni repinta mentre una pàgina (Inici, Compte, Línies) el tapa;
+  - a l'Inici, el mapa arrenca quan el mòbil està lliure;
+  - `interurbans.json` (1 MB, no es fa servir) fora de la precàrrega del service worker.
