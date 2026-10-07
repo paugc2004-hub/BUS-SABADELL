@@ -203,13 +203,36 @@ export function HomePanel({ autoFocus = false }: { autoFocus?: boolean }) {
         setGeo('ok');
       },
       () => setGeo('denied'),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
     );
   };
-  // en obrir l'app, on ets (la ubicació no surt del dispositiu)
+
+  // La ubicació és l'origen per defecte. La mantenim actualitzada mentre l'app està oberta.
+  // No s'envia al servidor: només serveix per calcular la parada d'origen al dispositiu.
   useEffect(() => {
-    if (!userPos) locate();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!navigator.geolocation) {
+      setGeo('denied');
+      return;
+    }
+    let active = true;
+    const onPosition = (p: GeolocationPosition) => {
+      if (!active) return;
+      st.set({ userPos: [p.coords.longitude, p.coords.latitude] });
+      setGeo('ok');
+    };
+    const onError = () => {
+      if (active && !useApp.getState().userPos) setGeo('denied');
+    };
+    const id = navigator.geolocation.watchPosition(onPosition, onError, {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 30000,
+    });
+    return () => {
+      active = false;
+      navigator.geolocation.clearWatch(id);
+    };
+  }, []);
   const near = useMemo(() => {
     if (!engine || !userPos) return null;
     const id = nearestStops(engine, userPos, 1)[0];
