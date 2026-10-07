@@ -410,6 +410,11 @@ export function AccountMenu() {
             <span className="dim">{user.email}</span>
             {user.demo && <span className="status-pill st-en_cabecera">{t.authUi.demoBadge}</span>}
           </div>
+          {user.demo && (
+            <button type="button" role="menuitem" className="account-item" onClick={() => (setOpen(false), useApp.getState().navigate({ name: 'register' }))}>
+              {t.authUi.createAccount}
+            </button>
+          )}
           <button type="button" role="menuitem" className="account-item" onClick={() => void signOut()}>
             {t.authUi.signOut}
           </button>

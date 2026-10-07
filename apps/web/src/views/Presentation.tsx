@@ -311,7 +311,7 @@ export function Presentation() {
   );
 }
 
-/** Escena final: d'on venen les dades avui i d'on vindran amb el SAE de TUS. */
+/** Escena final: d'on venen les dades avui i d'on podrien venir amb dades operatives oficials. */
 function Architecture() {
   const t = useT();
   const a = t.presentation.arch;

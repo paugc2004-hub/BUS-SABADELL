@@ -9,7 +9,7 @@ import { useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { areaOf, liveArrivals, type LiveArrival } from '../data/derive.ts';
 import { journeyFor, vehiclesAt } from '../data/vehicles.ts';
-import { Countdown, Icon, Punctuality, RouteChip, SourceTag, hm, useNow } from '../ui/common.tsx';
+import { Icon, Punctuality, RouteChip, SourceTag, hm, useNow } from '../ui/common.tsx';
 import { BusVehicleMarker } from '../ui/BusVehicleMarker.tsx';
 import { SearchBox } from './SearchBox.tsx';
 import { ArrivalRow } from './StopPanel.tsx';
@@ -89,6 +89,7 @@ function NextBusHero({ engine, stopId, example, now }: { engine: SimEngine; stop
               </span>
             </div>
             <div className="hero-eta">
+              {mins > 0 && mins < 60 && <span className="hero-in">{t.trip.arrivesIn}</span>}
               <span className={`hero-min mono${mins <= 0 ? ' now' : ''}`}>{mins <= 0 ? t.nowLabel : mins >= 60 ? hm(a.at) : mins}</span>
               {mins > 0 && mins < 60 && <span className="hero-unit">min</span>}
             </div>
@@ -98,9 +99,8 @@ function NextBusHero({ engine, stopId, example, now }: { engine: SimEngine; stop
               {a.stopsAway !== null ? t.stopsAway(a.stopsAway) : a.status === 'PENDENT_SORTIDA' ? t.pendingAtTerminal(hm(a.at)) : t.finishingTrip}
             </span>
             <Punctuality delaySec={a.delaySec} source={a.source} />
-            <span className="dim mono">
-              <Countdown at={a.at} now={now} />
-            </span>
+            {/* hora programada vs prevista: la diferència és el retard (avui simulat) */}
+            <span className="dim">{Math.round((a.at - a.scheduledAt) / 60000) !== 0 ? t.schedVsEst(hm(a.scheduledAt), hm(a.at)) : t.estAt(hm(a.at))}</span>
           </div>
           {seg.length > 1 && (
             <div className="hero-track" aria-hidden>

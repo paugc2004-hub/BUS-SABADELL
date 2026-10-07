@@ -14,6 +14,7 @@ import { Toasts, TripMonitor, TripPanel } from './views/Trip.tsx';
 import { RouteChip, hm, useNow } from './ui/common.tsx';
 import { Landing } from './views/Landing.tsx';
 import { AuthScreen } from './views/Auth.tsx';
+import { auth } from './auth/auth.ts';
 
 /** vistes públiques: no cal sessió ni carregar la xarxa */
 const PUBLIC = new Set(['landing', 'login', 'register']);
@@ -75,6 +76,7 @@ export function App() {
   const lang = useApp((s) => s.lang);
   const user = useApp((s) => s.user);
   const isPublic = PUBLIC.has(view.name);
+  const t = useT();
 
   useEffect(() => {
     useApp.getState().setLang(detectLang());
@@ -84,14 +86,12 @@ export function App() {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, []);
 
-  // l'app necessita sessió: sense compte, a /entra i després de tornada on anava
+  // sense barrera: qui entra a l'app sense compte la prova amb el de demostració; el compte propi és opcional
+  // (per desar les teves parades). Amb un compte propi ja obert, /entra i /registre porten a l'inici.
   useEffect(() => {
     const st = useApp.getState();
-    if (!isPublic && !user) {
-      st.navigate({ name: 'login', next: location.pathname + location.search }, { replace: true });
-    } else if (user && (view.name === 'login' || view.name === 'register')) {
-      st.navigate({ name: 'home' }, { replace: true });
-    }
+    if (!isPublic && !user) void auth.signInDemo().then((u) => st.setUser(u));
+    else if (user && !user.demo && (view.name === 'login' || view.name === 'register')) st.navigate({ name: 'home' }, { replace: true });
   }, [isPublic, user, view.name]);
 
   // la xarxa (116 KB) només es carrega quan s'entra a l'app, no a la landing
@@ -101,8 +101,8 @@ export function App() {
 
   const presenting = useApp((s) => s.presenting);
   useEffect(() => {
-    document.title = presenting ? 'NextMobility Sabadell · Presentació' : view.name === 'landing' ? 'NextMobility Sabadell · El teu bus, en directe' : 'NextMobility Sabadell';
-  }, [presenting, lang, view.name]);
+    document.title = presenting ? 'NextMobility Sabadell · Presentació' : view.name === 'landing' ? t.landingTitle : 'NextMobility Sabadell';
+  }, [presenting, lang, view.name, t]);
   const base = useApp((s) => s.base);
   const baseLine = useApp((s) => s.baseLine);
   // /presentacio és el mapa amb el director de la demo a sobre

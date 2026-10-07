@@ -30,7 +30,11 @@ export function AuthScreen({ mode, next }: { mode: 'login' | 'register'; next?: 
   const isLogin = mode === 'login';
 
   const done = (u: Awaited<ReturnType<typeof auth.signIn>>) => {
+    // de la demostració a un compte propi: les parades desades durant la prova passen al compte
+    const prev = useApp.getState();
+    const carry = prev.user?.demo && !u.demo ? prev.favorites : [];
     st.setUser(u);
+    for (const id of carry) if (!useApp.getState().favorites.includes(id)) useApp.getState().toggleFavorite(id);
     goNext(next);
   };
 

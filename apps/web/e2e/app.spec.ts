@@ -104,7 +104,7 @@ test.describe('app (amb sessió)', () => {
     await page.goto(`/presentacio?${AT}`);
     await ready(page);
     const caption = page.locator('.caption');
-    await expect(caption.locator('h2')).toContainText(/xarxa|red/i);
+    await expect(caption.locator('h2')).toContainText(/bus/i);
     if (!isMobile) {
       const n = Number(await page.locator('.hud-num').first().innerText());
       expect(n).toBeGreaterThan(30);
@@ -208,21 +208,45 @@ test.describe('app (amb sessió)', () => {
 });
 
 test.describe('landing i comptes', () => {
-  test('landing pública amb la marca, les crides i l’avís d’honestedat (sense carregar el mapa)', async ({ page }) => {
+  test('landing pública: el benefici al titular, demo etiquetada, honestedat i no oficial (sense carregar el mapa)', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('.lnd-hero h1')).toContainText(/bus/i);
     await expect(page.locator('.lnd-nav .logo-name')).toContainText('NextMobility');
     await expect(page.locator('.lnd-honest')).toContainText(/simulad/i);
+    await expect(page.locator('.demo-card')).toContainText(/Demostració/);
+    await expect(page.locator('.demo-card')).toContainText('Rambla');
+    await expect(page.locator('.lnd-official')).toContainText(/no és una aplicació oficial/i);
     await expect(page.locator('canvas.maplibregl-canvas')).toHaveCount(0);
     await expect(page).toHaveTitle(/NextMobility Sabadell/);
   });
 
-  test('l’app demana sessió: sense compte porta a /entra i després torna on anava', async ({ page }) => {
+  test('«Prova-ho ara» entra a l’app sense registre; un enllaç directe també', async ({ page }) => {
+    await page.goto(`/?${AT}`);
+    await page.locator('.lnd-hero .btn-primary').click();
+    await expect(page).toHaveURL(/\/app/);
+    await expect(page.locator('.hero')).toBeVisible();
+    // enllaç directe a una parada, sense sessió: entra amb la demostració (no porta a /entra)
+    await page.evaluate(() => localStorage.removeItem('nextmobility.session'));
     await page.goto(`/parada/176?${AT}`);
-    await expect(page).toHaveURL(/\/entra/);
-    await page.getByRole('button', { name: /demostració|demostración/i }).click();
     await expect(page).toHaveURL(/\/parada\/176/);
     await expect(page.locator('.stop-name')).toHaveText('Estació Centre');
+  });
+
+  test('de la demostració a un compte propi: la parada desada es queda', async ({ page }) => {
+    await page.goto(`/parada/176?${AT}`);
+    await expect(page.locator('.stop-name')).toHaveText('Estació Centre');
+    await page.getByRole('button', { name: /Afegeix a preferides|Añadir a favoritas/ }).first().click();
+    await page.goto('/meus');
+    await expect(page.locator('.account-card.demo')).toBeVisible();
+    await page.locator('.account-card.demo .cta-primary').click();
+    await expect(page).toHaveURL(/\/registre/);
+    await page.getByLabel(/^Nom|^Nombre/).fill('Laia');
+    await page.getByLabel(/Correu|Correo/).fill(`laia-${Date.now()}@exemple.cat`);
+    await page.getByLabel(/Contrasenya|Contraseña/).fill('una-contrasenya-llarga');
+    await page.getByRole('button', { name: /Crea el compte|Crear la cuenta/ }).click();
+    await expect(page).toHaveURL(/\/app/);
+    const favs = await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('favs:') && k !== 'favs:demo').map((k) => localStorage.getItem(k)));
+    expect(favs.join('')).toContain('176');
   });
 
   test('crear compte, tancar la sessió i tornar a entrar; contrasenya incorrecta', async ({ page, isMobile }) => {

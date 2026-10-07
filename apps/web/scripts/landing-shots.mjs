@@ -1,4 +1,4 @@
-// utilitat local: captures reals de l'app per a la landing (public/landing/*.jpg)
+// utilitat local: captura real de l'app per a la landing (public/landing/map-desktop.jpg)
 // node scripts/landing-shots.mjs [base=http://localhost:5199]
 import { chromium, devices } from '@playwright/test';
 const base = process.argv[2] ?? 'http://localhost:5199';
@@ -17,11 +17,5 @@ async function shot(name, path, mobile, prepare) {
   await ctx.close();
   console.log(name);
 }
-await shot('home-mobile', '/app', true);
-await shot('bus-mobile', '/parada/176', true, async (p) => {
-  await p.locator('.arrival-main:not([disabled])').nth(1).click();
-  await p.waitForTimeout(2500);
-});
 await shot('map-desktop', '/linia/L2', false);
-await shot('network-desktop', '/xarxa', false);
 await browser.close();

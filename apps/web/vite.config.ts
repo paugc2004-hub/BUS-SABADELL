@@ -11,7 +11,7 @@ export default defineConfig({
       manifest: {
         name: 'NextMobility Sabadell',
         short_name: 'NextMobility',
-        description: 'El teu bus de Sabadell, en directe. Posicions simulades a partir dels horaris publicats.',
+        description: 'Quan arriba el teu bus a Sabadell i on és. Prototip amb vehicles simulats a partir dels horaris publicats.',
         lang: 'ca',
         start_url: '/app',
         display: 'standalone',
@@ -24,7 +24,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png}', 'landing/*.jpg', 'assets/inter-latin-wght-*.woff2', 'assets/jetbrains-mono-latin-*.woff2', 'data/*.json'],
+        globPatterns: ['**/*.{js,css,html,svg,png}', 'landing/map-desktop.jpg', 'assets/inter-latin-wght-*.woff2', 'assets/jetbrains-mono-latin-*.woff2', 'data/*.json'],
         clientsClaim: true,
         skipWaiting: true,
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,

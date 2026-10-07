@@ -6,7 +6,7 @@ import { useApp } from '../state/store.ts';
 export type Lang = 'ca' | 'es';
 export const dicts: Record<Lang, Dict> = { ca, es };
 
-/** Català per defecte; castellà si el navegador el prefereix (i no hi ha elecció guardada). */
+/** Català per defecte; castellà si l'usuari l'ha triat (es guarda). */
 export function detectLang(): Lang {
   try {
     const saved = localStorage.getItem('lang');
@@ -14,12 +14,7 @@ export function detectLang(): Lang {
   } catch {
     /* sense emmagatzematge */
   }
-  const prefs = navigator.languages ?? [navigator.language];
-  for (const p of prefs) {
-    const l = p.toLowerCase();
-    if (l.startsWith('ca')) return 'ca';
-    if (l.startsWith('es')) return 'es';
-  }
+  // el producte és en català; el castellà, a un toc (botó ES), i es recorda
   return 'ca';
 }
 
