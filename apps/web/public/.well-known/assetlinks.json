@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.vercel.bus_sabadell.twa",
+      "sha256_cert_fingerprints": [
+        "AC:77:4D:7D:E2:99:4C:AD:A5:10:99:19:82:33:B1:85:4C:80:69:5A:48:2E:8A:48:E1:3B:E1:F9:3A:5C:EA:1D"
+      ]
+    }
+  }
+]
