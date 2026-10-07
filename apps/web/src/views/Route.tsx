@@ -282,7 +282,6 @@ export function RoutePanel({ to, from }: { to: string; from?: string }) {
   const dest = usePlace(to);
   const fromPlace = usePlace(from);
   const [denied, setDenied] = useState(false);
-  const [picking, setPicking] = useState(false);
   const [sel, setSel] = useState(0);
   const [result, setResult] = useState<PlanResult | null>(null);
 
@@ -326,13 +325,6 @@ export function RoutePanel({ to, from }: { to: string; from?: string }) {
   // amb un bus triat, la fitxa del bus ocupa el panell (en tancar-la es torna aquí)
   if (selectedBus) return null;
   const close = () => st.back();
-  const setFrom = (code: string | undefined) => {
-    setPicking(false);
-    setSel(0);
-    setResult(null);
-    st.navigate({ name: 'route', to, from: code }, { replace: true });
-  };
-
   return (
     <Sheet label={t.plan.title} onClose={close} className="route-panel">
       <header className="card-head">
@@ -383,7 +375,6 @@ export function RoutePanel({ to, from }: { to: string; from?: string }) {
       {result?.reason === 'no-service' && <p className="plan-msg">{t.plan.none}</p>}
 
       {chosen && <BestOption key={chosen.legs.map((l) => (l.kind === 'bus' ? l.tripKey : '')).join('>')} it={chosen} engine={engine} now={now} />}
-      {result?.walk && result.walkIsBetter && <p className="walk-note">{t.res.walkNote(minutes(result.walk.end - result.walk.start))}</p>}
       {options.length > 1 && (
         <section className="alts" aria-label={t.res.others}>
           <h3 className="sec-title">{t.res.others}</h3>
