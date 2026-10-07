@@ -3,19 +3,20 @@
 **On vols anar? Quin bus agafar, quan passa i per on va.** App (web instal·lable) del bus urbà de Sabadell. **Demo independent**: les posicions dels vehicles són **simulades** a partir
 dels horaris publicats; la xarxa, les parades i els horaris són dades públiques de tus.es i OpenStreetMap.
 
-- Landing: **https://bus-sabadell.vercel.app** · App: **https://bus-sabadell.vercel.app/app** (sense registre)
+- Landing: **https://bus-sabadell.vercel.app** · App: **https://bus-sabadell.vercel.app/app** (entra o «Entra sense compte»)
 - Presentació guiada (10 escenes, 2–3 min): **https://bus-sabadell.vercel.app/presentacio**
 - API: https://bus-sabadell-api.vercel.app (`/v1/meta`, `/v1/vehicles`, `/v1/vehicles/stream`, `/v1/stops/:id/arrivals`…)
 
 ## Què fa (app)
-Obres l'app, et detecta la ubicació (no surt del mòbil) i escrius **on vols anar** —un lloc, un carrer o una
-parada—. Et diu **quina línia agafar, quan passa, on pujar i on baixar**, i et dibuixa **per on va el bus** al mapa.
-Pots seguir el bus fins que arriba («Agafaré aquest bus»). Només autobusos urbans de Sabadell (TUS); res de trens.
+Obres l'app, entres (o «Entra sense compte»), et detecta la ubicació (no surt del mòbil) i escrius **on vols anar**
+—un lloc, un carrer o una parada—. Et diu la **millor opció**: **quina línia i en quina direcció, on pujar, quan
+arriba el bus, on baixar** i quant dura; el mapa mostra només aquest bus i per on va. Pots seguir-lo fins que
+arriba («Agafaré aquest bus»), amb avisos. Només autobusos urbans de Sabadell (TUS); res de trens ni altres operadors.
 
-- Navegació: Inici («On vols anar?») · Mapa · Línies.
+- Navegació: Inici («On vols anar?») · Mapa · Línies · Compte.
 - 23 línies, 105 variants, 408 parades validades ([docs/LINE_AUDIT.md](docs/LINE_AUDIT.md)); 1.680 carrers i
   ~1.350 llocs (OpenStreetMap) per buscar on vas.
-- Sense registre: s'entra amb un compte de demostració. Els comptes són ficticis (al navegador).
+- Comptes ficticis (al navegador) i «Entra sense compte». Preparat per a un servei real (`AuthProvider`).
 - Funciona sense connexió i sense servidor (la simulació corre al dispositiu). PWA instal·lable.
 
 ## Estructura (per connectar-hi eines com Lovable)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SimEngine } from '../src/sim/engine.ts';
-import { planTrip, walkMs } from '../src/plan.ts';
+import { planTrip, scoreOf, walkMs } from '../src/plan.ts';
 import { local, makePattern, tinyNetwork } from './fixtures.ts';
 
 const EXACT = { delays: false } as const;
@@ -25,9 +25,10 @@ describe('planificador de rutes', () => {
     if (access.kind !== 'walk' || bus.kind !== 'bus') throw new Error('primer tram a peu, després el bus');
     expect(it0.leaveAt + (access.end - access.start)).toBeLessThanOrEqual(bus.depart);
     expect(it0.leaveAt).toBeGreaterThanOrEqual(T);
-    // les opcions van per ordre d'arribada
-    const arr = r.itineraries.map((i) => i.arrive);
-    expect([...arr].sort((a, b) => a - b)).toEqual(arr);
+    // la primera és la millor opció (puntuació més baixa) i n'hi ha com a molt 3
+    const sc = r.itineraries.map(scoreOf);
+    expect(Math.min(...sc)).toBe(sc[0]);
+    expect(r.itineraries.length).toBeLessThanOrEqual(3);
   });
 
   it('el bus que proposa és el mateix de les llegades de la parada (mateixa hora estimada)', () => {

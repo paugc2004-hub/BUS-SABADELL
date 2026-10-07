@@ -169,6 +169,7 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
   const follow = useApp((s) => s.follow);
   const view = useApp((s) => s.view);
   const plan = useApp((s) => s.plan);
+  const trip = useApp((s) => s.trip);
 
   // ---- creación del mapa
   useEffect(() => {
@@ -799,25 +800,40 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
     );
   }, [ready, engine, plan]);
 
-  // ---- filtro de líneas (mostrar/ocultar)
+  // ---- filtre de línies i mapa contextual: amb una ruta («com hi arribo») o un viatge, només les línies i els
+  // busos implicats; la resta de la xarxa no es dibuixa (el mapa sencer és a la pestanya Mapa)
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
-    const inRoutes = visibleRoutes ? (['in', ['get', 'route'], ['literal', visibleRoutes]] as const) : null;
+    const planBuses = plan ? plan.itinerary.legs.flatMap((l) => (l.kind === 'bus' ? [l] : [])) : [];
+    const ctxRoutes = planBuses.length ? [...new Set(planBuses.map((l) => l.routeId))] : trip ? [trip.routeId] : null;
+    const ctxVehicles = planBuses.length ? planBuses.flatMap((l) => (l.vehicleId ? [l.vehicleId] : [])) : trip ? [trip.vehicleId] : null;
+    const routes = ctxRoutes ?? visibleRoutes;
+    const inRoutes = routes ? (['in', ['get', 'route'], ['literal', routes]] as const) : null;
     const f = inRoutes as maplibregl.FilterSpecification | null;
     map.setFilter('routes-line', f);
     map.setFilter('routes-casing', f);
     const glow = ['all', ['==', ['get', 'main'], 1], ['==', ['get', 'active'], 1], ...(inRoutes ? [inRoutes] : [])];
     map.setFilter('routes-glow', glow as unknown as maplibregl.FilterSpecification);
-    map.setFilter('bus-icon', f);
+    // busos: els del viatge o de l'opció triada (si encara no han sortit, els de la seva línia)
+    const busF = ctxVehicles && ctxVehicles.length ? (['in', ['get', 'id'], ['literal', ctxVehicles]] as unknown as maplibregl.FilterSpecification) : f;
+    map.setFilter('bus-icon', busF);
+    // les capes amb filtre propi el conserven, combinat amb el context
+    const own: Record<string, unknown[]> = {
+      'bus-halo': ['==', ['get', 'sel'], 1],
+      'bus-stopring': ['all', ['==', ['get', 'stop'], 1], ['==', ['get', 'dim'], 0]],
+      'bus-badge': ['!=', ['get', 'badge'], ''],
+    };
+    for (const [id, base] of Object.entries(own))
+      if (map.getLayer(id)) map.setFilter(id, (busF ? ['all', base, busF] : base) as unknown as maplibregl.FilterSpecification);
     const labelVis = ['any', ['==', ['get', 'dim'], 0], ['==', ['get', 'hi'], 1]];
-    map.setFilter('bus-label', (inRoutes ? ['all', inRoutes, labelVis] : labelVis) as unknown as maplibregl.FilterSpecification);
-    const sf = visibleRoutes
-      ? (['any', ...visibleRoutes.map((r) => ['in', `,${r},`, ['concat', ',', ['get', 'routes'], ',']])] as maplibregl.FilterSpecification)
+    map.setFilter('bus-label', (busF ? ['all', busF, labelVis] : labelVis) as unknown as maplibregl.FilterSpecification);
+    const sf = routes
+      ? (['any', ...routes.map((r) => ['in', `,${r},`, ['concat', ',', ['get', 'routes'], ',']])] as maplibregl.FilterSpecification)
       : null;
     map.setFilter('stops-circle', sf);
     if (map.getLayer('stops-label')) map.setFilter('stops-label', sf);
-  }, [ready, visibleRoutes]);
+  }, [ready, visibleRoutes, plan, trip]);
 
   // ---- parada seleccionada (todos los postes de la zona)
   useEffect(() => {

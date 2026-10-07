@@ -1,9 +1,9 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useApp } from './state/store.ts';
 import { detectLang, useT } from './i18n/index.ts';
 import { Landing } from './views/Landing.tsx';
 import { AuthScreen } from './views/Auth.tsx';
-import { auth } from './auth/auth.ts';
+import { LocationStep, locationAsked } from './views/Welcome.tsx';
 
 /** vistes públiques: no cal sessió ni carregar la xarxa */
 const PUBLIC = new Set(['landing', 'login', 'register']);
@@ -26,13 +26,14 @@ export function App() {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, []);
 
-  // sense barrera: qui entra a l'app sense compte la prova amb el de demostració; el compte propi és opcional
-  // (per desar les teves parades). Amb un compte propi ja obert, /entra i /registre porten a l'inici.
+  // l'app demana entrar (correu i contrasenya, o «Entra sense compte»); després, la ubicació (un cop) i l'inici.
+  // Amb un compte propi ja obert, /entra i /registre porten a l'inici.
   useEffect(() => {
     const st = useApp.getState();
-    if (!isPublic && !user) void auth.signInDemo().then((u) => st.setUser(u));
+    if (!isPublic && !user) st.navigate({ name: 'login', next: location.pathname + location.search }, { replace: true });
     else if (user && !user.demo && (view.name === 'login' || view.name === 'register')) st.navigate({ name: 'home' }, { replace: true });
   }, [isPublic, user, view.name]);
+  const [locDone, setLocDone] = useState(locationAsked);
 
   const presenting = useApp((s) => s.presenting);
   useEffect(() => {
@@ -47,6 +48,7 @@ export function App() {
   if (view.name === 'landing') return <Landing />;
   if (view.name === 'login' || view.name === 'register') return <AuthScreen mode={view.name} next={view.next} />;
   if (!user) return null;
+  if (!locDone) return <LocationStep onDone={() => setLocDone(true)} />;
 
   return (
     <Suspense

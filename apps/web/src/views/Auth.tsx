@@ -55,7 +55,7 @@ export function AuthScreen({ mode, next }: { mode: 'login' | 'register'; next?: 
   const switchTo = (m: 'login' | 'register') => st.navigate({ name: m, next }, { replace: true });
 
   return (
-    <main className="auth">
+    <main className="auth theme-light">
       <div className="auth-glow" aria-hidden />
       <section className="auth-card" aria-labelledby="auth-title">
         <button type="button" className="auth-logo" onClick={() => st.navigate({ name: 'landing' })} aria-label={a.back}>

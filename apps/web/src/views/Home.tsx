@@ -190,6 +190,8 @@ export function HomePanel({ autoFocus = false }: { autoFocus?: boolean }) {
   const t = useT();
   const engine = useApp((s) => s.engine);
   const userPos = useApp((s) => s.userPos);
+  const user = useApp((s) => s.user);
+  const now = useNow(5000);
   const st = useApp.getState();
   const [geo, setGeo] = useState<'asking' | 'denied' | 'ok'>(userPos ? 'ok' : 'asking');
   const locate = () => {
@@ -216,12 +218,12 @@ export function HomePanel({ autoFocus = false }: { autoFocus?: boolean }) {
   }, [engine, userPos]);
   if (!engine) return null;
 
+  const first = user && !user.demo ? user.name.split(' ')[0] : null;
+  const nearIds = engine && userPos ? nearestStops(engine, userPos, 2) : [];
+
   return (
     <aside className="home home-simple" aria-label={t.nav2.home}>
-      <h1 className="simple-title">{t.simple.title}</h1>
-      <SearchBox autoFocus={autoFocus} toRoute placeholder={t.simple.placeholder} />
-      <p className="simple-examples">{t.simple.examples}</p>
-
+      <p className="simple-hello">{first ? t.simple.helloName(first) : t.simple.hello}</p>
       <div className={`simple-loc${geo === 'denied' ? ' off' : ''}`} role="status">
         {Icon.locate}
         {userPos && near ? (
@@ -238,11 +240,22 @@ export function HomePanel({ autoFocus = false }: { autoFocus?: boolean }) {
         )}
       </div>
 
+      <h1 className="simple-title">{t.simple.title}</h1>
+      <SearchBox autoFocus={autoFocus} toRoute placeholder={t.simple.placeholder} />
+      <p className="simple-examples">{t.simple.examples}</p>
+
+      {/* si ja ets a la parada: què hi passa (secundari, no competeix amb el cercador) */}
+      {near && near.m < 1500 && nearIds.length > 0 && (
+        <section className="home-sec simple-near">
+          <h2 className="sec-title">{t.simple.nearStops}</h2>
+          {nearIds.map((id) => (
+            <StopBlock key={id} engine={engine} stopId={id} now={now} />
+          ))}
+        </section>
+      )}
+
       <div className="simple-foot">
         <InstallButton />
-        <button type="button" className="text-btn" onClick={() => st.navigate({ name: 'map' })}>
-          {Icon.map} {t.simple.seeMap}
-        </button>
       </div>
     </aside>
   );

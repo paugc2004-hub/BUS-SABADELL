@@ -153,13 +153,24 @@ function build(engine: SimEngine, from: LonLat, buses: BusLeg[], dest: { m: numb
   return { legs, leaveAt, arrive: egress.end, transfers: buses.length - 1, walkMeters: walked };
 }
 
+/**
+ * Puntuació de «millor opció» (menys és millor), en ms: l'hora d'arribada estimada, més +5 min per transbord,
+ * +0,5 min per cada minut a peu i +1 min si el bus encara no ha sortit de capçalera (menys segur).
+ * A l'usuari només se li diu «Millor opció».
+ */
+export function scoreOf(it: Itinerary): number {
+  const walkMin = it.walkMeters / WALK_M_PER_MIN;
+  const first = it.legs.find((l): l is BusLeg => l.kind === 'bus');
+  return it.arrive + it.transfers * 5 * 60_000 + walkMin * 0.5 * 60_000 + (first && !first.vehicleId ? 60_000 : 0);
+}
+
 /** A domina B si arriba abans (o igual), surt més tard (o igual), amb menys o igual transbords i caminant semblant. */
 const dominates = (a: Itinerary, b: Itinerary) =>
   a !== b && a.arrive <= b.arrive && a.leaveAt >= b.leaveAt && a.transfers <= b.transfers && a.walkMeters <= b.walkMeters + 150;
 
 export function planTrip(engine: SimEngine, from: LonLat, to: LonLat[], t: number, opts: PlanOptions = {}): PlanResult {
   const maxAccess = opts.maxAccessM ?? MAX_ACCESS_M;
-  const limit = opts.limit ?? 4;
+  const limit = opts.limit ?? 3;
   const horizon = opts.horizonMin ?? 75;
 
   // a peu
@@ -267,6 +278,19 @@ export function planTrip(engine: SimEngine, from: LonLat, to: LonLat[], t: numbe
   }
   const uniq = [...byTrips.values()];
   const kept = uniq.filter((b) => !uniq.some((a) => dominates(a, b) && !(dominates(b, a) && uniq.indexOf(b) < uniq.indexOf(a))));
-  kept.sort((a, b) => a.arrive - b.arrive || a.transfers - b.transfers || a.walkMeters - b.walkMeters);
-  return result(kept.slice(0, limit), 'ok');
+  // la millor opció primer (puntuació), i opcions variades: no tres vegades el mateix bus a la mateixa parada
+  kept.sort((a, b) => scoreOf(a) - scoreOf(b));
+  const picked: Itinerary[] = [];
+  const seen = new Set<string>();
+  for (const it of kept) {
+    const b = it.legs.find((l): l is BusLeg => l.kind === 'bus')!;
+    const key = `${it.legs.flatMap((l) => (l.kind === 'bus' ? [l.routeId] : [])).join('>')}@${b.boardStopId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    picked.push(it);
+    if (picked.length >= limit) break;
+  }
+  // si no n'hi ha prou de diferents, el següent bus de la millor
+  for (const it of kept) if (picked.length < limit && !picked.includes(it)) picked.push(it);
+  return result(picked, 'ok');
 }

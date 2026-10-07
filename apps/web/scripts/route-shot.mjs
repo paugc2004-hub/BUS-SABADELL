@@ -6,6 +6,7 @@ const [w, h] = size.split('x').map(Number);
 const [lon, lat] = pos.split(',').map(Number);
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const ctx = await browser.newContext({ viewport: { width: w, height: h }, locale: 'ca-ES', timezoneId: 'Europe/Madrid', isMobile: w < 800, hasTouch: w < 800, geolocation: { longitude: lon, latitude: lat }, permissions: ['geolocation'] });
+await ctx.addInitScript(() => (localStorage.setItem('nextmobility.session', JSON.stringify({ userId: 'demo', at: Date.now() })), localStorage.setItem('nextmobility.locAsked', '1')));
 const page = await ctx.newPage();
 page.on('pageerror', (e) => console.log('pageerror', e.message));
 await page.goto('http://localhost:5199/app?hora=08:15&dia=dimarts', { waitUntil: 'domcontentloaded' });

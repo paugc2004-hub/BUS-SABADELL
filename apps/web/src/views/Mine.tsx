@@ -1,18 +1,17 @@
-/** Parades (/meus): les meves parades, a prop teu i el compte. Amb la demostració, la invitació a crear un compte. */
+/** Compte (/meus): el compte i, en segon terme, les parades desades. Amb la demostració, la invitació a crear un compte. */
 import { useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
-import { HomeStops, NearStops } from './Home.tsx';
+import { HomeStops } from './Home.tsx';
 import { initial, signOut } from './Chrome.tsx';
 
 export function MinePanel() {
   const t = useT();
   const user = useApp((s) => s.user);
+  const favorites = useApp((s) => s.favorites);
   const st = useApp.getState();
   return (
     <aside className="home mine" aria-label={t.minePage.title}>
       <h1 className="page-title">{t.minePage.title}</h1>
-      <HomeStops />
-      <NearStops />
       {user?.demo && (
         <section className="account-card demo">
           <div className="account-who">
@@ -43,6 +42,7 @@ export function MinePanel() {
           </button>
         </section>
       )}
+      {favorites.length > 0 && <HomeStops />}
     </aside>
   );
 }

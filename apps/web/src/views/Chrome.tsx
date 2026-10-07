@@ -25,6 +25,7 @@ function useNavItems() {
     { key: 'home' as const, label: t.nav2.home, icon: Icon.home, go: () => st.navigate({ name: 'home' }) },
     { key: 'map' as const, label: t.nav2.map, icon: Icon.map, go: () => st.navigate({ name: 'map' }) },
     { key: 'line' as const, label: t.nav2.lines, icon: Icon.line, go: () => st.navigate({ name: 'line', ref: null }) },
+    { key: 'mine' as const, label: t.nav2.mine, icon: Icon.user, go: () => st.navigate({ name: 'mine' }) },
   ];
 }
 
@@ -277,9 +278,6 @@ export function LineFilter() {
 
 export function MapControls() {
   const t = useT();
-  const interurbans = useApp((s) => s.interurbans);
-  const [layersOpen, setLayersOpen] = useState(false);
-  const [timeOpen, setTimeOpen] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const st = useApp.getState();
   const locate = () => {
@@ -301,22 +299,7 @@ export function MapControls() {
       <IconButton label={t.locate} onClick={locate}>
         {Icon.locate}
       </IconButton>
-      <IconButton label={t.layers} active={layersOpen} onClick={() => setLayersOpen(!layersOpen)}>
-        {Icon.layers}
-      </IconButton>
-      <IconButton label={t.timeControl} active={timeOpen} onClick={() => setTimeOpen(!timeOpen)}>
-        {Icon.clock}
-      </IconButton>
-      {layersOpen && (
-        <div className="popover">
-          <label className="toggle">
-            <input type="checkbox" checked={interurbans} onChange={(e) => st.setInterurbans(e.target.checked)} />
-            <span>{t.interurbans}</span>
-          </label>
-          <div className="dim small">{t.interurbansNote}</div>
-        </div>
-      )}
-      {timeOpen && <TimeControl onDone={() => setTimeOpen(false)} />}
+      {/* només busos TUS: sense capes d'altres operadors. L'hora de demo es canvia per URL (?hora=08:15&dia=dimarts) */}
       {msg && <div className="toast" role="status">{msg}</div>}
     </div>
   );
@@ -384,7 +367,7 @@ export async function signOut() {
   await auth.signOut();
   const st = useApp.getState();
   st.setUser(null);
-  st.navigate({ name: 'landing' });
+  st.navigate({ name: 'login' });
 }
 
 /** Menú: el compte, què són les dades, NextMobility Control i la presentació. També al mòbil. */

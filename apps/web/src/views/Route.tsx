@@ -24,8 +24,6 @@ export const placeWhere = (s: Street, t: ReturnType<typeof useT>) => [s.muni, s.
 /** «Piscina · Sabadell · Can Llong» */
 export const poiWhere = (p: Poi, t: ReturnType<typeof useT>) => [t.plan.kinds[p.kind] ?? null, p.muni, p.barri ?? t.plan.near(p.near)].filter(Boolean).join(' · ');
 
-const firstBusOf = (it: Itinerary) => it.legs.find((l): l is BusLeg => l.kind === 'bus')!;
-
 const minutes = (ms: number) => Math.max(0, Math.round(ms / 60000));
 
 /** Un lloc a partir del seu codi: c<id> = carrer, l<id> = lloc (OSM), p<id> = parada. */
@@ -126,81 +124,149 @@ function busStatus(engine: SimEngine, leg: BusLeg, now: number, t: ReturnType<ty
   return t.plan.busNow(leg.boardIndex - v.nextStopIndex + 1);
 }
 
-function Steps({ it, engine, dest, now }: { it: Itinerary; engine: SimEngine; dest: Place; now: number }) {
+/** «PUJA A / BAIXA A»: una pujada i una baixada per tram de bus (amb transbord, dos). */
+function BusSegment({ leg, engine, now, first, walkToBoard }: { leg: BusLeg; engine: SimEngine; now: number; first: boolean; walkToBoard: number }) {
+  const t = useT();
+  const route = engine.routes.get(leg.routeId);
+  const name = (id: string) => engine.stops.get(id)?.name ?? id;
+  const mins = minutes(leg.depart - now);
+  return (
+    <div className="rseg" style={{ ['--c' as string]: route?.color ?? '#888' }}>
+      <div className="seg-line">
+        <RouteChip route={route} size="lg" />
+        <span className="seg-dir">
+          {t.res.direction} <strong>{leg.headsign}</strong>
+        </span>
+      </div>
+      <div className="seg-row">
+        <div className="seg-stop">
+          <span className="seg-label">{first ? t.res.boardAt : t.res.changeAt}</span>
+          <strong>{name(leg.boardStopId)}</strong>
+          {first && walkToBoard >= 30 && <span className="dim small">{t.res.metersAway(walkToBoard)}</span>}
+        </div>
+        <div className="seg-eta">
+          <span className="seg-label">{t.res.arrivesIn}</span>
+          <span className="seg-min">
+            {mins <= 0 ? t.res.now : mins}
+            {mins > 0 && <small> min</small>}
+          </span>
+        </div>
+      </div>
+      <div className="seg-status">
+        {busStatus(engine, leg, now, t)}
+        <Punctuality delaySec={Math.round((leg.depart - leg.scheduledDepart) / 1000)} source={leg.source} compact />
+      </div>
+      <div className="seg-row seg-off">
+        <div className="seg-stop">
+          <span className="seg-label">{t.res.alightAt}</span>
+          <strong>{name(leg.alightStopId)}</strong>
+          <span className="dim small">{t.res.stopsCount(leg.stops)}</span>
+        </div>
+        <span className="seg-time mono">{hm(leg.arrive)}</span>
+      </div>
+    </div>
+  );
+}
+
+/** Recorregut del bus des d'on puges fins on baixes (parades en ordre). */
+function RideStops({ leg, engine }: { leg: BusLeg; engine: SimEngine }) {
+  const p = engine.patternById(leg.patternId);
+  const route = engine.routes.get(leg.routeId);
+  if (!p) return null;
+  const ids = p.stopIds.slice(leg.boardIndex, leg.alightIndex + 1);
+  return (
+    <ol className="ride-stops" style={{ ['--c' as string]: route?.color ?? '#888' }}>
+      {ids.map((id, k) => (
+        <li key={`${id}-${k}`} className={k === 0 ? 'board' : k === ids.length - 1 ? 'alight' : ''}>
+          {engine.stops.get(id)?.name ?? id}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/** La millor opció: què agafar, on pujar, quan passa, on baixar; i les accions. */
+function BestOption({ it, engine, now }: { it: Itinerary; engine: SimEngine; now: number }) {
   const t = useT();
   const st = useApp.getState();
-  const name = (id: string) => engine.stops.get(id)?.name ?? id;
-  const firstBus = it.legs.find((l): l is BusLeg => l.kind === 'bus')!;
+  const [showRoute, setShowRoute] = useState(false);
+  const buses = it.legs.filter((l): l is BusLeg => l.kind === 'bus');
+  const first = buses[0]!;
+  const last = buses[buses.length - 1]!;
+  const walkToBoard = it.legs[0]?.kind === 'walk' ? it.legs[0].meters : 0;
+  // «On és el bus» només si el bus ja fa el trajecte que agafaràs (si no, encara fa l'anterior, en sentit contrari)
+  const live = Boolean(first.vehicleId && vehicleById(engine, first.vehicleId, now)?.patternId === first.patternId);
   return (
-    <div className="plan-steps">
-      <ol>
-        {it.legs.map((l, i) => {
-          if (l.kind === 'walk') {
-            if (l.meters < 30) return null;
-            const next = it.legs[i + 1];
-            const prev = it.legs[i - 1];
-            const text =
-              i === 0 && next?.kind === 'bus'
-                ? t.plan.walkTo(name(next.boardStopId), l.meters, minutes(l.end - l.start))
-                : i === it.legs.length - 1
-                  ? t.plan.walkEnd(dest.name, l.meters, minutes(l.end - l.start))
-                  : t.plan.walkTransfer(next?.kind === 'bus' ? name(next.boardStopId) : prev?.kind === 'bus' ? name(prev.alightStopId) : '', l.meters);
-            return (
-              <li key={i} className="step walk">
-                <span className="step-ico">{Icon.walk}</span>
-                <span>{text}</span>
-              </li>
-            );
-          }
-          const route = engine.routes.get(l.routeId);
-          const delay = Math.round((l.depart - l.scheduledDepart) / 1000);
-          return (
-            <li key={i} className="step bus" style={{ ['--c' as string]: route?.color ?? '#888' }}>
-              <span className="step-ico">
-                <RouteChip route={route} size="sm" />
-              </span>
-              <div>
-                <strong>{t.plan.take(route?.ref ?? l.routeId, l.headsign)}</strong>
-                <div className="dim">
-                  {t.plan.at(name(l.boardStopId), hm(l.depart))} <Punctuality delaySec={delay} source={l.source} compact />
-                </div>
-                {hm(l.depart) !== hm(l.scheduledDepart) && <div className="dim small">{t.schedVsEst(hm(l.scheduledDepart), hm(l.depart))}</div>}
-                {l === firstBus && <div className="step-live">{busStatus(engine, l, now, t)}</div>}
-                <div className="step-off">
-                  {t.plan.getOff(name(l.alightStopId), l.stops)} · {hm(l.arrive)}
-                </div>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-      <div className="plan-ctas">
-        {firstBus.vehicleId && (
+    <section className="best" aria-label={t.res.best}>
+      <div className="best-tag">{t.res.best}</div>
+      {buses.map((leg, i) => (
+        <BusSegment key={leg.tripKey} leg={leg} engine={engine} now={now} first={i === 0} walkToBoard={walkToBoard} />
+      ))}
+      <p className="best-summary">
+        {t.res.ride(minutes(last.arrive - first.depart))} · {t.res.arriveAt(hm(it.arrive))}
+        {it.transfers > 0 && ` · ${t.plan.transfers(it.transfers)}`}
+      </p>
+      <div className="best-ctas">
+        {first.vehicleId && (
           <button
             type="button"
             className="cta cta-primary"
             onClick={() => {
-              st.startTrip({
-                vehicleId: firstBus.vehicleId!,
-                patternId: firstBus.patternId,
-                routeId: firstBus.routeId,
-                boardIndex: firstBus.boardIndex,
-                boardStopId: firstBus.boardStopId,
-                alightIndex: firstBus.alightIndex,
-              });
+              st.startTrip({ vehicleId: first.vehicleId!, patternId: first.patternId, routeId: first.routeId, boardIndex: first.boardIndex, boardStopId: first.boardStopId, alightIndex: first.alightIndex });
+              st.setFollow(true);
               st.navigate({ name: 'map' });
             }}
           >
-            {Icon.board} {t.plan.take1}
+            {Icon.board} {t.takeBusShort}
           </button>
         )}
-        {firstBus.vehicleId && (
-          <button type="button" className="cta" onClick={() => st.selectBus(firstBus.vehicleId)}>
-            {Icon.follow} {t.plan.seeBus}
+        {live && (
+          <button
+            type="button"
+            className="cta"
+            onClick={() => {
+              // la parada on puges: «Agafaré aquest bus» a la fitxa ja la sap; i el mapa va fins al bus
+              st.set({ boardHint: first.boardStopId });
+              st.selectBus(first.vehicleId);
+              st.setFollow(true);
+            }}
+          >
+            {Icon.follow} {t.res.whereIsBus}
           </button>
         )}
+        <button type="button" className="text-btn" aria-expanded={showRoute} onClick={() => setShowRoute(!showRoute)}>
+          {Icon.line} {showRoute ? t.res.hideRoute : t.res.showRoute}
+        </button>
       </div>
-    </div>
+      {showRoute && buses.map((leg) => <RideStops key={leg.tripKey} leg={leg} engine={engine} />)}
+    </section>
+  );
+}
+
+/** Una altra opció, compacta: línia, direcció, quan passa i quant dura. */
+function AltOption({ it, engine, now, onPick }: { it: Itinerary; engine: SimEngine; now: number; onPick: () => void }) {
+  const t = useT();
+  const buses = it.legs.filter((l): l is BusLeg => l.kind === 'bus');
+  const first = buses[0]!;
+  const last = buses[buses.length - 1]!;
+  const mins = minutes(first.depart - now);
+  return (
+    <button type="button" className="alt" onClick={onPick}>
+      <span className="alt-lines">
+        {buses.map((l) => (
+          <RouteChip key={l.tripKey} route={engine.routes.get(l.routeId)} size="md" />
+        ))}
+      </span>
+      <span className="alt-main">
+        <strong>
+          {t.res.direction} {first.headsign}
+        </strong>
+        <span className="dim small">
+          {t.res.boardShort(engine.stops.get(first.boardStopId)?.name ?? '')} · {t.res.ride(minutes(last.arrive - first.depart))}
+        </span>
+      </span>
+      <span className="alt-min">{mins <= 0 ? t.res.now : `${mins} min`}</span>
+    </button>
   );
 }
 
@@ -308,48 +374,15 @@ export function RoutePanel({ to, from }: { to: string; from?: string }) {
       {result?.reason === 'destination-far' && <p className="plan-msg">{t.plan.destFar}</p>}
       {result?.reason === 'no-service' && <p className="plan-msg">{t.plan.none}</p>}
 
-      {result?.walk && result.walkIsBetter && (
-        <div className="plan-walk">
-          <span className="step-ico">{Icon.walk}</span>
-          <div>
-            <strong>
-              {t.plan.walkOnly} · {t.plan.walkMin(minutes(result.walk.end - result.walk.start))}
-            </strong>
-            <div className="dim small">{t.plan.walkBetter}</div>
-          </div>
-        </div>
-      )}
-
-      {options.length > 0 && (
-        <ul className="plan-options" aria-label={t.plan.options}>
-          {options.map((it, i) => {
-            const on = it === chosen;
-            const leave = minutes(it.leaveAt - now);
-            return (
-              <li key={it.legs.map((l) => (l.kind === 'bus' ? l.tripKey : '')).join('>')} className={`plan-option${on ? ' on' : ''}`}>
-                <button type="button" className="plan-option-head" aria-expanded={on} onClick={() => setSel(i)}>
-                  <span className="plan-leave">
-                    <span className="plan-take">
-                      {it.legs.flatMap((l) => (l.kind === 'bus' ? [<RouteChip key={l.tripKey} route={engine.routes.get(l.routeId)} size="lg" />] : []))}
-                      <strong>{t.plan.passesIn(minutes(firstBusOf(it).depart - now))}</strong>
-                    </span>
-                    <span className="dim small">
-                      {t.plan.fromStop(engine.stops.get(firstBusOf(it).boardStopId)?.name ?? '', minutes(it.legs[0]!.kind === 'walk' ? it.legs[0]!.end - it.legs[0]!.start : 0))}
-                      {leave > 0 && it.leaveAt - now < 60 * 60000 ? ` · ${t.plan.leaveIn(leave).toLowerCase()}` : ''}
-                    </span>
-                  </span>
-                  <span className="plan-arrive">
-                    <strong className="mono">{hm(it.arrive)}</strong>
-                    <span className="dim small">
-                      {t.plan.total(minutes(it.arrive - Math.max(now, it.leaveAt)))} · {t.plan.transfers(it.transfers)}
-                    </span>
-                  </span>
-                </button>
-                {on && dest && <Steps it={it} engine={engine} dest={dest} now={now} />}
-              </li>
-            );
-          })}
-        </ul>
+      {chosen && <BestOption key={chosen.legs.map((l) => (l.kind === 'bus' ? l.tripKey : '')).join('>')} it={chosen} engine={engine} now={now} />}
+      {result?.walk && result.walkIsBetter && <p className="walk-note">{t.res.walkNote(minutes(result.walk.end - result.walk.start))}</p>}
+      {options.length > 1 && (
+        <section className="alts" aria-label={t.res.others}>
+          <h3 className="sec-title">{t.res.others}</h3>
+          {options.map((it, i) =>
+            it === chosen ? null : <AltOption key={it.legs.map((l) => (l.kind === 'bus' ? l.tripKey : '')).join('>')} it={it} engine={engine} now={now} onPick={() => setSel(i)} />,
+          )}
+        </section>
       )}
       <p className="dim small plan-note">{t.plan.note}</p>
     </Sheet>

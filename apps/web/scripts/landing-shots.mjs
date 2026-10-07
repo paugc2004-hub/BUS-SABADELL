@@ -4,7 +4,7 @@ import { chromium, devices } from '@playwright/test';
 const base = process.argv[2] ?? 'http://localhost:5199';
 const AT = 'hora=08:15&dia=dimarts';
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-const session = () => localStorage.setItem('nextmobility.session', JSON.stringify({ userId: 'demo', at: Date.now() }));
+const session = () => (localStorage.setItem('nextmobility.session', JSON.stringify({ userId: 'demo', at: Date.now() })), localStorage.setItem('nextmobility.locAsked', '1'));
 async function shot(name, path, mobile, prepare) {
   const ctx = await browser.newContext(mobile ? { ...devices['iPhone 13'], locale: 'ca-ES', timezoneId: 'Europe/Madrid' } : { viewport: { width: 1440, height: 900 }, locale: 'ca-ES', timezoneId: 'Europe/Madrid' });
   await ctx.addInitScript(session);

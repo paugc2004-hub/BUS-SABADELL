@@ -5,7 +5,7 @@ const [url, out, size = '390x844'] = process.argv.slice(2);
 const [w, h] = size.split('x').map(Number);
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const ctx = await browser.newContext({ viewport: { width: w, height: h }, locale: 'ca-ES', timezoneId: 'Europe/Madrid', isMobile: w < 800, hasTouch: w < 800 });
-await ctx.addInitScript(() => localStorage.setItem('nextmobility.session', JSON.stringify({ userId: 'demo', at: Date.now() })));
+await ctx.addInitScript(() => (localStorage.setItem('nextmobility.session', JSON.stringify({ userId: 'demo', at: Date.now() })), localStorage.setItem('nextmobility.locAsked', '1')));
 const page = await ctx.newPage();
 await page.goto(url, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('canvas.maplibregl-canvas', { timeout: 30000 }).catch(() => undefined);

@@ -6,7 +6,7 @@ const [w, h] = size.split('x').map(Number);
 const AT = 'hora=08:15&dia=dimarts';
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const ctx = await browser.newContext({ viewport: { width: w, height: h }, locale: 'ca-ES', timezoneId: 'Europe/Madrid', isMobile: w < 800, hasTouch: w < 800, geolocation: { longitude: 2.1035, latitude: 41.5463 }, permissions: ['geolocation'] });
-await ctx.addInitScript(() => localStorage.setItem('nextmobility.session', JSON.stringify({ userId: 'demo', at: Date.now() })));
+await ctx.addInitScript(() => (localStorage.setItem('nextmobility.session', JSON.stringify({ userId: 'demo', at: Date.now() })), localStorage.setItem('nextmobility.locAsked', '1')));
 const page = await ctx.newPage();
 page.on('pageerror', (e) => console.log('pageerror', e.message));
 const shot = async (name) => { await page.waitForTimeout(1800); await page.screenshot({ path: `${dir}/${prefix}-${name}-${size}.png` }); console.log(name); };
