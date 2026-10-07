@@ -348,27 +348,35 @@ export function RoutePanel({ to, from }: { to: string; from?: string }) {
         </div>
       </header>
 
-      <div className="plan-from">
-        <span className="plan-from-label">{t.plan.from}</span>
-        <span className="plan-from-name">
-          {origin.status === 'ok' ? (!from ? <>{Icon.locate} {origin.label}</> : origin.label) : origin.status === 'locating' ? t.plan.locating : origin.status === 'denied' ? '—' : '…'}
-        </span>
-        <button type="button" className="text-btn" onClick={() => setPicking(!picking)} aria-expanded={picking}>
-          {t.plan.change}
-        </button>
-      </div>
-      {(picking || origin.status === 'denied' || result?.reason === 'origin-far') && (
-        <div className="plan-pick">
-          {origin.status === 'denied' && <p className="dim">{t.plan.denied}</p>}
-          {result?.reason === 'origin-far' && <p className="dim">{t.plan.originFar}</p>}
-          <PlaceSearch placeholder={t.plan.chooseFrom} onPick={(c) => setFrom(c)} autoFocus={picking} />
-          {from && (
-            <button type="button" className="text-btn" onClick={() => setFrom(undefined)}>
-              {Icon.locate} {t.plan.myLocation}
+      <div className="plan-origin-simple" role="status">
+        {origin.status === 'ok' ? (
+          <>
+            {Icon.locate}
+            <span>
+              <small>Des de</small>
+              <strong>{from ? origin.label : t.plan.myLocation}</strong>
+            </span>
+          </>
+        ) : origin.status === 'locating' ? (
+          <><span className="location-pulse" aria-hidden /> <span>{t.plan.locating}</span></>
+        ) : (
+          <>
+            {Icon.locate}
+            <span>{t.plan.denied}</span>
+            <button type="button" className="text-btn" onClick={() => {
+              if (!navigator.geolocation) return;
+              navigator.geolocation.getCurrentPosition(
+                (p) => { st.set({ userPos: [p.coords.longitude, p.coords.latitude] }); setDenied(false); },
+                () => setDenied(true),
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
+              );
+            }}>
+              {t.plan.myLocation}
             </button>
-          )}
-        </div>
-      )}
+          </>
+        )}
+      </div>
+      {result?.reason === 'origin-far' && <p className="plan-msg">{t.plan.originFar}</p>}
 
       {origin.status === 'ok' && dest && !result && <p className="dim plan-msg">{t.plan.calculating}</p>}
       {result?.reason === 'destination-far' && <p className="plan-msg">{t.plan.destFar}</p>}
