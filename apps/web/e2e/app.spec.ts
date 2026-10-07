@@ -68,7 +68,7 @@ test.describe('app (amb sessió)', () => {
     await page.getByRole('combobox').fill('l2');
     await expect(page.locator('.sr-item').first()).toContainText('L2');
     await page.getByRole('combobox').fill('creu alta');
-    const res = page.locator('.sr-item', { hasText: 'La Creu Alta' }).first();
+    const res = page.locator('.sr-item[id^="sr-s"]', { hasText: 'La Creu Alta' }).first();
     await expect(res).toBeVisible();
     await res.click();
     await expect(page).toHaveURL(/\/parada\//);
@@ -229,6 +229,17 @@ test.describe('com hi arribo (planificador)', () => {
     expect(n === -1 || n >= 2).toBe(true);
   });
 
+  test('un lloc pel nom que coneix la gent: «camp del mercantil»', async ({ page }) => {
+    await page.goto(`/app?${AT}`);
+    await ready(page);
+    await page.getByRole('combobox').fill('camp del mercantil');
+    const place = page.locator('.sr-item[id^="sr-l"]').first();
+    await expect(place).toContainText('Arraona-Merinals');
+    await place.click();
+    await expect(page).toHaveURL(/\/ruta\/l/);
+    await expect(page.locator('.plan-option').first()).toBeVisible({ timeout: 20000 });
+  });
+
   test('sense ubicació: tria d’on surts i també funciona', async ({ browser, baseURL }) => {
     const ctx = await browser.newContext({ baseURL, permissions: [] });
     const page = await ctx.newPage();
@@ -253,7 +264,7 @@ test.describe('landing i comptes', () => {
     await expect(page.locator('.lnd-honest')).toContainText(/simulad/i);
     await expect(page.locator('.demo-card')).toContainText(/Demostració/);
     await expect(page.locator('.demo-card')).toContainText('Rambla');
-    await expect(page.locator('.lnd-official')).toContainText(/no és una aplicació oficial/i);
+    await expect(page.locator('.lnd-footer')).toContainText(/no és una app oficial/i);
     await expect(page.locator('canvas.maplibregl-canvas')).toHaveCount(0);
     await expect(page).toHaveTitle(/NextMobility Sabadell/);
   });

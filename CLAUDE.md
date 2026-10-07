@@ -18,8 +18,9 @@ el fragment de mapa es genera amb `node apps/web/scripts/landing-map.mjs` (→ `
 **Com hi arribo** (`/ruta/<c id carrer | p id parada>?de=…`, `views/Route.tsx`): escrius el carrer al cercador
 («On vas?»), l'origen és la teva ubicació (només al dispositiu) o el lloc que triïs; `packages/core/src/plan.ts`
 (`planTrip`: a peu ≤ 1,1 km → bus → com a molt 1 transbord → a peu) sobre `engine.boardings()`, les mateixes hores
-estimades que la resta de l'app; s'accedeix via `planFor` de `data/vehicles.ts`. Carrers: `public/data/streets.json`
-(OSM, 1.680 carrers de Sabadell i voltants a l'abast de la xarxa, amb municipi) generat per `pnpm data:streets`
+estimades que la resta de l'app; s'accedeix via `planFor` de `data/vehicles.ts`. Carrers i llocs: `public/data/streets.json`
+(OSM: 1.680 carrers i ~1.350 llocs —estadis, piscines, escoles, hospitals, estacions, comerços, barris…— de Sabadell i
+voltants a l'abast de la xarxa, amb municipi i barri; noms populars a `data/config/llocs-alias.yaml`, amb font) generat per `pnpm data:streets`
 (`data-pipeline/src/streets.ts`, també al final de `data:build`). Es baixa la primera vegada que es cerca.
 
 ## Regles que no es negocien

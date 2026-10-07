@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { normalize, type BusLeg, type Itinerary, type LonLat, type PlanResult, type SimEngine } from '@bus/core';
 import { clock, useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
-import { loadStreets, searchStreets, streetById, type Street } from '../data/streets.ts';
+import { loadStreets, placeById, searchPlaces, streetById, type Gazetteer, type Place as Poi, type Street } from '../data/streets.ts';
 import { planFor, vehicleById } from '../data/vehicles.ts';
 import { Icon, IconButton, Punctuality, RouteChip, hm, useNow } from '../ui/common.tsx';
 import { Sheet } from '../ui/Sheet.tsx';
@@ -20,32 +20,39 @@ export interface Place {
 }
 
 /** «Sabadell · prop de La Creu Alta»: distingeix carrers amb el mateix nom */
-export const placeWhere = (s: Street, t: ReturnType<typeof useT>) => [s.muni, t.plan.near(s.near)].filter(Boolean).join(' · ');
+export const placeWhere = (s: Street, t: ReturnType<typeof useT>) => [s.muni, s.barri ?? t.plan.near(s.near)].filter(Boolean).join(' · ');
+/** «Piscina · Sabadell · Can Llong» */
+export const poiWhere = (p: Poi, t: ReturnType<typeof useT>) => [t.plan.kinds[p.kind] ?? null, p.muni, p.barri ?? t.plan.near(p.near)].filter(Boolean).join(' · ');
 
 const minutes = (ms: number) => Math.max(0, Math.round(ms / 60000));
 
-/** Un lloc a partir del seu codi: c<id> = carrer, p<id> = parada. */
+/** Un lloc a partir del seu codi: c<id> = carrer, l<id> = lloc (OSM), p<id> = parada. */
 function usePlace(code: string | undefined): Place | null | undefined {
   const t = useT();
   const engine = useApp((s) => s.engine);
-  const [street, setStreet] = useState<Street | null | undefined>(undefined);
+  const [gz, setGz] = useState<Gazetteer | null | undefined>(undefined);
+  const needs = Boolean(code && (code.startsWith('c') || code.startsWith('l')));
   useEffect(() => {
-    setStreet(undefined);
-    if (!code?.startsWith('c')) return;
+    if (!needs) return;
     let live = true;
     loadStreets()
-      .then((list) => live && setStreet(streetById(list, code.slice(1)) ?? null))
-      .catch(() => live && setStreet(null));
+      .then((g) => live && setGz(g))
+      .catch(() => live && setGz(null));
     return () => {
       live = false;
     };
-  }, [code]);
+  }, [needs]);
   if (!code) return null;
   if (code.startsWith('p')) {
     const s = engine?.stops.get(code.slice(1));
     return s ? { code, name: s.name, where: t.stop, pts: [[s.lon, s.lat]] } : null;
   }
-  if (street === undefined) return undefined;
+  if (gz === undefined) return undefined;
+  if (code.startsWith('l')) {
+    const p = gz ? placeById(gz, code.slice(1)) : undefined;
+    return p ? { code, name: p.name, where: poiWhere(p, t), pts: [p.pt] } : null;
+  }
+  const street = gz ? streetById(gz, code.slice(1)) : undefined;
   return street ? { code, name: street.name, where: placeWhere(street, t), pts: street.pts } : null;
 }
 
@@ -54,17 +61,18 @@ export function PlaceSearch({ placeholder, onPick, autoFocus = false }: { placeh
   const t = useT();
   const engine = useApp((s) => s.engine);
   const [q, setQ] = useState('');
-  const [streets, setStreets] = useState<Awaited<ReturnType<typeof loadStreets>> | null>(null);
+  const [gz, setGz] = useState<Gazetteer | null>(null);
   useEffect(() => {
-    void loadStreets().then(setStreets).catch(() => undefined);
+    void loadStreets().then(setGz).catch(() => undefined);
   }, []);
   const res = useMemo(() => {
-    if (!q.trim() || !engine) return { streets: [] as Street[], stops: [] as { id: string; name: string }[] };
+    if (!q.trim() || !engine) return { streets: [] as Street[], places: [] as Poi[], stops: [] as { id: string; name: string }[] };
     const nq = normalize(q);
     const seen = new Set<string>();
-    const stops = [...engine.stops.values()].filter((s) => normalize(s.name).includes(nq) && !seen.has(s.name) && seen.add(s.name)).slice(0, 4);
-    return { streets: streets ? searchStreets(streets, q, 5) : [], stops };
-  }, [q, streets, engine]);
+    const stops = [...engine.stops.values()].filter((s) => normalize(s.name).includes(nq) && !seen.has(s.name) && seen.add(s.name)).slice(0, 3);
+    const found = gz ? searchPlaces(gz, q, 4) : { streets: [], places: [] };
+    return { ...found, stops };
+  }, [q, gz, engine]);
   return (
     <div className="place-search">
       <label className="search-field">
@@ -73,6 +81,15 @@ export function PlaceSearch({ placeholder, onPick, autoFocus = false }: { placeh
       </label>
       {q.trim() && (
         <ul className="place-results">
+          {res.places.map((p) => (
+            <li key={`l${p.id}`}>
+              <button type="button" onClick={() => onPick(`l${p.id}`)}>
+                {Icon.home}
+                <span className="sr-main">{p.name}</span>
+                <span className="dim small">{poiWhere(p, t)}</span>
+              </button>
+            </li>
+          ))}
           {res.streets.map((s) => (
             <li key={`c${s.id}`}>
               <button type="button" onClick={() => onPick(`c${s.id}`)}>
@@ -91,7 +108,7 @@ export function PlaceSearch({ placeholder, onPick, autoFocus = false }: { placeh
               </button>
             </li>
           ))}
-          {res.streets.length === 0 && res.stops.length === 0 && <li className="dim sr-empty">{t.searchEmpty}</li>}
+          {res.streets.length === 0 && res.places.length === 0 && res.stops.length === 0 && <li className="dim sr-empty">{t.searchEmpty}</li>}
         </ul>
       )}
     </div>

@@ -5,8 +5,8 @@ import { useT } from '../i18n/index.ts';
 import { areaOf } from '../data/derive.ts';
 import { searchAll } from '../data/search.ts';
 import { Icon, RouteChip } from '../ui/common.tsx';
-import { loadStreets, searchStreets } from '../data/streets.ts';
-import { placeWhere } from './Route.tsx';
+import { loadStreets, searchPlaces, type Gazetteer } from '../data/streets.ts';
+import { placeWhere, poiWhere } from './Route.tsx';
 
 export function SearchBox({ autoFocus = false }: { autoFocus?: boolean }) {
   const t = useT();
@@ -18,15 +18,16 @@ export function SearchBox({ autoFocus = false }: { autoFocus?: boolean }) {
   const st = useApp.getState();
   const res = useMemo(() => (network && engine ? searchAll(network, q, (id) => areaOf(engine, id)) : null), [network, engine, q]);
   // carrers: es baixen la primera vegada que s'escriu alguna cosa
-  const [streetList, setStreetList] = useState<Awaited<ReturnType<typeof loadStreets>> | null>(null);
+  const [gz, setGz] = useState<Gazetteer | null>(null);
   useEffect(() => {
-    if (q.trim() && !streetList) void loadStreets().then(setStreetList).catch(() => undefined);
-  }, [q, streetList]);
-  const streets = useMemo(() => (streetList && q.trim().length >= 2 ? searchStreets(streetList, q, 5) : []), [streetList, q]);
+    if (q.trim() && !gz) void loadStreets().then(setGz).catch(() => undefined);
+  }, [q, gz]);
+  const { streets, places } = useMemo(() => (gz && q.trim().length >= 2 ? searchPlaces(gz, q, 4) : { streets: [], places: [] }), [gz, q]);
   if (!network || !engine || !res) return null;
 
   type Item = { key: string; go: () => void };
   const items: Item[] = [
+    ...places.map((x) => ({ key: `l${x.id}`, go: () => st.navigate({ name: 'route', to: `l${x.id}` }) })),
     ...streets.map((x) => ({ key: `c${x.id}`, go: () => st.navigate({ name: 'route', to: `c${x.id}` }) })),
     ...res.routes.map((r) => ({ key: `r${r.id}`, go: () => st.navigate({ name: 'line', ref: r.id }) })),
     ...res.stops.map((s) => ({ key: `s${s.stop.id}`, go: () => st.navigate({ name: 'stop', id: s.stop.id }) })),
@@ -75,6 +76,22 @@ export function SearchBox({ autoFocus = false }: { autoFocus?: boolean }) {
       {open && (
         <div id="search-results" className="search-results" role="listbox" aria-label={t.searchAll}>
           {items.length === 0 && <div className="sr-empty">{t.searchEmpty}</div>}
+          {places.length > 0 && <div className="sr-group">{t.plan.places}</div>}
+          {places.map((x) => {
+            const i = row();
+            return (
+              <button key={x.id} id={`sr-l${x.id}`} type="button" role="option" aria-selected={i === active} className={`sr-item${i === active ? ' on' : ''}`} onMouseEnter={() => setActive(i)} onClick={() => pick(i)}>
+                <span className="sr-dest" aria-hidden>
+                  {Icon.home}
+                </span>
+                <span className="sr-main">
+                  {x.name}
+                  <span className="sr-sub">{poiWhere(x, t)}</span>
+                </span>
+                <span className="sr-go">{t.plan.title} ›</span>
+              </button>
+            );
+          })}
           {streets.length > 0 && <div className="sr-group">{t.plan.streets}</div>}
           {streets.map((x) => {
             const i = row();

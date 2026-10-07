@@ -11,7 +11,7 @@ export type View =
   | { name: 'map' }
   | { name: 'line'; ref: string | null }
   | { name: 'stop'; id: string }
-  /** com hi arribo: `to` = c<id de carrer> | p<id de parada>; `from` igual, o res = la meva ubicació */
+  /** com hi arribo: `to` = c<id de carrer> | l<id de lloc> | p<id de parada>; `from` igual, o res = la meva ubicació */
   | { name: 'route'; to: string; from?: string }
   | { name: 'network' }
   | { name: 'mine' }
@@ -50,7 +50,7 @@ export function parseView(path: string): View {
   if (m) return { name: 'line', ref: m[1]?.toUpperCase() ?? null };
   m = /^\/parada\/([^/]+)$/.exec(p);
   if (m) return { name: 'stop', id: m[1]! };
-  m = /^\/ruta\/([cp][^/]+)$/.exec(p);
+  m = /^\/ruta\/([clp][^/]+)$/.exec(p);
   if (m) return { name: 'route', to: m[1]!, from: new URLSearchParams(location.search).get('de') ?? undefined };
   if (p === '/') return { name: 'landing' };
   if (p === '/entra') return { name: 'login', next: new URLSearchParams(location.search).get('next') ?? undefined };

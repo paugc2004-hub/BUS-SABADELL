@@ -50,3 +50,5 @@ Fora de la landing: el flux «Del prototip al temps real», la caixa «Prototip 
 bloc «Parlem del projecte». La transparència es manté al hero («Prototip independent · posicions simulades…»), a la
 secció del projecte i al peu. El flux de dades i l'arquitectura queden a la presentació (`/presentacio`).
 Al mapa del hero, el cercle groc és ara el bus de l'app (mateixa silueta, orientat pel carrer).
+
+> **Actualització 2026-10-07 (2):** a petició de l'usuari també s'ha tret la secció «El projecte» (i l'enllaç de la navegació). La transparència queda a l'avís del hero («Prototip independent · posicions simulades…») i al peu («no és una app oficial de TUS ni de l'Ajuntament»).

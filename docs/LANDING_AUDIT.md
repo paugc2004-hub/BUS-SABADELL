@@ -50,3 +50,5 @@ estona a les peticions automàtiques seguides des d'aquesta IP. El que queda de 
 (el rellotge del store); separar-lo demana tocar el store i no s'ha fet.
 
 > **Actualització 2026-10-07:** a petició de l'usuari s'han tret de la landing el flux «Del prototip al temps real», la caixa «Prototip en desenvolupament», la crida final «Prova-ho amb la teva parada» i el bloc «Parlem del projecte» (i, per tant, `VITE_CONTACT_EMAIL`). La transparència queda al hero, a «El projecte» i al peu.
+
+> **Actualització 2026-10-07 (2):** a petició de l'usuari també s'ha tret la secció «El projecte» (i l'enllaç de la navegació). La transparència queda a l'avís del hero («Prototip independent · posicions simulades…») i al peu («no és una app oficial de TUS ni de l'Ajuntament»).

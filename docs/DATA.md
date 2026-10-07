@@ -73,3 +73,7 @@ Els avisos que TUS publica a cada parada (`msgincidencia`) s'afegeixen sols.
   (`q-municipis.overpass`). Una sola descàrrega; © OpenStreetMap contributors, ODbL.
 - `pnpm data:streets` → `apps/web/public/data/streets.json`: només carrers a menys de ~850 m en línia recta d'una parada,
   separats si el mateix nom apareix en llocs diferents, amb punts cada ~60 m i el municipi. No hi ha números de portal.
+- `data/raw/osm/llocs-2026-10-07.json`: llocs amb nom (equipaments, esport, salut, educació, comerços, estacions,
+  barris…), Overpass (`q-llocs.overpass`). `packages/data-pipeline/src/places.ts` els classifica i els afegeix a
+  `streets.json` (`places`), amb el barri més proper. Noms populars que OSM no té (p. ex. «Camp del Mercantil» =
+  Camp de Futbol Municipal Arraona-Merinals) a `data/config/llocs-alias.yaml`, cadascun amb la font.

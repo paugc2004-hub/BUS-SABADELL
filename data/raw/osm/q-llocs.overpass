@@ -1,0 +1,17 @@
+[out:json][timeout:240];
+(
+ nwr["name"]["amenity"](41.505,2.058,41.582,2.145);
+ nwr["name"]["leisure"](41.505,2.058,41.582,2.145);
+ nwr["name"]["tourism"](41.505,2.058,41.582,2.145);
+ nwr["name"]["shop"](41.505,2.058,41.582,2.145);
+ nwr["name"]["healthcare"](41.505,2.058,41.582,2.145);
+ nwr["name"]["club"](41.505,2.058,41.582,2.145);
+ nwr["name"]["sport"](41.505,2.058,41.582,2.145);
+ nwr["name"]["railway"="station"](41.505,2.058,41.582,2.145);
+ nwr["name"]["office"~"government|association"](41.505,2.058,41.582,2.145);
+ nwr["name"]["historic"](41.505,2.058,41.582,2.145);
+ nwr["name"]["building"~"stadium|school|university|hospital|church|civic|public|sports_hall|train_station"](41.505,2.058,41.582,2.145);
+ nwr["name"]["landuse"~"cemetery|retail|religious"](41.505,2.058,41.582,2.145);
+ nwr["name"]["place"~"neighbourhood|suburb|quarter"](41.505,2.058,41.582,2.145);
+);
+out center tags;

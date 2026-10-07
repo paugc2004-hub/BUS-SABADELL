@@ -268,9 +268,6 @@ export function Landing() {
           <a href="#com-funciona" onClick={(e) => (e.preventDefault(), go('com-funciona'))}>
             {L.navHow}
           </a>
-          <a href="#projecte" onClick={(e) => (e.preventDefault(), go('projecte'))}>
-            {L.navProject}
-          </a>
         </nav>
         <div className="lnd-actions">
           <button type="button" className="lang-btn" aria-label={`${lang === 'ca' ? 'ES' : 'CA'} · ${t.lang}`} onClick={() => st.setLang(lang === 'ca' ? 'es' : 'ca')}>
@@ -407,12 +404,6 @@ export function Landing() {
           </figure>
         </Reveal>
 
-        <Reveal id="projecte" className="lnd-project">
-          <span className="lnd-kicker">{L.projectEyebrow}</span>
-          <h2 className="lnd-h2">{L.projectTitle}</h2>
-          <p className="lnd-project-text">{L.projectText}</p>
-          <p className="lnd-official">{L.notOfficial}</p>
-        </Reveal>
 
       </main>
 

@@ -1,0 +1,12 @@
+# Noms populars de llocs que a OpenStreetMap tenen un altre nom (planificador «Com hi arribo»).
+# Només llocs comprovats; `nom` ha de ser el nom exacte d'OSM. Cada entrada, amb la font.
+llocs:
+  - nom: Estadi Municipal de la Nova Creu Alta
+    alies: [Estadi del Sabadell, Camp del Sabadell, CE Sabadell, Centre d'Esports Sabadell, Nova Creu Alta]
+    font: estadi del CE Sabadell (coneixement públic; Viquipèdia «Estadi de la Nova Creu Alta»)
+  - nom: Camp de Futbol Municipal Arraona-Merinals
+    alies: [Camp del Mercantil, CE Mercantil, Club Esportiu Mercantil, Camp Joan Murtró]
+    font: camp del CE Mercantil, rebatejat en honor de Joan Murtró (planomato.com, torneig CE Mercantil)
+  - nom: Club Natació Sabadell
+    alies: [CN Sabadell, Natació Sabadell]
+    font: nom curt habitual del club (Viquipèdia «CN Sabadell»). El centre de Can Llong es troba pel barri (OSM)

@@ -12,6 +12,7 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { haversine, normalize, type LonLat, type NetworkData } from '@bus/core';
+import { barriOf, buildPlaces, loadBarris, type PlaceEntry } from './places.ts';
 
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '../../..');
 const OSM = join(ROOT, 'data/raw/osm');
@@ -39,6 +40,8 @@ export interface StreetEntry {
   near: string;
   /** punts [lon, lat, lon, lat, …] amb 5 decimals */
   pts: number[];
+  /** barri (OSM), per a la cerca */
+  barri?: string;
 }
 
 const latest = (re: RegExp) =>
@@ -114,12 +117,14 @@ function inRing(p: LonLat, ring: LonLat[]): boolean {
   return inside;
 }
 
-export function buildStreets(net: NetworkData): { streets: StreetEntry[]; munis: number } {
+export function buildStreets(net: NetworkData): { streets: StreetEntry[]; places: PlaceEntry[]; munis: number } {
   const f = latest(/^roads-.*\.json$/);
   if (!f) throw new Error('falta data/raw/osm/roads-*.json (pnpm data:refresh)');
   const ways = (JSON.parse(readFileSync(join(OSM, f), 'utf8')) as { elements: Way[] }).elements;
   const stops = net.stops.map((s) => ({ name: s.name, p: [s.lon, s.lat] as LonLat }));
   const munis = loadMunicipalities();
+  const barris = loadBarris(OSM);
+  const muniOf = (p: LonLat) => munis.find((m) => m.rings.some((r) => inRing(p, r)))?.name ?? null;
 
   // per nom: grups de trossos propers
   const byName = new Map<string, { name: string; groups: LonLat[][] }>();
@@ -164,26 +169,28 @@ export function buildStreets(net: NetworkData): { streets: StreetEntry[]; munis:
           nearName = s.name;
         }
       }
-      const muni = munis.find((m) => m.rings.some((r) => inRing(c, r)))?.name ?? null;
-      streets.push({ id: '', name, muni, near: nearName, pts: pts.flatMap((p) => [+p[0].toFixed(5), +p[1].toFixed(5)]) });
+      const barri = barriOf(barris, c);
+      streets.push({ id: '', name, muni: muniOf(c), near: nearName, pts: pts.flatMap((p) => [+p[0].toFixed(5), +p[1].toFixed(5)]), ...(barri ? { barri } : {}) });
     }
   }
   streets.sort((a, b) => a.name.localeCompare(b.name, 'ca') || (a.muni ?? '').localeCompare(b.muni ?? '') || a.near.localeCompare(b.near, 'ca'));
   streets.forEach((s, i) => (s.id = String(i + 1)));
-  return { streets, munis: munis.length };
+  const places = buildPlaces(OSM, join(ROOT, 'data/config'), stops, muniOf, barris);
+  return { streets, places, munis: munis.length };
 }
 
 export function writeStreets(net: NetworkData) {
-  const { streets, munis } = buildStreets(net);
+  const { streets, places, munis } = buildStreets(net);
   const roads = latest(/^roads-.*\.json$/)!;
   const body = {
     version: net.version,
     source: { name: 'OpenStreetMap', license: 'ODbL · © OpenStreetMap contributors', file: roads },
     streets,
+    places,
   };
   writeFileSync(OUT, JSON.stringify(body));
   const kb = Math.round(JSON.stringify(body).length / 1024);
-  console.log(`✔ streets.json: ${streets.length} carrers (${kb} KB)${munis ? `, municipis de ${munis} límits` : ', sense límits municipals (es fa servir la parada més propera)'}`);
+  console.log(`✔ streets.json: ${streets.length} carrers, ${places.length} llocs (${kb} KB)${munis ? `, municipis de ${munis} límits` : ', sense límits municipals (es fa servir la parada més propera)'}`);
 }
 
 // execució directa: pnpm data:streets

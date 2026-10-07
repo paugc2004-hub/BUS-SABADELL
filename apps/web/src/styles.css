@@ -928,9 +928,6 @@ html:has(.landing), body:has(.landing), #root:has(.landing) { height: auto; min-
 .lnd-shot { margin: 44px 0 0; border-radius: var(--r-xl); overflow: hidden; box-shadow: 0 1px 2px #0e111614, 0 30px 80px #0e111629; background: #0d0f12; }
 .lnd-shot img { display: block; width: 100%; height: auto; }
 
-.lnd-project { padding-top: 24px; padding-bottom: 96px; }
-.lnd-official { margin: 18px 0 0; max-width: 40em; font-size: var(--fs-small); font-weight: 600; color: var(--text-2); }
-.lnd-project-text { margin: 0; max-width: 40em; font-size: var(--fs-card); line-height: 1.55; color: var(--text-2); }
 
 .lnd-footer { display: grid; justify-items: center; gap: 8px; padding: 36px 24px calc(40px + var(--safe-b)); text-align: center; color: var(--text-2); font-size: var(--fs-meta); box-shadow: 0 -1px 0 var(--line); }
 .lnd-footer p { margin: 0; max-width: 46em; }
@@ -955,10 +952,10 @@ html:has(.landing), body:has(.landing), #root:has(.landing) { height: auto; min-
   .demo-eta { margin-top: 10px; min-height: 34px; }
   .demo-btn { min-height: 40px; margin-top: 10px; }
   .lnd-benefit-grid, .lnd-steps ol { grid-template-columns: 1fr; gap: 28px; }
-  .lnd-benefits, .lnd-steps, .lnd-split, .lnd-map-sec, .lnd-project { padding-bottom: 72px; }
+  .lnd-benefits, .lnd-steps, .lnd-split, .lnd-map-sec { padding-bottom: 72px; }
   .lnd-split, .lnd-split.rev { grid-template-columns: 1fr; gap: 28px; }
   .lnd-split.rev .lnd-split-copy { order: 0; }
-  .lnd-split-copy p, .lnd-map-sec > p, .lnd-project-text { font-size: var(--fs-body); }
+  .lnd-split-copy p, .lnd-map-sec > p { font-size: var(--fs-body); }
   .lnd-shot { margin: 32px -16px 0; border-radius: 0; }
 }
 @media (max-width: 560px) {
