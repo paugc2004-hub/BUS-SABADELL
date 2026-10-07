@@ -3,7 +3,7 @@ import { localDate, serviceDayOrigin, type SimEngine } from '@bus/core';
 import { areaOf, liveArrivals, type LiveArrival } from '../data/derive.ts';
 import { useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
-import { Countdown, Icon, IconButton, Punctuality, RouteChip, SourceTag, hm, relativeLabel, shareUrl, useNow } from '../ui/common.tsx';
+import { Icon, IconButton, Punctuality, RouteChip, SourceTag, hm, relativeLabel, shareUrl, useNow } from '../ui/common.tsx';
 import { Sheet } from '../ui/Sheet.tsx';
 
 export function StopPanel({ id }: { id: string }) {
@@ -64,14 +64,8 @@ function TusStop({ id }: { id: string }) {
         <div>
           <div className="eyebrow">{t.stop}</div>
           <h2 className="stop-name">{stop.name}</h2>
-          <div className="stop-meta">
-            <span className="dim small">
-              {t.code} {area.join(' · ')}
-              {area.length > 1 && ` (${t.home.poles(area.length)})`}
-            </span>
-          </div>
           <div className="chips mt-s">
-            {routes.map((r) => (
+            {routes.filter((r) => engine.runsOn(r, engine.dayTypeAt(now))).map((r) => (
               <button key={r} type="button" className="chip-btn" onClick={() => st.navigate({ name: 'line', ref: r })}>
                 <RouteChip route={engine.routes.get(r)} size="sm" dim={!engine.runsOn(r, engine.dayTypeAt(now))} />
               </button>
@@ -99,10 +93,6 @@ function TusStop({ id }: { id: string }) {
         </div>
       </header>
 
-      <button type="button" className="cta cta-wide plan-to-stop" onClick={() => st.navigate({ name: 'route', to: `p${stop.id}` })}>
-        {Icon.walk} {t.plan.title}
-      </button>
-
       {alerts.map((a) => (
         <div key={a.id} className="alert-inline">
           {Icon.bell} {a.text[lang]}
@@ -126,8 +116,14 @@ function TusStop({ id }: { id: string }) {
           );
         })}
       </ul>
+      <button type="button" className="cta plan-to-stop" onClick={() => st.navigate({ name: 'route', to: `p${stop.id}` })}>
+        {Icon.walk} {t.plan.title}
+      </button>
       <div className="foot-note">
-        <SourceTag source="SIMULATED" /> <span className="dim small">{t.sourceHint.SIMULATED}</span>
+        <span className="dim small">
+          {t.code} {area.join(' · ')}
+          {area.length > 1 && ` (${t.home.poles(area.length)})`} · {t.sourceHint.SIMULATED}
+        </span>
       </div>
     </Sheet>
   );
@@ -160,16 +156,21 @@ export function ArrivalRow({ a, b, now, onOpen, engine, compact = false }: { a: 
         </div>
       </div>
       <div className="arrival-times">
-        <button type="button" className="arrival-main" disabled={!a.vehicleId} onClick={() => onOpen(a)} aria-label={`${route?.ref} → ${a.headsign}: ${relativeLabel(a.at, now, t)}`}>
-          <span className="big mono">{mins <= 0 ? t.imminent : mins >= 60 ? hm(a.at) : `${mins} min`}</span>
-          <Countdown at={a.at} now={now} className="dim small" />
+        <button type="button" className="arrival-main" disabled={!a.vehicleId} onClick={() => onOpen(a)} aria-label={`${mins <= 0 ? t.nowLabel : mins >= 60 ? hm(a.at) : `${mins} min`} · ${route?.ref} → ${a.headsign}${b ? ` · ${t.thenAt(hm(b.at))}` : ''}`}>
+          <span className={`big${mins <= 0 ? ' now' : ''}`}>
+            {mins <= 0 ? (
+              t.nowLabel
+            ) : mins >= 60 ? (
+              hm(a.at)
+            ) : (
+              <>
+                {mins}
+                <small> min</small>
+              </>
+            )}
+          </span>
+          {b && !compact && <span className="arrival-then">{t.thenAt(hm(b.at))}</span>}
         </button>
-        {b && !compact && (
-          <div className="arrival-next">
-            <span className="mono">{hm(b.at)}</span>
-            <span className="dim small">{relativeLabel(b.at, now, t)}</span>
-          </div>
-        )}
       </div>
     </>
   );

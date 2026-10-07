@@ -201,8 +201,9 @@ export function Punctuality({ delaySec, source = 'SIMULATED', compact = false }:
   const t = useT();
   if (delaySec === null) return null;
   const m = Math.round(Math.abs(delaySec) / 60);
-  const kind = delaySec >= 60 ? (delaySec >= 180 ? 'late3' : 'late') : delaySec <= -60 ? 'early' : 'ontime';
-  const text = kind === 'ontime' ? t.punct.onTime : kind === 'early' ? t.punct.early(m) : t.punct.late(m);
+  // A l'hora (±1 min) · N min tard · Retard important (≥ 5 min) · N min abans. Sempre text; el color només reforça.
+  const kind = delaySec >= 300 ? 'severe' : delaySec >= 60 ? 'late' : delaySec <= -60 ? 'early' : 'ontime';
+  const text = kind === 'ontime' ? t.punct.onTime : kind === 'early' ? t.punct.early(m) : kind === 'severe' && !compact ? t.punct.severe(m) : t.punct.late(m);
   const long = kind === 'ontime' ? t.punct.onTime : kind === 'early' ? t.punct.earlyLong(m) : t.punct.lateLong(m);
   const note = source === 'SIMULATED' ? ` · ${t.punct.simNote}` : '';
   return (

@@ -1,20 +1,23 @@
 /**
- * Mapa base oscuro con alternativas (bug 12.4-32):
- *  1. OpenFreeMap "dark" (sin límites de uso, datos OSM)
- *  2. CARTO Dark Matter
- *  3. Fondo sólido: solo nuestras líneas y paradas (funciona sin conexión)
+ * Mapa base CLAR i apagat (l'app ciutadana és clara; vegeu docs/APP_UX_STRATEGY.md), amb alternatives (bug 12.4-32):
+ *  1. OpenFreeMap "positron" (sense límits d'ús, dades OSM)
+ *  2. CARTO Positron
+ *  3. Fons sòlid: només les nostres línies i parades (funciona sense connexió)
  */
 import type { StyleSpecification } from 'maplibre-gl';
 
 export const BASEMAPS = [
-  { id: 'openfreemap', url: 'https://tiles.openfreemap.org/styles/dark', attribution: '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>' },
-  { id: 'carto', url: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json', attribution: '© <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>' },
+  { id: 'openfreemap', url: 'https://tiles.openfreemap.org/styles/positron', attribution: '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>' },
+  { id: 'carto', url: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json', attribution: '© <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>' },
 ] as const;
+
+/** fons del mapa (també el del contenidor mentre carrega) */
+export const MAP_BG = '#eceae4';
 
 export const FALLBACK_STYLE: StyleSpecification = {
   version: 8,
   sources: {},
-  layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#0b0c0f' } }],
+  layers: [{ id: 'bg', type: 'background', paint: { 'background-color': MAP_BG } }],
 };
 
 async function fetchStyle(url: string, timeoutMs: number): Promise<StyleSpecification> {
@@ -29,23 +32,19 @@ async function fetchStyle(url: string, timeoutMs: number): Promise<StyleSpecific
   }
 }
 
-/** Oscurece y desatura el estilo para que las líneas de bus sean las protagonistas. */
+/** Apaga el mapa base perquè les línies de bus siguin les protagonistes: fons càlid, carrers blancs, textos grisos. */
 function tone(style: StyleSpecification): StyleSpecification {
   for (const l of style.layers) {
-    if (l.type === 'background') l.paint = { ...(l.paint ?? {}), 'background-color': '#0b0c0f' };
+    if (l.type === 'background') l.paint = { ...(l.paint ?? {}), 'background-color': MAP_BG };
     if (l.type === 'symbol' && l.paint) {
       const p = l.paint as Record<string, unknown>;
-      if ('text-color' in p) p['text-color'] = '#6b7079';
-      if ('text-halo-color' in p) p['text-halo-color'] = '#0b0c0f';
+      if ('text-color' in p) p['text-color'] = '#7b8089';
+      if ('text-halo-color' in p) p['text-halo-color'] = '#f6f5f1';
     }
-    // calles algo más visibles que en el estilo original, sin competir con las líneas
-    if (l.type === 'line' && /road|street|highway|transportation|bridge|tunnel/i.test(l.id) && !/casing|rail/i.test(l.id)) {
-      const p = (l.paint ?? {}) as Record<string, unknown>;
-      p['line-color'] = /motorway|trunk|primary/i.test(l.id) ? '#2e323a' : '#24272e';
-      l.paint = p as typeof l.paint;
-    }
-    if (l.type === 'fill' && /building/i.test(l.id)) l.paint = { ...(l.paint ?? {}), 'fill-color': '#14161a' } as typeof l.paint;
-    // menos ruido: sin iconos de POI ni números de portal
+    if (l.type === 'fill' && /building/i.test(l.id)) l.paint = { ...(l.paint ?? {}), 'fill-color': '#e2e0d9' } as typeof l.paint;
+    if (l.type === 'fill' && /water/i.test(l.id)) l.paint = { ...(l.paint ?? {}), 'fill-color': '#d5dde3' } as typeof l.paint;
+    if (l.type === 'fill' && /park|landcover|landuse|wood|grass/i.test(l.id)) l.paint = { ...(l.paint ?? {}), 'fill-color': '#e3e6dc' } as typeof l.paint;
+    // menys soroll: sense icones de POI ni números de portal
     if (l.type === 'symbol' && /poi|housenum|shield/i.test(l.id)) l.layout = { ...(l.layout ?? {}), visibility: 'none' };
   }
   return style;

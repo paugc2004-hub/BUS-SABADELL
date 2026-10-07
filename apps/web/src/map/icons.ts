@@ -40,7 +40,7 @@ export function busImage(color: string) {
   const { ctx } = canvas(G.w, G.h);
   const { body, glass, rear, roof, nose } = G;
   // sombra
-  ctx.shadowColor = 'rgba(0,0,0,0.6)';
+  ctx.shadowColor = 'rgba(0,0,0,0.35)';
   ctx.shadowBlur = 3;
   ctx.shadowOffsetY = 1;
   rr(ctx, body.x, body.y, body.w, body.h, body.r);
@@ -156,9 +156,10 @@ function arrowImage(color: string) {
 export function haloImage(size = 72) {
   const { ctx } = canvas(size, size);
   const g = ctx.createRadialGradient(size / 2, size / 2, 6, size / 2, size / 2, size / 2);
-  g.addColorStop(0, 'rgba(255,255,255,0.38)');
-  g.addColorStop(0.55, 'rgba(255,255,255,0.12)');
-  g.addColorStop(1, 'rgba(255,255,255,0)');
+  // halo de selecció: blau suau (el mapa base és clar)
+  g.addColorStop(0, 'rgba(37,99,235,0.34)');
+  g.addColorStop(0.55, 'rgba(37,99,235,0.12)');
+  g.addColorStop(1, 'rgba(37,99,235,0)');
   ctx.fillStyle = g;
   ctx.beginPath();
   ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
@@ -170,7 +171,7 @@ export function userImage(size = 28) {
   const { ctx } = canvas(size, size);
   ctx.beginPath();
   ctx.arc(size / 2, size / 2, 8, 0, Math.PI * 2);
-  ctx.fillStyle = '#4da3ff';
+  ctx.fillStyle = '#2563eb';
   ctx.fill();
   ctx.lineWidth = 3;
   ctx.strokeStyle = '#ffffff';

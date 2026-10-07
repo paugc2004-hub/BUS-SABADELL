@@ -7,7 +7,7 @@ import { useMemo } from 'react';
 import { useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { vehiclesAt } from '../data/vehicles.ts';
-import { RouteChip, SourceTag, useNow } from '../ui/common.tsx';
+import { Icon, RouteChip, SourceTag, useNow } from '../ui/common.tsx';
 
 export function NetworkPanel() {
   const t = useT();
@@ -49,9 +49,16 @@ export function NetworkPanel() {
 
   return (
     <aside className="home network" aria-label={t.networkPage.title}>
-      <h1 className="page-title">
-        <span className="map-entry-dot" aria-hidden /> {t.networkPage.title}
-      </h1>
+      <button type="button" className="back-link" onClick={() => st.navigate({ name: 'home' })}>
+        ← {t.backToApp}
+      </button>
+      <div className="control-head">
+        <span className="eyebrow">{t.control}</span>
+        <h1 className="page-title">{t.networkPage.title}</h1>
+        <button type="button" className="cta" onClick={() => st.navigate({ name: 'present' })}>
+          {Icon.play} {t.present}
+        </button>
+      </div>
       <p className="dim net-note">
         <SourceTag source="SIMULATED" /> {t.networkPage.simNote}
       </p>

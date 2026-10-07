@@ -236,8 +236,16 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
             'line-color': ['get', 'color'],
             'line-width': ['interpolate', ['linear'], ['zoom'], 11, 5, 16, 14],
             'line-blur': ['interpolate', ['linear'], ['zoom'], 11, 4, 16, 10],
-            'line-opacity': 0.24,
+            'line-opacity': 0.1,
           },
+        });
+        // vora fosca fina sota cada línia: els colors clars (L44 groc, L10, F4…) es veuen sobre el mapa clar
+        map.addLayer({
+          id: 'routes-casing',
+          type: 'line',
+          source: 'routes',
+          layout: { 'line-cap': 'round', 'line-join': 'round', 'line-sort-key': ['get', 'order'] },
+          paint: { 'line-color': '#0e1116', 'line-width': zw(2.6, 4.4, 7.5), 'line-opacity': ['case', ['==', ['get', 'active'], 1], 0.28, 0.05] },
         });
         map.addLayer({
           id: 'routes-line',
@@ -285,7 +293,7 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
           type: 'line',
           source: 'trip-done',
           layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: { 'line-color': '#c3c8d0', 'line-width': zw(2, 3.5, 5.5), 'line-opacity': 0.55, 'line-dasharray': [1.2, 1.4] },
+          paint: { 'line-color': '#8a9099', 'line-width': zw(2, 3.5, 5.5), 'line-opacity': 0.7, 'line-dasharray': [1.2, 1.4] },
         });
         map.addLayer({
           id: 'trip-todo-casing',
@@ -307,7 +315,7 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
           type: 'line',
           source: 'plan-walk',
           layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: { 'line-color': '#e6e9ee', 'line-width': zw(2.5, 3.5, 5), 'line-dasharray': [0.2, 1.8] },
+          paint: { 'line-color': '#3d434c', 'line-width': zw(2.5, 3.5, 5), 'line-dasharray': [0.2, 1.8] },
         });
         map.addLayer({
           id: 'plan-bus-casing',
@@ -329,7 +337,7 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
           source: 'plan-pts',
           paint: {
             'circle-radius': ['match', ['get', 'kind'], 'dest', 9, 'from', 7, 5.5],
-            'circle-color': ['match', ['get', 'kind'], 'dest', '#ffb224', 'from', '#6cb6ff', '#ffffff'],
+            'circle-color': ['match', ['get', 'kind'], 'dest', '#ffb224', 'from', '#2563eb', '#ffffff'],
             'circle-stroke-color': '#08090b',
             'circle-stroke-width': ['match', ['get', 'kind'], 'dest', 3, 2.5],
           },
@@ -357,7 +365,7 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
               'text-size': 11,
               'text-keep-upright': true,
             },
-            paint: { 'text-color': ['get', 'color'], 'text-halo-color': '#08090b', 'text-halo-width': 2 },
+            paint: { 'text-color': '#ffffff', 'text-halo-color': ['get', 'color'], 'text-halo-width': 2.6 },
           });
         }
         map.addLayer({
@@ -396,7 +404,7 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
               'text-anchor': 'top',
               'text-optional': true,
             },
-            paint: { 'text-color': '#c9cdd3', 'text-halo-color': '#0b0c0f', 'text-halo-width': 1.4 },
+            paint: { 'text-color': '#40464f', 'text-halo-color': '#f6f5f1', 'text-halo-width': 1.6 },
           });
         }
         map.addLayer({
@@ -404,7 +412,7 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
           type: 'circle',
           source: 'stops',
           filter: ['==', ['get', 'id'], ''],
-          paint: { 'circle-radius': 10, 'circle-color': 'rgba(255,255,255,0.12)', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2.5 },
+          paint: { 'circle-radius': 10, 'circle-color': 'rgba(14,17,22,0.08)', 'circle-stroke-color': '#0e1116', 'circle-stroke-width': 2.5 },
         });
         map.addLayer({
           id: 'next-stop',
@@ -441,7 +449,7 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
               'text-anchor': 'bottom',
               'text-allow-overlap': true,
             },
-            paint: { 'text-color': '#ffb224', 'text-halo-color': '#08090b', 'text-halo-width': 2 },
+            paint: { 'text-color': '#92400e', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
           });
         }
         // anillo de "aturat a la parada"
@@ -453,9 +461,9 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
           filter: ['all', ['==', ['get', 'stop'], 1], ['==', ['get', 'dim'], 0]],
           paint: {
             'circle-radius': ['interpolate', ['linear'], ['zoom'], 14, 9, 17, 18],
-            'circle-color': 'rgba(255,255,255,0.06)',
-            'circle-stroke-color': '#ffffff',
-            'circle-stroke-opacity': 0.75,
+            'circle-color': 'rgba(14,17,22,0.05)',
+            'circle-stroke-color': '#0e1116',
+            'circle-stroke-opacity': 0.45,
             'circle-stroke-width': 1.5,
           },
         });
@@ -705,6 +713,7 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
       // amb una ruta de «com hi arribo» a la vista: tota la xarxa atenuada perquè la ruta destaqui
       for (const id of ['routes-focus', 'routes-focus-casing', 'routes-arrows']) map.setFilter(id, f(''));
       map.setPaintProperty('routes-line', 'line-opacity', 0.12);
+      map.setPaintProperty('routes-casing', 'line-opacity', 0.03);
       map.setPaintProperty('routes-glow', 'line-opacity', 0);
       if (glyphs && map.getLayer('routes-label')) map.setFilter('routes-label', f(''));
       return;
@@ -717,7 +726,8 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
       'line-opacity',
       focus ? ['case', ['==', ['get', 'route'], focus], 0, 0.14] : ['case', ['==', ['get', 'active'], 1], 0.92, 0.18],
     );
-    map.setPaintProperty('routes-glow', 'line-opacity', focus ? ['case', ['==', ['get', 'route'], focus], 0.4, 0] : 0.24);
+    map.setPaintProperty('routes-casing', 'line-opacity', focus ? 0.03 : ['case', ['==', ['get', 'active'], 1], 0.28, 0.05]);
+    map.setPaintProperty('routes-glow', 'line-opacity', focus ? ['case', ['==', ['get', 'route'], focus], 0.22, 0] : 0.1);
     if (glyphs && map.getLayer('routes-label'))
       map.setFilter('routes-label', focus ? (['all', ['==', ['get', 'main'], 1], ['==', ['get', 'route'], focus]] as maplibregl.FilterSpecification) : ['==', ['get', 'main'], 1]);
   }, [ready, engine, focusRoute, selectedBus, glyphs, plan]);
@@ -796,6 +806,7 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
     const inRoutes = visibleRoutes ? (['in', ['get', 'route'], ['literal', visibleRoutes]] as const) : null;
     const f = inRoutes as maplibregl.FilterSpecification | null;
     map.setFilter('routes-line', f);
+    map.setFilter('routes-casing', f);
     const glow = ['all', ['==', ['get', 'main'], 1], ['==', ['get', 'active'], 1], ...(inRoutes ? [inRoutes] : [])];
     map.setFilter('routes-glow', glow as unknown as maplibregl.FilterSpecification);
     map.setFilter('bus-icon', f);

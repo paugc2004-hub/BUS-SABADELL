@@ -1,6 +1,6 @@
 /** Barra superior, banner de honestidad, avisos, "qué es real", filtro de líneas y controles del mapa. */
 import { useEffect, useRef, useState } from 'react';
-import { forcedInstant, holidayName, localDate } from '@bus/core';
+import { forcedInstant } from '@bus/core';
 import { clock, useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { vehicleById } from '../data/vehicles.ts';
@@ -8,11 +8,12 @@ import { Icon, IconButton, RouteChip, hm, useNow } from '../ui/common.tsx';
 import { Logo } from '../ui/Logo.tsx';
 import { auth } from '../auth/auth.ts';
 
-type NavKey = 'home' | 'map' | 'line' | 'network' | 'mine';
+type NavKey = 'home' | 'map' | 'line' | 'mine';
 
 /** Pestanya activa: les vistes de detall (parada, bus) mantenen la vista d'on venien. */
 function activeTab(view: ReturnType<typeof useApp.getState>['view'], base: string): NavKey {
-  if (view.name === 'home' || view.name === 'map' || view.name === 'line' || view.name === 'network' || view.name === 'mine') return view.name;
+  if (view.name === 'home' || view.name === 'map' || view.name === 'line' || view.name === 'mine') return view.name;
+  if (view.name === 'network') return 'home';
   if (view.name === 'present') return 'map';
   return base as NavKey;
 }
@@ -24,7 +25,6 @@ function useNavItems() {
     { key: 'home' as const, label: t.nav2.home, icon: Icon.home, go: () => st.navigate({ name: 'home' }) },
     { key: 'map' as const, label: t.nav2.map, icon: Icon.map, go: () => st.navigate({ name: 'map' }) },
     { key: 'line' as const, label: t.nav2.lines, icon: Icon.line, go: () => st.navigate({ name: 'line', ref: null }) },
-    { key: 'network' as const, label: t.nav2.network, icon: Icon.layers, go: () => st.navigate({ name: 'network' }) },
     { key: 'mine' as const, label: t.nav2.mine, icon: Icon.star(false), go: () => st.navigate({ name: 'mine' }) },
   ];
 }
@@ -35,32 +35,33 @@ export function TopBar() {
   const base = useApp((s) => s.base);
   const lang = useApp((s) => s.lang);
   const network = useApp((s) => s.network);
-  const engine = useApp((s) => s.engine);
   const online = useApp((s) => s.online);
   const backend = useApp((s) => s.backend);
   const now = useNow(1000);
   const st = useApp.getState();
-  const items = useNavItems().filter((i) => i.key !== 'mine');
+  const items = useNavItems();
   const tab = activeTab(view, base);
   const alerts = network?.alerts.length ?? 0;
   const live = clock.isLive();
-  const date = localDate(now);
-  const hol = network ? holidayName(date, network.holidays) : null;
-  const dayType = engine?.dayTypeAt(now);
-  const clockText = new Intl.DateTimeFormat('ca', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(now);
-  const dayText = new Intl.DateTimeFormat(lang === 'ca' ? 'ca' : 'es', { timeZone: 'Europe/Madrid', weekday: 'short', day: 'numeric', month: 'short' }).format(now);
+  const control = view.name === 'network';
+  const clockText = new Intl.DateTimeFormat('ca', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now);
 
   return (
     <header className="topbar">
       <button type="button" className="brand" onClick={() => st.navigate({ name: 'home' })} aria-label={t.appName}>
-        <Logo size={34} compact />
+        <Logo size={32} compact />
       </button>
 
-      <button type="button" className="live-chip" onClick={() => st.set({ alertsOpen: true })} aria-label={`${t.liveSim} · ${alerts ? t.incidentsN(alerts) : t.noIncidents}`}>
-        <span className={`live-dot${alerts ? ' warn' : ''}`} aria-hidden />
-        <span className="live-text">{t.liveSim}</span>
-        <span className="live-sub">{alerts ? t.incidentsN(alerts) : t.noIncidents}</span>
-      </button>
+      {control ? (
+        <span className="control-tag">Control</span>
+      ) : (
+        // la transparència: sempre a la vista, en petit; obre l'explicació
+        <button type="button" className="demo-pill" onClick={() => st.set({ aboutOpen: true })} aria-label={`${t.demoPill}. ${t.whatData}`}>
+          <span className="demo-pill-dot" aria-hidden />
+          <span>{t.demoPill}</span>
+          {Icon.info}
+        </button>
+      )}
 
       <nav className="topnav" aria-label="Navegació">
         {items.map((i) => (
@@ -71,33 +72,39 @@ export function TopBar() {
       </nav>
 
       <div className="top-right">
-        <div className="clock" aria-live="off">
-          <span className={`clock-time mono${live ? '' : ' forced'}`}>{clockText}</span>
-          <span className="clock-day">
-            {dayText} · {hol ? `${t.holiday}: ${hol}` : dayType ? t.dayType[dayType] : ''}
-            {!live && <strong className="forced-tag"> · {t.demoTime}{clock.getSpeed() !== 1 ? ` ×${clock.getSpeed()}` : ''}</strong>}
+        {!live && (
+          // hora de demo (presentacions): només quan no és l'hora real
+          <span className="demo-clock" title={t.demoTime}>
+            <span className="mono">{clockText}</span>
+            <span className="demo-clock-tag">
+              {t.demoTime}
+              {clock.getSpeed() !== 1 ? ` ×${clock.getSpeed()}` : ''}
+            </span>
           </span>
-        </div>
+        )}
         {!online && <span className="pill warn" title={t.offline}>offline</span>}
         {backend === 'live' && <span className="pill ok" title={t.backendLive}>API</span>}
+        {alerts > 0 && (
+          <IconButton label={`${t.alerts}: ${t.incidentsN(alerts)}`} onClick={() => st.set({ alertsOpen: true })} className="alerts-btn">
+            {Icon.bell}
+            <span className="badge">{alerts}</span>
+          </IconButton>
+        )}
         <button type="button" className="lang-btn" aria-label={`${lang === 'ca' ? 'ES' : 'CA'} · ${t.lang}`} onClick={() => st.setLang(lang === 'ca' ? 'es' : 'ca')}>
           {lang === 'ca' ? 'ES' : 'CA'}
         </button>
-        <IconButton label={t.present} onClick={() => st.navigate({ name: 'present' })} className="present-btn">
-          {Icon.play}
-        </IconButton>
         <AccountMenu />
       </div>
     </header>
   );
 }
 
-/** Navegació inferior al mòbil: Inici · Mapa · Línies · Els meus. */
+/** Navegació inferior al mòbil: Inici · Mapa · Línies · Parades. */
 export function BottomNav() {
   const view = useApp((s) => s.view);
   const base = useApp((s) => s.base);
   const trip = useApp((s) => s.trip);
-  const items = useNavItems().filter((i) => i.key !== 'network');
+  const items = useNavItems();
   const tab = activeTab(view, base);
   return (
     <nav className="bottomnav" aria-label="Navegació">
@@ -141,6 +148,7 @@ export function AboutModal() {
             {Icon.close}
           </IconButton>
         </header>
+        <p className="about-lead">{t.demoExplain}</p>
         <div className="about-cols">
           <div>
             <h3 className="about-real">{t.about.real}</h3>
@@ -380,7 +388,7 @@ export async function signOut() {
   st.navigate({ name: 'landing' });
 }
 
-/** Avatar del compte amb el menú (nom, correu, tancar la sessió). */
+/** Menú: el compte, què són les dades, NextMobility Control i la presentació. També al mòbil. */
 export function AccountMenu() {
   const t = useT();
   const user = useApp((s) => s.user);
@@ -398,27 +406,45 @@ export function AccountMenu() {
     };
   }, [open]);
   if (!user) return null;
+  const st = useApp.getState();
+  const go = (f: () => void) => () => {
+    setOpen(false);
+    f();
+  };
   return (
     <div className="account" ref={ref}>
-      <button type="button" className="avatar" aria-label={`${t.authUi.account}: ${user.name}`} aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen(!open)}>
+      <button type="button" className="avatar" aria-label={`${t.menu} · ${t.authUi.account}: ${user.name}`} aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen(!open)}>
         {initial(user.name)}
       </button>
       {open && (
         <div className="account-menu" role="menu">
           <div className="account-who">
             <strong>{user.name}</strong>
-            <span className="dim">{user.email}</span>
-            {user.demo && <span className="status-pill st-en_cabecera">{t.authUi.demoBadge}</span>}
+            {!user.demo && <span className="dim">{user.email}</span>}
+            {user.demo && <span className="dim">{t.authUi.demoBadge}</span>}
           </div>
           {user.demo && (
-            <button type="button" role="menuitem" className="account-item" onClick={() => (setOpen(false), useApp.getState().navigate({ name: 'register' }))}>
+            <button type="button" role="menuitem" className="account-item" onClick={go(() => st.navigate({ name: 'register' }))}>
               {t.authUi.createAccount}
             </button>
           )}
-          <button type="button" role="menuitem" className="account-item" onClick={() => void signOut()}>
+          <button type="button" role="menuitem" className="account-item" onClick={go(() => st.set({ aboutOpen: true }))}>
+            {Icon.info} {t.whatData}
+          </button>
+          <div className="menu-sep" />
+          <button type="button" role="menuitem" className="account-item control" onClick={go(() => st.navigate({ name: 'network' }))}>
+            <span>
+              <strong>{t.control}</strong>
+              <span className="dim small">{t.controlSub}</span>
+            </span>
+          </button>
+          <button type="button" role="menuitem" className="account-item" onClick={go(() => st.navigate({ name: 'present' }))}>
+            {Icon.play} {t.present}
+          </button>
+          <div className="menu-sep" />
+          <button type="button" role="menuitem" className="account-item" onClick={go(() => void signOut())}>
             {t.authUi.signOut}
           </button>
-          <p className="account-note dim">{t.authUi.localNote}</p>
         </div>
       )}
     </div>

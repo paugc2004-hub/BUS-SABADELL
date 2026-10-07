@@ -72,7 +72,7 @@ h2, h3 { margin: 0; }
 /* ---------- layout */
 .app { display: grid; grid-template-rows: auto auto 1fr; grid-template-columns: minmax(0, 1fr); height: 100dvh; overflow: hidden; }
 .stage { position: relative; overflow: hidden; }
-.map, .map.maplibregl-map { position: absolute; inset: 0; background: #0b0c0f; }
+.map, .map.maplibregl-map { position: absolute; inset: 0; background: #eceae4; }
 
 /* ---------- barra superior */
 .topbar {
@@ -1104,3 +1104,211 @@ html:has(.landing), body:has(.landing), #root:has(.landing) { height: auto; min-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
+
+/* ================================================================ V3: app ciutadana clara · NextMobility Control fosc
+   docs/APP_UX_STRATEGY.md. El fosc de dalt queda per a Control i la presentació (.app.control). */
+.app.citizen {
+  color-scheme: light;
+  --bg: #f6f5f1;
+  --bg-2: #ffffff;
+  --panel: #ffffff;
+  --panel-solid: #ffffff;
+  --line: #e7e5de;
+  --line-2: #d7d4cb;
+  --text: #0e1116;
+  --text-2: #424851;
+  --dim: #646a73;
+  --amber: #b45309;
+  --ok: #15803d;
+  --sim: #92400e;
+  --rt: #15803d;
+  --focus: #2563eb;
+  --surface: #ffffff;
+  --surface-2: #f2f1ec;
+  --surface-3: #e8e6df;
+  --shadow: 0 1px 2px #0e11160d, 0 6px 20px #0e111612;
+  --shadow-lg: 0 2px 6px #0e11160f, 0 16px 40px #0e11161c;
+  background: var(--bg);
+  color: var(--text);
+}
+.app.control { background: var(--bg); }
+
+/* superfícies: blanques, opaques (abans es llegia l'inici a través de la parada) */
+.citizen .sheet, .citizen .panel, .citizen .line-filter, .citizen .trip-card, .citizen .home { background: var(--surface); box-shadow: var(--shadow-lg); }
+.control .sheet, .control .home, .control .trip-card { background: #121419; }
+.citizen .modal { background: var(--surface); border: 0; box-shadow: var(--shadow-lg); }
+.citizen .modal-back { background: #0e111666; }
+.citizen .icon-btn:hover { background: #0e11160a; }
+.citizen .cta { background: var(--surface); border-color: var(--line-2); }
+.citizen .cta:hover { border-color: #0e111640; }
+.citizen .cta-primary { background: var(--text); color: #fff; border-color: var(--text); }
+.citizen .cta-primary:hover { background: #000; }
+.citizen .cta-on { background: #fef3c7; border-color: #f59e0b; color: #92400e; }
+.citizen .status-pill { background: var(--surface-2); color: var(--text-2); }
+.citizen .st-en_ruta { background: #dcfce7; color: #166534; }
+.citizen .st-en_parada { background: #e0e7ff; color: #3730a3; }
+.citizen .st-en_cabecera { background: #fef3c7; color: #92400e; }
+.citizen .st-retrasado { background: #ffedd5; color: #9a3412; }
+.citizen .st-desviado { background: #ffedd5; color: #9a3412; }
+.citizen .st-retirada, .citizen .st-last, .citizen .st-sched { background: #eceae4; color: #4b5059; }
+.citizen .alert-inline { background: #fff7ed; color: #9a3412; }
+.citizen .pick-hint { background: #fef3c7; color: #92400e; }
+.citizen .toast-msg { background: #0e1116f2; color: #fff; border: 0; box-shadow: var(--shadow-lg); }
+.citizen .toast-msg.tone-warn { background: #92400ef2; color: #fff; }
+.citizen .toast-msg.tone-go { background: #166534f2; color: #fff; }
+.citizen .offline-note { background: #fef3c7; color: #92400e; }
+.citizen .account-menu { background: var(--surface); }
+.citizen .account-item { background: var(--surface-2); }
+.citizen .account-item:hover { background: var(--surface-3); }
+.citizen .chip { box-shadow: inset 0 0 0 1px #0e111626; }
+.citizen .search-results { background: var(--surface); }
+.citizen .search-field { background: var(--surface-2); }
+.citizen .lang-btn { border-color: var(--line-2); }
+.citizen .maplibregl-ctrl-attrib { background: #ffffffd9 !important; color: var(--text-2) !important; }
+.citizen .maplibregl-ctrl-attrib a { color: var(--text-2) !important; }
+.citizen .maplibregl-ctrl-attrib-button { filter: none; }
+.citizen .tl-item.tl-passed::before { background: #c9c6bd; }
+.citizen .tl-item.tl-next::before { background: linear-gradient(#c9c6bd 0 50%, var(--c) 50%); }
+.citizen .tl-passed .tl-dot { background: #c9c6bd; border-color: #c9c6bd; color: #fff; }
+.citizen .tl-dot { background: #fff; color: #fff; }
+.citizen .tl-now { filter: none; }
+.citizen .tl-tag.board { background: #fef3c7; color: #92400e; }
+.citizen .tl-pick { background: var(--text); color: #fff; }
+.citizen .lp-dot { background: #fff; }
+.citizen .about-why { background: var(--surface-2); }
+
+/* estats de puntualitat (text sempre; el color només reforça) */
+.punct-severe { background: #ff6b4a24; color: #ff9a82; }
+.citizen .punct-ontime { background: #dcfce7; color: #166534; }
+.citizen .punct-late { background: #ffedd5; color: #9a3412; }
+.citizen .punct-severe { background: #fee2e2; color: #991b1b; }
+.citizen .punct-early { background: #dbeafe; color: #1e40af; }
+.punct::before { content: ''; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: currentColor; }
+.punct-severe::before { border-radius: 1px; transform: rotate(45deg); }
+
+/* ---------- barra superior ciutadana: marca, «Dades de demostració», navegació, menú */
+.citizen .topbar { background: var(--surface); border-bottom: 0; box-shadow: 0 1px 0 var(--line); }
+.demo-pill { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: var(--fs-meta); font-weight: 700; white-space: nowrap; }
+.demo-pill:hover { background: #fde68a; }
+.demo-pill svg { width: 14px; height: 14px; }
+.demo-pill-dot { width: 6px; height: 6px; border-radius: 50%; background: #d97706; }
+.control-tag { display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border-radius: 8px; background: #ffffff14; color: var(--text-2); font-size: var(--fs-meta); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.demo-clock { display: inline-flex; flex-direction: column; align-items: flex-end; line-height: 1.1; font-weight: 700; }
+.demo-clock .mono { font-size: var(--fs-small); }
+.demo-clock-tag { font-size: var(--fs-meta); color: var(--amber); font-weight: 600; }
+.alerts-btn .badge { top: 6px; right: 6px; }
+.menu-sep { height: 1px; margin: 8px 0; background: var(--line); }
+.account-item { display: flex; align-items: center; gap: 8px; padding: 0 12px; text-align: left; }
+.account-item.control { min-height: 52px; }
+.account-item.control > span { display: flex; flex-direction: column; }
+.account-item + .account-item { margin-top: 6px; }
+.about-lead { margin: 0 0 14px; font-size: var(--fs-body); line-height: 1.5; }
+
+/* ---------- inici: el proper bus */
+.citizen .hero { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line), 0 1px 2px #0e11160a; border-top: 4px solid var(--c); }
+.hero-main { margin: 14px 0 8px; }
+.hero-dest { font-size: var(--fs-card); }
+.hero-min { font-size: var(--fs-xl, 48px); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.hero-unit { font-size: var(--fs-body); font-weight: 700; color: var(--text); }
+.hero-min.now { font-size: var(--fs-title); color: var(--ok); }
+.hero-ctas { grid-template-columns: 1fr auto; align-items: center; }
+.hero-ctas .text-btn { margin: 0; padding: 0 6px; }
+.citizen .hero-dot { background: #fff; }
+.citizen .hero-dot.mine { background: var(--text); border-color: var(--text); box-shadow: 0 0 0 3px #fff, 0 0 0 4.5px var(--text); }
+.citizen .hero-meta .near { color: #b45309; }
+.citizen .home-stop { background: var(--surface-2); }
+.map-entry-ico { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--surface); color: var(--text); flex: none; }
+.citizen .map-entry { background: var(--surface-2); }
+
+/* ---------- llegades: un temps, gran; el següent, petit */
+.arrival-main { justify-content: center; gap: 2px; }
+.arrival-main .big { font-size: var(--fs-title); font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.arrival-main .big small { font-size: var(--fs-small); font-weight: 700; letter-spacing: 0; }
+.arrival-main .big.now { color: var(--ok); font-size: var(--fs-card); }
+.arrival-then { font-size: var(--fs-meta); color: var(--dim); }
+.arrivals.compact .arrival-main .big { font-size: var(--fs-card); }
+.plan-to-stop { width: 100%; margin: 14px 0 4px; }
+
+/* ---------- fitxa del bus */
+.bc-dest { font-size: var(--fs-card); line-height: 1.2; }
+.bc-od { margin-top: 4px; font-size: var(--fs-small); }
+.bc-eta { font-weight: 800; font-size: var(--fs-card); white-space: nowrap; }
+
+/* ---------- el teu viatge */
+.trip-focus { margin: 4px 0 6px; padding: 14px; border-radius: var(--r-md); background: var(--surface-2); }
+.tf-eyebrow { font-size: var(--fs-meta); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--amber); }
+.tf-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-top: 6px; }
+.tf-stop { display: flex; flex-direction: column; min-width: 0; }
+.tf-stop strong { font-size: var(--fs-card); line-height: 1.2; }
+.tf-label { font-size: var(--fs-meta); font-weight: 700; color: var(--dim); }
+.tf-eta { display: flex; flex-direction: column; align-items: flex-end; }
+.tf-min { font-size: var(--fs-xl, 48px); font-weight: 800; line-height: 1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.tf-min small { font-size: var(--fs-body); letter-spacing: 0; }
+.tf-now { font-size: var(--fs-card); color: var(--ok); }
+.tf-away { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; font-weight: 700; color: var(--text-2); }
+.tf-away.near { color: var(--amber); }
+.tf-hint { margin: 8px 0 0; font-size: var(--fs-small); color: var(--text-2); }
+.trip-focus.phase-boarding { box-shadow: inset 0 0 0 2px var(--ok); }
+.approach { position: relative; height: 30px; margin: 12px 8px 0; }
+.approach-rail { position: absolute; left: 0; right: 0; top: 14px; height: 3px; border-radius: 2px; background: var(--line-2); overflow: hidden; }
+.approach-rail span { display: block; height: 100%; background: var(--c); transition: width 0.9s linear; }
+.approach-dot { position: absolute; top: 10px; width: 11px; height: 11px; border-radius: 50%; background: #fff; border: 2px solid var(--line-2); transform: translateX(-50%); }
+.approach-dot.done { border-color: var(--c); }
+.approach-dot.mine { top: 7px; width: 17px; height: 17px; background: var(--text); border-color: var(--text); box-shadow: 0 0 0 3px #fff; }
+.approach-bus { position: absolute; top: 4px; transform: translateX(-50%); transition: left 0.9s linear; }
+
+/* ---------- línia */
+.lp-summary { margin: 0 0 16px; font-size: var(--fs-small); color: var(--text-2); }
+.lp-summary strong { color: var(--text); }
+.lp-next-item { font-size: var(--fs-small); }
+
+/* ---------- NextMobility Control */
+.control-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-bottom: 8px; }
+.control-head .eyebrow { width: 100%; font-size: var(--fs-meta); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--amber); }
+.control-head .page-title { margin: 0; flex: 1; }
+.control-head .cta { min-height: 38px; }
+
+@media (max-width: 760px) {
+  .citizen .bottomnav { background: var(--surface); box-shadow: 0 -1px 0 var(--line); }
+  .demo-pill { padding: 0 8px; }
+  .demo-pill > span:not(.demo-pill-dot) { max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }
+  .top-right .account { display: block; }
+  .topbar .logo-name { display: none; }
+  /* inici, línies i parades: pàgines senceres (el mapa és un botó); la línia i el mapa sí que en porten */
+  .citizen.base-home .home, .citizen.base-line .home, .citizen.base-mine .home { top: 0; border-radius: 0; box-shadow: none; background: var(--bg); padding: 14px 16px 24px; }
+  .citizen.base-home .home > *, .citizen.base-mine .home > * { flex: none; }
+  /* amb una parada, una ruta o un bus oberts, es veu el mapa (no la pàgina de sota) */
+  .citizen.view-stop .home, .citizen.view-route .home, .citizen.bus-open .home, .citizen.has-line .home { display: none; }
+  .control.base-network .home { top: 0; border-radius: 0; }
+  .hero-min { font-size: var(--fs-xl, 48px); }
+}
+@media (min-width: 761px) {
+  .citizen .home { border-radius: var(--r-xl); }
+}
+/* sense la franja d'honestedat (ara és la pastilla de la barra): una fila menys */
+.app.citizen { grid-template-rows: auto 1fr; }
+@media (max-width: 760px) {
+  .app.citizen { grid-template-rows: auto 1fr auto; }
+  .demo-clock-tag { display: none; }
+  .demo-clock .mono { color: var(--amber); }
+}
+@media (max-width: 760px) {
+  .citizen .home-sugg { flex-wrap: wrap; overflow: visible; }
+  .citizen .home-hint { display: block; }
+  .citizen.view-map .maplibregl-ctrl-bottom-right, .citizen.view-route .maplibregl-ctrl-bottom-right, .citizen.view-stop .maplibregl-ctrl-bottom-right, .citizen.bus-open .maplibregl-ctrl-bottom-right { top: 0; bottom: auto; }
+}
+.bc-ctas .bc-wide { grid-column: 1 / -1; }
+.bc-ctas { grid-template-columns: 1.4fr 1fr; }
+.account-card { margin-top: 24px; }
+.trip-card .trip-focus { margin: 0; background: transparent; padding: 0 0 4px; }
+.trip-card .tf-eyebrow { display: none; }
+.citizen .tl-pick { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1.5px var(--line-2); font-weight: 700; }
+.citizen .tl-pick:hover { box-shadow: inset 0 0 0 1.5px var(--text); }
+@media (max-width: 1024px) {
+  .demo-clock-tag, .topbar .logo-name { display: none; }
+  .demo-clock .mono { color: var(--amber); }
+  .topnav button { padding: 0 10px; }
+}
+/* presentació: el HUD va sobre el mapa base clar → tinta fosca amb vora clara */
+.director .present-hud { color: #0e1116; text-shadow: 0 0 2px #f6f5f1, 0 0 10px #f6f5f1; }
+.director .present-hud .hud-lbl, .director .present-hud .hud-clock { color: #424851; }

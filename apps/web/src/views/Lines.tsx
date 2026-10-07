@@ -165,24 +165,13 @@ export function LinePanel({ routeRef }: { routeRef: string }) {
         </div>
       )}
 
-      <dl className="lp-stats">
-        <div>
-          <dt>{t.linePanel.active}</dt>
-          <dd className="mono">{active}</dd>
-        </div>
-        <div>
-          <dt>{t.linePanel.frequency}</dt>
-          <dd className="mono">{sum.runsToday && sum.headwayMin ? `${sum.headwayMin}′` : '—'}</dd>
-        </div>
-        <div>
-          <dt>{t.linePanel.duration}</dt>
-          <dd className="mono">{dur ? `${dur}′` : '—'}</dd>
-        </div>
-        <div>
-          <dt>{t.linePanel.service}</dt>
-          <dd className="mono small-dd">{sum.runsToday ? `${hm(sum.first)}–${hm(sum.last)}` : '—'}</dd>
-        </div>
-      </dl>
+      {/* la línia en una frase: quants busos hi ha ara, cada quant passen i quan funciona */}
+      <p className="lp-summary">
+        <strong>{t.linesPage.busesNow(active)}</strong>
+        {sum.runsToday && sum.headwayMin ? ` · ${t.linesPage.every(sum.headwayMin)}` : ''}
+        {dur ? ` · ${t.linePanel.min(dur)} ${t.linePanel.endToEnd}` : ''}
+        {sum.runsToday ? ` · ${hm(sum.first)}–${hm(sum.last)}` : ''}
+      </p>
 
       {next.length > 0 && (
         <section className="lp-next">
@@ -192,8 +181,8 @@ export function LinePanel({ routeRef }: { routeRef: string }) {
           <div className="lp-next-row">
             {next.map((a) => (
               <button key={a.at} type="button" className="lp-next-item" disabled={!a.vehicleId} onClick={() => a.vehicleId && st.selectBus(a.vehicleId)}>
-                <span className="mono">{Math.max(0, Math.round((a.at - now) / 60000))} min</span>
-                <span className="dim mono">{hm(a.at)}</span>
+                <strong>{Math.max(0, Math.round((a.at - now) / 60000)) <= 0 ? t.nowLabel : `${Math.max(0, Math.round((a.at - now) / 60000))} min`}</strong>
+                <span className="dim small">{hm(a.at)}</span>
               </button>
             ))}
           </div>
@@ -217,7 +206,6 @@ export function LinePanel({ routeRef }: { routeRef: string }) {
                     aria-label={`Bus ${v.label} → ${v.headsign}`}
                   >
                     <BusVehicleMarker route={route} status={v.status} heading={180} size={22} showLabel={false} />
-                    <span className="lp-bus-label mono">{v.label}</span>
                     <Punctuality delaySec={v.delaySec} source={v.source} compact />
                   </button>
                 ))}

@@ -16,12 +16,13 @@ test.describe('app (amb sessió)', () => {
     await page.addInitScript(DEMO_SESSION);
   });
 
-  test('carrega el mapa amb el banner d’honestedat i les atribucions', async ({ page }) => {
+  test('app ciutadana: avís de dades de demostració, atribucions i hora de demo', async ({ page }) => {
     await page.goto(`/app?${AT}`);
     await ready(page);
-    await expect(page.locator('.honesty')).toContainText(/simulad/i);
+    await expect(page.locator('.app.citizen')).toBeVisible();
+    await expect(page.locator('.demo-pill')).toContainText(/demostraci/i);
     await expect(page.locator('.maplibregl-ctrl-attrib')).toContainText(/OpenStreetMap|tus\.es/);
-    await expect(page.locator('.clock-time')).toHaveText(/^08:1\d:\d\d$/);
+    await expect(page.locator('.demo-clock .mono')).toHaveText(/^08:1\d$/);
   });
 
   test('panell de parada → bus → fitxa amb origen "Simulat"', async ({ page }) => {
@@ -34,12 +35,11 @@ test.describe('app (amb sessió)', () => {
     await first.click();
     const card = page.locator('.bus-card');
     await expect(card).toBeVisible();
-    await expect(card.locator('.led')).toHaveText(/·\d\d$/);
-    await expect(card.locator('.source-simulated')).toBeVisible();
-    // compte enrere mm:ss que avança
-    const a = await card.locator('.cell-big').innerText();
-    expect(a).toMatch(/^\d\d:\d\d$/);
-    await expect.poll(() => card.locator('.cell-big').innerText(), { timeout: 8000 }).not.toBe(a);
+    // sense tecnicismes: un estat en paraules, la propera parada en minuts i, al peu, que el bus és simulat
+    await expect(card.locator('.bc-pills')).toContainText(/hora|tard|tarde|abans|antes|capçalera|cabecera/i);
+    await expect(card.locator('.bc-eta')).toHaveText(/min|ara|ahora|\d\d:\d\d/i);
+    await expect(card.locator('.bc-foot')).toContainText(/simulat|simulado/i);
+    await expect(card.locator('.led')).toHaveCount(0);
   });
 
   test('línies: índex → panell de línia amb sentit, propers busos, recorregut i busos', async ({ page }) => {
@@ -78,7 +78,7 @@ test.describe('app (amb sessió)', () => {
   test('canvi d’idioma', async ({ page }) => {
     await page.goto(`/app?${AT}`);
     await ready(page);
-    const banner = page.locator('.honesty');
+    const banner = page.locator('.demo-pill');
     const before = await banner.innerText();
     await page.locator('.lang-btn').click();
     await expect(banner).not.toHaveText(before);
@@ -93,8 +93,9 @@ test.describe('app (amb sessió)', () => {
 
   test('modal "què és real" explica la frontera real/simulat', async ({ page }) => {
     await page.goto(`/app?${AT}`);
-    await page.locator('.honesty').click();
+    await page.locator('.demo-pill').click();
     const modal = page.getByRole('dialog');
+    await expect(modal.locator('.about-lead')).toContainText(/simulades|simulados/);
     await expect(modal.locator('.about-real')).toBeVisible();
     await expect(modal.locator('.about-sim')).toBeVisible();
     await expect(modal).toContainText('tus.es');
@@ -104,18 +105,22 @@ test.describe('app (amb sessió)', () => {
     await page.goto(`/presentacio?${AT}`);
     await ready(page);
     const caption = page.locator('.caption');
-    await expect(caption.locator('h2')).toContainText(/bus/i);
+    // pausa primer: amb la màquina carregada, la demo pot haver avançat d'escena abans de comprovar-ho
+    await expect(caption.locator('h2')).not.toHaveText('');
+    await page.keyboard.press(' ');
+    // a l'escena 1 («Quan arriba el meu bus?»), es torni d'on es torni
+    for (let i = 0; i < 10 && !/arriba|llega/i.test(await caption.locator('h2').innerText()); i++) await page.keyboard.press('ArrowLeft');
+    await expect(caption.locator('h2')).toContainText(/arriba|llega/i);
     if (!isMobile) {
       const n = Number(await page.locator('.hud-num').first().innerText());
       expect(n).toBeGreaterThan(30);
     }
     await expect(page.locator('.honesty')).toContainText(/simulad/i);
-    await page.keyboard.press(' '); // pausa
     await page.keyboard.press('ArrowRight');
     await expect(caption.locator('h2')).toContainText(/L\d/);
     await page.keyboard.press('ArrowRight');
     await expect(page.locator('.bus-card')).toBeVisible();
-    await expect(page.locator('.bus-card .source-simulated')).toBeVisible();
+    await expect(page.locator('.bus-card .bc-foot')).toContainText(/simulat|simulado/i);
   });
 
   test('enfocar una línia: es destaca i la resta s’atenua (no s’amaga)', async ({ page, isMobile }) => {
@@ -143,23 +148,26 @@ test.describe('app (amb sessió)', () => {
     await expect(card.locator('.back-link')).toContainText('Estació Centre');
     // línia temporal amb la propera parada i el progrés per distància
     await expect(card.locator('.tl-next, .tl-current').first()).toBeVisible();
-    await expect(card.locator('.tl-progress-text')).toContainText('%');
-    // seguir bus
-    const follow = card.locator('.cta', { hasText: /Seguir|Segueix|Deixa|Dejar/ });
+    await expect(card.locator('.tl-bar')).toBeVisible();
+    // seguir-lo al mapa
+    const follow = card.locator('.cta', { hasText: /Segueix|Síguelo|Deixa|Dejar/ });
     await follow.click();
     await expect(follow).toHaveAttribute('aria-pressed', 'true');
-    // viatge: puja a la parada d'on venim
+    // «Agafaré aquest bus»: la fitxa passa a ser el viatge (la teva parada, quant falta, a quantes parades)
     await card.locator('.cta-primary').click();
+    const focus = card.locator('.trip-focus');
+    await expect(focus).toBeVisible();
+    await expect(focus).toContainText('Estació Centre');
+    await expect(focus.locator('.tf-away')).toContainText(/parad|capçalera|cabecera|anterior/i);
     await expect(card.locator('.tl-tag.board')).toBeVisible();
-    await expect(card.locator('.cta-on', { hasText: /Acaba|Terminar/ })).toBeVisible();
+    await expect(card.locator('.cta', { hasText: /Deixa de seguir|Dejar de seguir/ })).toBeVisible();
     // el viatge (myBus) es manté en recarregar
     await page.goto(`/app?${AT}`);
     await ready(page);
     const trip = page.locator('.trip-card');
     await expect(trip).toBeVisible();
     await expect(trip).toContainText('Estació Centre');
-    await expect(trip.locator('.source-simulated')).toBeVisible();
-    await trip.getByRole('button', { name: /Acaba|Terminar/ }).click();
+    await trip.getByRole('button', { name: /Deixa de seguir|Dejar de seguir/ }).click();
     await expect(trip).toHaveCount(0);
   });
 
@@ -185,6 +193,22 @@ test.describe('app (amb sessió)', () => {
     await expect(hero.locator('.cta-primary')).toBeVisible();
     // navegació: barra inferior al mòbil, a dalt a l'escriptori
     await expect(page.locator(isMobile ? '.bottomnav' : '.topnav')).toBeVisible();
+    await expect(page.locator('.demo-pill')).toBeVisible();
+    // la navegació ciutadana no barreja l'operador: Inici · Mapa · Línies · Parades
+    const nav = page.locator(isMobile ? '.bottomnav' : '.topnav');
+    await expect(nav.locator('button')).toHaveCount(4);
+    await expect(nav).not.toContainText(/Xarxa|Red/);
+    // al mòbil l'inici és una pàgina: el mapa és un botó
+    await expect(page.locator('.map-entry')).toBeVisible();
+  });
+
+  test('NextMobility Control: s’hi entra des del menú i és fosc', async ({ page }) => {
+    await page.goto(`/app?${AT}`);
+    await ready(page);
+    await page.locator('.avatar').click();
+    await page.getByRole('menuitem', { name: /NextMobility Control/ }).click();
+    await expect(page).toHaveURL(/\/xarxa/);
+    await expect(page.locator('.app.control')).toBeVisible();
     await expect(page.locator('.honesty')).toContainText(/simulad/i);
   });
 

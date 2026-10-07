@@ -1,6 +1,7 @@
 /**
- * Inici. Respon primer la pregunta "vull agafar el bus: quin ve, quant falta?" i
- * després dona accés a tot el demés (les meves parades, a prop meu, mapa en directe).
+ * Inici: «Quin bus puc agafar?». Cerca (on vas?), el teu proper bus amb UNA acció (agafar-lo),
+ * les teves parades amb les properes llegades, a prop teu i, com a botó, el mapa. Al mòbil és una
+ * pàgina sense mapa: el mapa és una eina, no l'inici (docs/APP_UX_STRATEGY.md).
  * Les parades suggerides són parades reals de la xarxa (no s'inventen).
  */
 import { useMemo } from 'react';
@@ -9,7 +10,7 @@ import { useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { areaOf, liveArrivals, type LiveArrival } from '../data/derive.ts';
 import { journeyFor, vehiclesAt } from '../data/vehicles.ts';
-import { Icon, Punctuality, RouteChip, SourceTag, hm, useNow } from '../ui/common.tsx';
+import { Icon, Punctuality, RouteChip, hm, useNow } from '../ui/common.tsx';
 import { BusVehicleMarker } from '../ui/BusVehicleMarker.tsx';
 import { SearchBox } from './SearchBox.tsx';
 import { ArrivalRow } from './StopPanel.tsx';
@@ -83,14 +84,10 @@ function NextBusHero({ engine, stopId, example, now }: { engine: SimEngine; stop
           <button type="button" className="hero-main" onClick={() => a.vehicleId && (st.set({ boardHint: a.stopId }), st.navigate({ name: 'stop', id: a.stopId }), st.selectBus(a.vehicleId))} disabled={!a.vehicleId}>
             <div className="hero-line">
               <RouteChip route={route} size="lg" />
-              <span className="hero-dest">
-                <span aria-hidden>→ </span>
-                {a.headsign}
-              </span>
+              <span className="hero-dest">{a.headsign}</span>
             </div>
             <div className="hero-eta">
-              {mins > 0 && mins < 60 && <span className="hero-in">{t.trip.arrivesIn}</span>}
-              <span className={`hero-min mono${mins <= 0 ? ' now' : ''}`}>{mins <= 0 ? t.nowLabel : mins >= 60 ? hm(a.at) : mins}</span>
+              <span className={`hero-min${mins <= 0 ? ' now' : ''}`}>{mins <= 0 ? t.nowLabel : mins >= 60 ? hm(a.at) : mins}</span>
               {mins > 0 && mins < 60 && <span className="hero-unit">min</span>}
             </div>
           </button>
@@ -122,21 +119,21 @@ function NextBusHero({ engine, stopId, example, now }: { engine: SimEngine; stop
                 className="cta cta-primary"
                 onClick={() => {
                   st.startTrip({ vehicleId: v.id, patternId: v.patternId, routeId: v.routeId, boardIndex: a.stopIndex, boardStopId: a.stopId, alightIndex: null });
+                  st.setFollow(true);
                   st.navigate({ name: 'map' });
                 }}
               >
-                {Icon.board} {t.takeBus}
+                {Icon.board} {t.takeBusShort}
               </button>
               <button
                 type="button"
-                className="cta"
+                className="text-btn"
                 onClick={() => {
                   st.navigate({ name: 'map' });
                   st.selectBus(v.id);
-                  st.setFollow(true);
                 }}
               >
-                {Icon.follow} {t.followBus}
+                {Icon.map} {t.seeWhere}
               </button>
             </div>
           )}
@@ -222,6 +219,42 @@ export function HomeStops({ skip = null }: { skip?: string | null }) {
   );
 }
 
+/** A prop teu: les parades més properes (una per zona) amb les properes llegades. La ubicació no surt del dispositiu. */
+export function NearStops({ skip = null }: { skip?: string | null }) {
+  const t = useT();
+  const engine = useApp((s) => s.engine);
+  const userPos = useApp((s) => s.userPos);
+  const now = useNow(1000);
+  const st = useApp.getState();
+  const near = useMemo(() => (engine && userPos ? nearestStops(engine, userPos) : []), [engine, userPos]);
+  if (!engine) return null;
+  const locate = () => {
+    navigator.geolocation?.getCurrentPosition(
+      (p) => st.set({ userPos: [p.coords.longitude, p.coords.latitude] }),
+      () => undefined,
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
+  return (
+    <section className="home-sec">
+      <h2 className="sec-title">
+        {Icon.locate} {t.nearMe}
+      </h2>
+      {near.length === 0 ? (
+        <button type="button" className="cta cta-wide" onClick={locate}>
+          {Icon.locate} {t.useLocation}
+          <span className="dim cta-sub">{t.nearHint}</span>
+        </button>
+      ) : (
+        near
+          .filter((id) => id !== skip)
+          .slice(0, 2)
+          .map((id) => <StopBlock key={id} engine={engine} stopId={id} now={now} />)
+      )}
+    </section>
+  );
+}
+
 export function HomePanel({ autoFocus = false }: { autoFocus?: boolean }) {
   const t = useT();
   const engine = useApp((s) => s.engine);
@@ -243,14 +276,6 @@ export function HomePanel({ autoFocus = false }: { autoFocus?: boolean }) {
   const heroStop = favs[0] ?? near[0] ?? suggestions[0]!;
   const example = !favs[0] && !near[0];
 
-  const locate = () => {
-    navigator.geolocation?.getCurrentPosition(
-      (p) => st.set({ userPos: [p.coords.longitude, p.coords.latitude] }),
-      () => undefined,
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
-  };
-
   return (
     <aside className="home" aria-label={t.nav2.home}>
       <SearchBox autoFocus={autoFocus} />
@@ -258,32 +283,18 @@ export function HomePanel({ autoFocus = false }: { autoFocus?: boolean }) {
 
       <HomeStops skip={heroStop} />
 
-      <section className="home-sec">
-        <h2 className="sec-title">
-          {Icon.locate} {t.nearMe}
-        </h2>
-        {near.length === 0 ? (
-          <button type="button" className="cta cta-wide" onClick={locate}>
-            {Icon.locate} {t.nearMe}
-            <span className="dim cta-sub">{t.nearHint}</span>
-          </button>
-        ) : (
-          near.filter((id) => id !== heroStop).slice(0, 2).map((id) => <StopBlock key={id} engine={engine} stopId={id} now={now} />)
-        )}
-      </section>
+      <NearStops skip={heroStop} />
 
       <button type="button" className="map-entry" onClick={() => st.navigate({ name: 'map' })}>
-        <span className="map-entry-dot" aria-hidden />
+        <span className="map-entry-ico" aria-hidden>
+          {Icon.map}
+        </span>
         <span>
           <strong>{t.mapEntry}</strong>
           <span className="dim">{t.mapEntrySub(fleet.n, fleet.l)}</span>
         </span>
-        <span aria-hidden>→</span>
+        <span aria-hidden>›</span>
       </button>
-      <div className="home-foot">
-        <SourceTag source="SIMULATED" />
-        <span className="dim">{t.bannerShort}</span>
-      </div>
     </aside>
   );
 }

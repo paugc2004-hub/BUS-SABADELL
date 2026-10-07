@@ -73,6 +73,7 @@ export function AppMain() {
   const view = useApp((s) => s.view);
   const ready = useApp((s) => s.loadState === 'ready');
   const presenting = useApp((s) => s.presenting);
+  const busOpen = useApp((s) => s.selectedBus !== null);
 
   // la xarxa (116 KB) només es carrega quan s'entra a l'app, no a la landing
   useEffect(() => {
@@ -86,11 +87,13 @@ export function AppMain() {
   // panell esquerre (escriptori) / pàgina (mòbil): la vista de base; una parada o un bus s'obren a sobre
   const left = presenting ? (name === 'network' ? 'network' : null) : name === 'stop' || name === 'route' ? base : name;
   const lineRef = view.name === 'line' ? view.ref : base === 'line' ? baseLine : null;
+  // ciutadà (clar) vs. NextMobility Control i presentació (fosc): docs/APP_UX_STRATEGY.md
+  const control = presenting || name === 'network';
 
   return (
-    <div className={`app view-${name} base-${left ?? 'none'}${presenting ? ' presenting' : ''}${view.name === 'line' && lineRef ? ' has-line' : ''}`}>
+    <div className={`app view-${name} base-${left ?? 'none'}${presenting ? ' presenting' : ''}${view.name === 'line' && lineRef ? ' has-line' : ''}${control ? ' control' : ' citizen'}${busOpen ? ' bus-open' : ''}`}>
       <TopBar />
-      <HonestyBanner />
+      {control && <HonestyBanner />}
       <main className="stage">
         {ready && (
           <Suspense fallback={null}>

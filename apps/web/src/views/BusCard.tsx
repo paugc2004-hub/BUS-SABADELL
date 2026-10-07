@@ -8,7 +8,8 @@ import { useApp } from '../state/store.ts';
 import { useT, type Dict } from '../i18n/index.ts';
 import { journeyFor, vehicleById } from '../data/vehicles.ts';
 import { whereNow } from '../data/derive.ts';
-import { Countdown, Icon, IconButton, Punctuality, RouteChip, SourceTag, hm, shareUrl, useNow } from '../ui/common.tsx';
+import { Icon, IconButton, Punctuality, RouteChip, hm, relativeLabel, shareUrl, useNow } from '../ui/common.tsx';
+import { TripFocus } from './Trip.tsx';
 import { BusVehicleMarker } from '../ui/BusVehicleMarker.tsx';
 import { Sheet } from '../ui/Sheet.tsx';
 import { StopTimeline } from './StopTimeline.tsx';
@@ -72,6 +73,7 @@ export function BusCard() {
   const hintIndex = boardHint ? pattern.stopIds.findIndex((sid, i) => sid === boardHint && i >= v.nextStopIndex - (v.atStopIndex === i ? 1 : 0)) : -1;
   const start = (index: number, stopId: string) => {
     st.startTrip({ vehicleId: v.id, patternId: v.patternId, routeId: v.routeId, boardIndex: index, boardStopId: stopId, alightIndex: null });
+    st.setFollow(true);
     setPicking(false);
   };
 
@@ -92,10 +94,10 @@ export function BusCard() {
         <div className="bc-title">
           <div className="bc-line">
             <RouteChip route={route} size="lg" />
-            <span className="led" aria-label={`${t.run} ${v.label}`}>{v.label}</span>
+            <strong className="bc-dest">{v.headsign}</strong>
           </div>
-          <div className="bc-od">
-            <span className="dim">{v.origin}</span> <span aria-hidden>→</span> <strong>{v.headsign}</strong>
+          <div className="bc-od dim">
+            {v.origin} <span aria-hidden>→</span> {v.headsign}
           </div>
         </div>
         <div className="card-actions">
@@ -116,13 +118,23 @@ export function BusCard() {
         </div>
       </header>
 
+      {/* un sol estat, en paraules: a l'hora / N min tard / retard important; o a capçalera / fora de servei */}
+      {!myTrip && (
       <div className="bc-pills">
-        <StatusPill v={v} />
-        {v.delaySec === null ? <span className="status-pill st-sched">{t.onSchedule}</span> : <Punctuality delaySec={v.delaySec} source={v.source} />}
-        <SourceTag source={v.source} />
+        {v.status === 'EN_CABECERA' || v.status === 'RETIRADA' || v.status === 'DESVIADO' ? (
+          <StatusPill v={v} />
+        ) : v.delaySec === null ? (
+          <span className="status-pill st-sched">{t.onSchedule}</span>
+        ) : (
+          <Punctuality delaySec={v.delaySec} source={v.source} />
+        )}
         {v.lastTrip && !retired && <span className="status-pill st-last">{t.lastTrip}</span>}
       </div>
+      )}
 
+      {myTrip && !retired && <TripFocus engine={engine} v={v} trip={myTrip} now={now} />}
+
+      {!myTrip && (
       <dl className="bc-now">
         <div className="bc-row">
           <dt>{t.nowLabel}</dt>
@@ -131,7 +143,7 @@ export function BusCard() {
             {v.status === 'EN_CABECERA' && (
               <span className="dim small">
                 {' '}
-                · {t.departsIn} <Countdown at={v.departure} now={now} />
+                · {t.departsIn} {relativeLabel(v.departure, now, t)}
               </span>
             )}
           </dd>
@@ -141,9 +153,7 @@ export function BusCard() {
             <dt>{t.nextLabel}</dt>
             <dd>
               <span className="bc-stop">{next.name}</span>
-              <span className="cell-big">
-                <Countdown at={nextEta.at} now={now} />
-              </span>
+              <span className="bc-eta">{relativeLabel(nextEta.at, now, t)}</span>
             </dd>
           </div>
         )}
@@ -157,12 +167,21 @@ export function BusCard() {
           </div>
         )}
       </dl>
+      )}
 
       {!retired && (
         <div className="bc-ctas">
           {myTrip ? (
-            <button type="button" className="cta cta-on" onClick={() => st.endTrip()}>
-              {t.trip.end}
+            // el viatge: una sola acció (la càmera ja segueix el bus)
+            <button
+              type="button"
+              className="cta bc-wide"
+              onClick={() => {
+                st.endTrip();
+                st.setFollow(false);
+              }}
+            >
+              {t.tripV3.stop}
             </button>
           ) : (
             <button
@@ -174,12 +193,14 @@ export function BusCard() {
                 else setPicking(!picking);
               }}
             >
-              {Icon.board} {t.takeBus}
+              {Icon.board} {t.takeBusShort}
             </button>
           )}
-          <button type="button" className={`cta${follow ? ' cta-on' : ''}`} aria-pressed={follow} onClick={() => st.setFollow(!follow)}>
-            {Icon.follow} {follow ? t.stopFollow : t.followBus}
-          </button>
+          {!myTrip && (
+            <button type="button" className={`cta${follow ? ' cta-on' : ''}`} aria-pressed={follow} onClick={() => st.setFollow(!follow)}>
+              {Icon.follow} {follow ? t.stopFollow : t.followMap}
+            </button>
+          )}
         </div>
       )}
       {picking && <p className="pick-hint">{t.takeBusHint}</p>}
@@ -208,7 +229,9 @@ export function BusCard() {
         <button type="button" className="text-btn" onClick={() => st.navigate({ name: 'line', ref: v.routeId })}>
           {Icon.line} {t.viewLine} {route?.ref}
         </button>
-        <span className="dim small">{t.sourceHint[v.source]}</span>
+        <span className="dim small">
+          {t.runLabel(v.label)} · {t.sourceHint[v.source]}
+        </span>
       </div>
     </Sheet>
   );

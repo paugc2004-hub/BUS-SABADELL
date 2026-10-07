@@ -6,7 +6,7 @@ import { useState } from 'react';
 import type { Journey, Route, SimEngine, VehicleState } from '@bus/core';
 import { useT } from '../i18n/index.ts';
 import { BusVehicleMarker } from '../ui/BusVehicleMarker.tsx';
-import { Countdown, hm } from '../ui/common.tsx';
+import { hm } from '../ui/common.tsx';
 
 export interface StopTimelineProps {
   engine: SimEngine;
@@ -43,12 +43,6 @@ export function StopTimeline({ engine, vehicle: v, journey: j, now, route, board
         <div className="tl-bar">
           <span style={{ width: `${(j.progress * 100).toFixed(1)}%` }} />
         </div>
-        <div className="tl-progress-text">
-          <strong className="mono">{Math.round(j.progress * 100)}%</strong>
-          <span className="dim">
-            {t.progress(Math.round(j.progress * 100)).replace(/^\d+%\s*/, '')} · {t.kmLeft(((j.lengthM - j.doneM) / 1000).toFixed(1).replace('.', ','))}
-          </span>
-        </div>
       </div>
       <ol className="tl-list">
         {from > 0 && <li className="tl-more dim small">⋯ {from} {t.stops}</li>}
@@ -63,7 +57,6 @@ export function StopTimeline({ engine, vehicle: v, journey: j, now, route, board
               {showBusBefore && (
                 <div className="tl-bus" aria-hidden>
                   <BusVehicleMarker route={route} status={v.status} size={22} showLabel={false} heading={180} />
-                  <span className="tl-bus-text">{v.speedKmh} km/h</span>
                 </div>
               )}
               <span className="tl-dot" aria-hidden>
@@ -83,9 +76,9 @@ export function StopTimeline({ engine, vehicle: v, journey: j, now, route, board
                   <span className="mono dim">{hm(s.at)}</span>
                 ) : s.at - now < 30 * 60_000 ? (
                   <>
-                    <Countdown at={s.at} now={now} className="tl-cd" />
+                    <span className="tl-cd">{Math.max(0, Math.round((s.at - now) / 60000)) <= 0 ? t.nowLabel : `${Math.round((s.at - now) / 60000)} min`}</span>
                     <span className="mono dim small">
-                      {s.scheduledAt !== null && Math.abs(s.at - s.scheduledAt) >= 60_000 && <s className="tl-sched">{hm(s.scheduledAt)}</s>} {hm(s.at)}
+                      {s.scheduledAt !== null && hm(s.at) !== hm(s.scheduledAt) && <s className="tl-sched">{hm(s.scheduledAt)}</s>} {hm(s.at)}
                     </span>
                   </>
                 ) : (
