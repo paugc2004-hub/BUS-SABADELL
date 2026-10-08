@@ -22,12 +22,13 @@ entendre com fer-la funcionar amb la realitat tecnològica de TUS.»**
 | 0–3 | Presentació personal i la meva posició | 1 |
 | 3–8 | La idea i el canvi de punt de partida | 2–3 |
 | 8–18 | El producte i **demo en directe** | 4–7 |
-| 18–23 | Què hi ha darrere i què és real / simulat | 8–9 |
-| 23–28 | Del prototip al pilot | 10 |
-| 28–43 | **Conversa**: què volem explorar, què aporta cadascú | 11–13 |
+| 18–21 | Què hi ha darrere (a nivell de concepte) | 8 |
+| 21–26 | Del prototip al pilot: busquem una col·laboració | 9 |
+| 26–41 | **Conversa**: què volem explorar, què aporta cadascú, posicionament | 10–12 |
+| 41–43 | Qui soc | 13 |
 | 43–45 | Pregunta final i pas següent concret | 14 |
 
-La meitat de la reunió ha de ser conversa. Si van ràpid amb les preguntes, salta directament a la 11.
+La meitat de la reunió ha de ser conversa. Si van ràpid amb les preguntes, salta directament a la 10.
 
 ## Demo en directe (5 minuts, al mòbil connectat al projector, o passant el mòbil)
 Prepara-ho abans:
@@ -38,14 +39,14 @@ Prepara-ho abans:
 
 Recorregut:
 1. Inici: «Ets a prop de la parada…» i les parades properes. *«No he hagut de fer res: ja sap on soc.»*
-2. Escriu **«hospital parc tauli»** i tria l'hospital. Resultat: línia, on pujar, arriba en N min, on baixar,
-   a quants metres és l'hospital. *«No he hagut de saber quina línia hi va.»*
+2. Escriu **«mercat creu alta»** i tria el mercat (el cas de la diapositiva 5). Resultat: línia, on pujar, arriba en N min,
+   on baixar, a quants metres és el mercat. *«No he hagut de saber quina línia hi va.»*
 3. **On és el bus**: el mapa va fins al bus.
 4. **Segueix aquest bus**: el viatge, la teva parada, a quantes parades és.
-5. (Si hi ha temps) Escriu **«Mercadona»**: diverses botigues, la més propera primer.
+5. (Si hi ha temps) Escriu **«Mercadona»** o **«hospital parc tauli»**: diverses botigues amb la distància, o l'hospital.
 6. Al final, assenyala la píndola **«Dades de demostració»**: tot és simulat.
 
-**No** busquis «Info Express» en directe: amb el cercador actual (dades obertes d'OpenStreetMap) no hi surt (vegeu a sota).
+Evita buscar comerços molt petits en directe: el cercador fa servir dades obertes (OpenStreetMap) i algun no hi surt (vegeu a sota).
 
 ## Què NO s'ha d'ensenyar ni dir
 - El repositori, el codi, l'estructura de fitxers, adreces internes de l'API, variables d'entorn o claus.
