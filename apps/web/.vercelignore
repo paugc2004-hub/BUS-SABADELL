@@ -1,0 +1,4 @@
+# Desplegament des de GitHub (Root Directory = apps/web): les proves no són funcions serverless
+api/*.test.mjs
+node_modules
+dist-deploy
