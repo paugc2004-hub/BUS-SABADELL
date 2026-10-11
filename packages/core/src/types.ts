@@ -79,6 +79,14 @@ export interface Alert {
   to: string | null;
   text: { ca: string; es: string };
   url?: string;
+  /** motiu de l'avís (PPT 2024 §2.2.1: «descripció i motiu») */
+  reason?: { ca: string; es: string };
+  /** data de publicació (ISO); per defecte, `from`. Pot ser anterior a la incidència (avís anticipat) */
+  published?: string;
+  /** data d'expiració de la publicació (ISO); per defecte, `to` */
+  expires?: string | null;
+  /** documents o imatges adjunts (enllaços públics) */
+  attachments?: { title: string; url: string }[];
 }
 
 export interface NetworkData {

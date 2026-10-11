@@ -1,4 +1,6 @@
 # Avisos de servei editats a mà a partir de les notícies de tus.es.
-# Format: id, linies, parades (ids TUS), des de, fins a (o null), text ca/es, url de la font.
+# Format: id, linies, parades (ids TUS), des_de, fins_a (o null), text ca/es, url de la font.
+# Opcionals (licitació 2024, PPT §2.2.1): motiu ca/es, publicacio i expiracio (si no, = des_de / fins_a),
+# adjunts [{titol, url}]. Només avisos publicats per TUS, amb la URL de la font: no se n'inventa cap.
 # Els avisos que TUS publica a cada parada (camp msgincidencia) s'hi afegeixen automàticament.
 avisos: []

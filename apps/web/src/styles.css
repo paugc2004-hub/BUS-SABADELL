@@ -1107,7 +1107,8 @@ html:has(.landing), body:has(.landing), #root:has(.landing) { height: auto; min-
 
 /* ================================================================ V3: app ciutadana clara · NextMobility Control fosc
    docs/APP_UX_STRATEGY.md. El fosc de dalt queda per a Control i la presentació (.app.control). */
-.app.citizen {
+.app.citizen,
+.pub {
   color-scheme: light;
   --bg: #f6f5f1;
   --bg-2: #ffffff;
@@ -1411,3 +1412,54 @@ html:has(.landing), body:has(.landing), #root:has(.landing) { height: auto; min-
 .tf-where div { min-width: 0; }
 .tf-where dt { font-size: var(--fs-meta); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--dim); }
 .tf-where dd { margin: 2px 0 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- pàgines públiques (fitxa de parada del QR, generador de QR, legals): licitació 2024 */
+.pub { min-height: 100dvh; display: flex; flex-direction: column; background: var(--bg); color: var(--text); font-size: var(--fs-body, 16px); }
+.pub-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.pub-logo { display: inline-flex; color: var(--text); text-decoration: none; }
+.pub-nav { display: flex; align-items: center; gap: 4px; }
+.pub-nav a, .pub-lang { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; justify-content: center; padding: 0 10px; border-radius: 10px; color: var(--text); font-weight: 600; text-decoration: none; background: none; border: 0; font: inherit; font-weight: 600; cursor: pointer; }
+.pub-nav a:hover, .pub-lang:hover { background: var(--surface-2); }
+.pub-main { flex: 1; width: 100%; max-width: 720px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.pub-h1 { margin: 0; font-size: var(--fs-xl, 24px); line-height: 1.2; }
+.pub-eyebrow { font-size: var(--fs-meta, 12px); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-2); display: flex; gap: 8px; align-items: center; }
+.pub .sec-title { margin: 14px 0 8px; font-size: var(--fs-body, 16px); font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.pub .chips { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.pub .demo-tag { padding: 2px 8px; border-radius: 999px; background: #fef3c7; color: #78350f; font-size: var(--fs-meta, 12px); text-transform: none; letter-spacing: 0; }
+.stop-card { display: flex; flex-direction: column; gap: 4px; }
+.sc-code { margin: 2px 0 0; font-size: var(--fs-body, 16px); color: var(--text-2); }
+.sc-code strong { font-size: var(--fs-l, 18px); color: var(--text); }
+.sc-next, .sc-tt { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.sc-next li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+.sc-dest { min-width: 0; overflow-wrap: anywhere; }
+.sc-when { text-align: right; white-space: nowrap; }
+.sc-tt li { padding: 10px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+.sc-tt-head { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.sc-tt-next { margin-top: 6px; font-size: var(--fs-small, 14px); }
+.sc-tt-all summary { cursor: pointer; margin-top: 6px; color: var(--text-2); font-size: var(--fs-small, 14px); min-height: 32px; display: flex; align-items: center; }
+.sc-tt-all p { margin: 4px 0 0; font-size: var(--fs-meta, 12px); line-height: 1.7; word-spacing: 6px; }
+.sc-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.pub .cta-primary:hover { background: #2b3038; }
+.pub-foot { padding: 16px; border-top: 1px solid var(--line); background: var(--surface); text-align: center; }
+.pub-foot p { margin: 0 0 6px; }
+.pub-legal { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 16px; }
+.pub-legal a { color: var(--text-2); min-height: 32px; display: inline-flex; align-items: center; }
+.qr-search { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
+.qr-search input { min-height: 46px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--surface); color: var(--text); font: inherit; }
+.qr-matches { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.qr-matches button { min-height: 40px; text-align: left; }
+.qr-card { margin: 0 auto; width: min(100%, 360px); padding: 16px; border-radius: 16px; background: #fff; color: #0e1116; border: 1px solid var(--line-2); display: flex; flex-direction: column; gap: 10px; align-items: center; text-align: center; }
+.qr-card-head { display: flex; flex-direction: column; gap: 2px; }
+.qr-card-code { font-size: 28px; font-weight: 800; }
+.qr-svg { width: 100%; height: auto; max-width: 300px; }
+.qr-card figcaption { display: flex; flex-direction: column; gap: 4px; }
+.qr-url { overflow-wrap: anywhere; color: #424851; }
+.legal section { margin-top: 12px; }
+.legal h2 { font-size: var(--fs-l, 18px); margin: 0 0 6px; }
+.legal p { margin: 0 0 8px; line-height: 1.55; color: var(--text-2); }
+@media print {
+  .pub-head, .pub-nav, .no-print, .pub-legal { display: none !important; }
+  .pub, .pub-main { background: #fff; min-height: 0; padding: 0; }
+  .sc-next li, .sc-tt li, .qr-card { break-inside: avoid; border-color: #999; }
+  .qr-card { width: 100mm; border: 0; }
+}

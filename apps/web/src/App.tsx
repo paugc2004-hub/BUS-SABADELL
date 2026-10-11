@@ -6,10 +6,14 @@ import { AuthScreen } from './views/Auth.tsx';
 import { LocationStep, locationAsked } from './views/Welcome.tsx';
 
 /** vistes públiques: no cal sessió ni carregar la xarxa */
-const PUBLIC = new Set(['landing', 'login', 'register']);
+const PUBLIC = new Set(['landing', 'login', 'register', 'stopCard', 'qr', 'legal']);
 
 // l'app sencera (mapa, panells, motor) en un tros a part: la landing es pinta sense descarregar-la
 const AppMain = lazy(() => import('./AppMain.tsx').then((m) => ({ default: m.AppMain })));
+// fitxa de parada (QR), generador de QR i pàgines legals: públiques, lleugeres i sense mapa
+const StopCard = lazy(() => import('./views/Public.tsx').then((m) => ({ default: m.StopCard })));
+const QrPage = lazy(() => import('./views/Public.tsx').then((m) => ({ default: m.QrPage })));
+const Legal = lazy(() => import('./views/Public.tsx').then((m) => ({ default: m.Legal })));
 
 export function App() {
   const view = useApp((s) => s.view);
@@ -37,6 +41,7 @@ export function App() {
 
   const presenting = useApp((s) => s.presenting);
   useEffect(() => {
+    if (view.name === 'stopCard' || view.name === 'qr' || view.name === 'legal') return; // ho posa cada pàgina pública
     document.title = presenting ? 'NextMobility Sabadell · Presentació' : view.name === 'landing' ? t.landingTitle : 'NextMobility Sabadell';
   }, [presenting, lang, view.name, t]);
   // l'app instal·lada (o dins d'un contenidor d'app) s'obre directament a l'app, no a la landing
@@ -46,6 +51,12 @@ export function App() {
     return null;
   }
   if (view.name === 'landing') return <Landing />;
+  if (view.name === 'stopCard' || view.name === 'qr' || view.name === 'legal')
+    return (
+      <Suspense fallback={<div className="loader" aria-hidden />}>
+        {view.name === 'stopCard' ? <StopCard id={view.id} /> : view.name === 'qr' ? <QrPage id={view.id} /> : <Legal page={view.page} />}
+      </Suspense>
+    );
   if (view.name === 'login' || view.name === 'register') return <AuthScreen mode={view.name} next={view.next} />;
   if (!user) return null;
   if (!locDone) return <LocationStep onDone={() => setLocDone(true)} />;

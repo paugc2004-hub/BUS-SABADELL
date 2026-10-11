@@ -7,3 +7,5 @@ export * from './sim/engine.ts';
 export * from './providers/provider.ts';
 export * from './vehicle.ts';
 export * from './plan.ts';
+export * from './alerts.ts';
+export * from './timetable.ts';
