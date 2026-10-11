@@ -232,6 +232,8 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
           map.addSource(id, { type: 'geojson', data: emptyFC() });
         (map.getSource('routes') as GeoJSONSource).setData(routeFeatures(network, engine, dayType));
         (map.getSource('stops') as GeoJSONSource).setData(stopFeatures(network));
+        // parades agrupades (cluster) a zoom baix, i cadascuna en ampliar (licitació 2024, PPT §2.2.1)
+        map.addSource('stops-cluster', { type: 'geojson', data: stopFeatures(network), cluster: true, clusterRadius: 44, clusterMaxZoom: 13 });
 
         const zw = (a: number, b: number, c: number) => ['interpolate', ['linear'], ['zoom'], 11, a, 14, b, 17, c] as unknown as number;
         map.addLayer({
@@ -391,6 +393,30 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
           layout: { visibility: 'none' },
           paint: { 'circle-radius': 3, 'circle-color': '#0b0c0f', 'circle-stroke-color': '#7d8590', 'circle-stroke-width': 1.5 },
         });
+        map.addLayer({
+          id: 'stops-cluster',
+          type: 'circle',
+          source: 'stops-cluster',
+          maxzoom: 13.2,
+          filter: ['has', 'point_count'],
+          paint: {
+            'circle-color': '#ffffff',
+            'circle-stroke-color': '#0e1116',
+            'circle-stroke-width': 1.5,
+            'circle-opacity': 0.92,
+            'circle-radius': ['step', ['get', 'point_count'], 10, 10, 13, 30, 16],
+          },
+        });
+        if (base.hasGlyphs)
+          map.addLayer({
+            id: 'stops-cluster-count',
+            type: 'symbol',
+            source: 'stops-cluster',
+            maxzoom: 13.2,
+            filter: ['has', 'point_count'],
+            layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-font': ['Noto Sans Regular'], 'text-size': 11, 'text-allow-overlap': true },
+            paint: { 'text-color': '#0e1116' },
+          });
         map.addLayer({
           id: 'stops-circle',
           type: 'circle',
@@ -849,6 +875,8 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
       : null;
     map.setFilter('stops-circle', sf);
     if (map.getLayer('stops-label')) map.setFilter('stops-label', sf);
+    // amb una línia, un pla o un viatge enfocats, els grups de parades sobren
+    for (const id of ['stops-cluster', 'stops-cluster-count']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', sf ? 'none' : 'visible');
   }, [ready, visibleRoutes, plan, trip]);
 
   // ---- parada seleccionada (todos los postes de la zona)
@@ -932,6 +960,13 @@ function bindInteractions(map: MLMap) {
       st.selectBus(String(bus.properties.id));
       return;
     }
+    const cluster = map.getZoom() < 13.2 && map.getLayoutProperty('stops-cluster', 'visibility') !== 'none' ? pick(e.point, ['stops-cluster'], coarse ? 18 : 10) : null;
+    if (cluster) {
+      const src = map.getSource('stops-cluster') as GeoJSONSource;
+      const at = (cluster.geometry as GeoJSON.Point).coordinates as [number, number];
+      void src.getClusterExpansionZoom(Number(cluster.properties.cluster_id)).then((z) => map.easeTo({ center: at, zoom: Math.max(z, 13.4) }));
+      return;
+    }
     const stop = pick(e.point, ['stops-circle', 'inter-stop'], coarse ? 18 : 10);
     if (stop) {
       st.navigate({ name: 'stop', id: String(stop.properties.id) });
@@ -943,7 +978,7 @@ function bindInteractions(map: MLMap) {
     if (useApp.getState().follow) useApp.getState().setFollow(false);
   });
   const setCursor = (e: maplibregl.MapMouseEvent) => {
-    const hit = pick(e.point, ['bus-icon', 'stops-circle', 'inter-stop'], 10);
+    const hit = pick(e.point, ['bus-icon', 'stops-circle', 'inter-stop', 'stops-cluster'], 10);
     map.getCanvas().style.cursor = hit ? 'pointer' : '';
   };
   map.on('mousemove', setCursor);
