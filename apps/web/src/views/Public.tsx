@@ -6,7 +6,7 @@
  * Capçalera i peu comuns (logo, cercador de parades, enllaços legals). Sense mapa: es carrega ràpid amb dades mòbils.
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { alertsFor, hhmm, isOngoing, localDate, normalize, serviceDayOrigin, stopTimetable, type DayType } from '@bus/core';
+import { alertsFor, hhmm, isOngoing, localDate, normalize, routeFrequencies, serviceDayOrigin, stopTimetable, type DayType } from '@bus/core';
 import { useApp, type LegalPage } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { loadNetwork } from '../data/load.ts';
@@ -432,6 +432,177 @@ export function Legal({ page }: { page: LegalPage }) {
           </section>
         ))}
       </article>
+    </Shell>
+  );
+}
+
+/* ---------- horaris i freqüències d'una línia (PPT 2024 §2.2.1: «consultar – i imprimir –») */
+
+const DAYS: DayType[] = ['feiner', 'dissabte', 'festiu'];
+
+export function Timetable({ routeRef, stopId }: { routeRef: string; stopId?: string }) {
+  const t = useT();
+  const { engine, network, state } = useNetwork();
+  const now = useNow(60000);
+  const route = engine?.routes.get(routeRef);
+  const pats = useMemo(() => (network ? network.patterns.filter((p) => p.routeId === routeRef && p.trips.length) : []), [network, routeRef]);
+  const days = DAYS.filter((d) => pats.some((p) => p.dayType === d));
+  const [day, setDay] = useState<DayType | null>(null);
+  const [dir, setDir] = useState(0);
+  const dayType = day ?? (engine && days.includes(engine.dayTypeAt(now)) ? engine.dayTypeAt(now) : days[0]) ?? 'feiner';
+  const dirs = [...new Set(pats.filter((p) => p.dayType === dayType).map((p) => p.dir))].sort();
+  const curDir = (dirs.includes(dir as 0 | 1) ? dir : (dirs[0] ?? 0)) as 0 | 1;
+  // ordre de parades: la variant amb més expedicions d'aquest dia i sentit
+  const main = pats.filter((p) => p.dayType === dayType && p.dir === curDir).sort((a, b) => b.trips.length - a.trips.length)[0];
+  const stopIds = main ? main.stopIds.slice(0, main.circular ? undefined : -1) : [];
+  const [sel, setSel] = useState<string | undefined>(stopId);
+  const stop = sel && stopIds.includes(sel) ? sel : stopIds[0];
+  const freqs = useMemo(() => (network ? routeFrequencies(network.patterns, routeRef) : []), [network, routeRef]);
+  const groups = useMemo(
+    () => (network && stop ? stopTimetable(network.patterns, stop, dayType, routeRef).filter((g) => g.dir === curDir) : []),
+    [network, stop, dayType, routeRef, curDir],
+  );
+  const byHour = useMemo(() => {
+    const m = new Map<number, string[]>();
+    for (const g of groups)
+      for (const s of g.times) {
+        const h = Math.floor(s / 3600);
+        m.set(h, [...(m.get(h) ?? []), hhmm(s).slice(3)]);
+      }
+    return [...m.entries()].sort((a, b) => a[0] - b[0]).map(([h, ms]) => [h, [...new Set(ms)].sort()] as const);
+  }, [groups]);
+
+  if (state !== 'ready' || !engine || !network)
+    return (
+      <Shell title={t.pub.tt.title(routeRef)}>
+        <div className="loader" aria-hidden />
+      </Shell>
+    );
+  if (!route)
+    return (
+      <Shell title={t.pub.tt.title(routeRef)}>
+        <p role="alert">{t.pub.tt.notFound}</p>
+      </Shell>
+    );
+  const st = useApp.getState();
+  return (
+    <Shell title={t.pub.tt.title(route.ref)}>
+      <header className="tt-head">
+        <RouteChip route={route} size="lg" />
+        <div>
+          <h1 className="pub-h1">{t.pub.tt.title(route.ref)}</h1>
+          <p className="dim">{route.longName}</p>
+        </div>
+      </header>
+
+      <section aria-labelledby="tt-freq">
+        <h2 id="tt-freq" className="sec-title">
+          {t.pub.tt.freq}
+        </h2>
+        <div className="tt-scroll">
+          <table className="tt-table">
+            <thead>
+              <tr>
+                <th scope="col">{t.pub.tt.day}</th>
+                <th scope="col">{t.pub.tt.dir}</th>
+                <th scope="col">{t.pub.tt.first}</th>
+                <th scope="col">{t.pub.tt.last}</th>
+                <th scope="col">{t.pub.tt.every}</th>
+                <th scope="col">{t.pub.tt.trips}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {freqs.map((f) => (
+                <tr key={`${f.dayType}|${f.dir}`}>
+                  <td>{t.pub.dayType[f.dayType]}</td>
+                  <td>→ {f.headsign}</td>
+                  <td className="mono">{hhmm(f.first)}</td>
+                  <td className="mono">{hhmm(f.last)}</td>
+                  <td>{f.headwayMin ? t.pub.tt.min(f.headwayMin) : '—'}</td>
+                  <td>{f.trips}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section aria-labelledby="tt-stop" className="tt-stop">
+        <h2 id="tt-stop" className="sec-title">
+          {t.pub.tt.byStop}
+        </h2>
+        <p className="dim small">{t.pub.timetableHint}</p>
+        <div className="tt-controls no-print">
+          <div className="seg-ctl" role="group" aria-label={t.pub.tt.day}>
+            {days.map((d) => (
+              <button key={d} type="button" aria-pressed={d === dayType} className={d === dayType ? 'on' : ''} onClick={() => setDay(d)}>
+                {t.pub.dayType[d]}
+              </button>
+            ))}
+          </div>
+          {dirs.length > 1 && (
+            <div className="seg-ctl" role="group" aria-label={t.pub.tt.dir}>
+              {dirs.map((d) => {
+                const hs = pats.find((p) => p.dayType === dayType && p.dir === d)?.headsign ?? '';
+                return (
+                  <button key={d} type="button" aria-pressed={d === curDir} className={d === curDir ? 'on' : ''} onClick={() => setDir(d)}>
+                    → {hs}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <label className="qr-search">
+            <span>{t.pub.tt.stop}</span>
+            <select value={stop} onChange={(e) => setSel(e.target.value)}>
+              {stopIds.map((id, i) => (
+                <option key={`${id}-${i}`} value={id}>
+                  {id} · {engine.stops.get(id)?.name ?? id}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <p className="tt-print-title">
+          <strong>
+            {t.pub.dayType[dayType]} · {t.pub.tt.stop} {stop} {engine.stops.get(stop ?? '')?.name} → {main?.headsign}
+          </strong>
+        </p>
+        {byHour.length === 0 ? (
+          <p className="card-empty">{t.pub.tt.noService}</p>
+        ) : (
+          <table className="tt-table tt-hours">
+            <thead>
+              <tr>
+                <th scope="col">{t.pub.tt.hour}</th>
+                <th scope="col">{t.pub.tt.minutes}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byHour.map(([h, ms]) => (
+                <tr key={h}>
+                  <th scope="row" className="mono">
+                    {String(h).padStart(2, '0')}
+                  </th>
+                  <td className="mono">{ms.join('  ')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <div className="sc-actions no-print">
+        <button type="button" className="cta cta-primary" onClick={() => window.print()}>
+          {t.pub.print}
+        </button>
+        {stop && (
+          <a href={`/p/${stop}`} onClick={(e) => (e.preventDefault(), st.navigate({ name: 'stopCard', id: stop }))}>
+            {t.pub.stopCard} {stop} →
+          </a>
+        )}
+      </div>
+      <p className="dim small">{t.pub.source(network.builtAt)}</p>
     </Shell>
   );
 }

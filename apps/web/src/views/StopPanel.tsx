@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { localDate, serviceDayOrigin, type SimEngine } from '@bus/core';
+import { activeAlerts, localDate, serviceDayOrigin, type SimEngine } from '@bus/core';
 import { areaOf, liveArrivals, type LiveArrival } from '../data/derive.ts';
 import { useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
@@ -49,7 +49,7 @@ function TusStop({ id }: { id: string }) {
   const routes = [...new Set(area.flatMap((sid) => engine.stops.get(sid)?.routes ?? []))].sort(
     (a, b) => (engine.routes.get(a)?.order ?? 0) - (engine.routes.get(b)?.order ?? 0),
   );
-  const alerts = (network?.alerts ?? []).filter((a) => a.stops.some((s) => area.includes(s)) || a.routes.some((r) => routes.includes(r)));
+  const alerts = activeAlerts(network?.alerts ?? [], now).filter((a) => a.stops.some((s) => area.includes(s)) || a.routes.some((r) => routes.includes(r)));
   const first = groups[0]?.[0];
   const live = first ? `${first.routeId} ${first.headsign} ${relativeLabel(first.at, now, t)}` : t.noArrivals;
   const open = (a: LiveArrival) => {

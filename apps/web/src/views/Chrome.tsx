@@ -1,6 +1,6 @@
 /** Barra superior, banner de honestidad, avisos, "qué es real", filtro de líneas y controles del mapa. */
 import { useEffect, useRef, useState } from 'react';
-import { forcedInstant } from '@bus/core';
+import { activeAlerts, forcedInstant, isOngoing } from '@bus/core';
 import { clock, useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { vehicleById } from '../data/vehicles.ts';
@@ -42,7 +42,8 @@ export function TopBar() {
   const st = useApp.getState();
   const items = useNavItems();
   const tab = activeTab(view, base);
-  const alerts = network?.alerts.length ?? 0;
+  // només els avisos publicats ara (publicació → expiració)
+  const alerts = network ? activeAlerts(network.alerts, now).length : 0;
   const live = clock.isLive();
   const control = view.name === 'network';
   const clockText = new Intl.DateTimeFormat('ca', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now);
@@ -187,6 +188,8 @@ export function AlertsPanel() {
   const lang = useApp((s) => s.lang);
   const engine = useApp((s) => s.engine);
   if (!open || !network) return null;
+  const now = clock.now();
+  const list = activeAlerts(network.alerts, now);
   const close = () => useApp.getState().set({ alertsOpen: false });
   return (
     <div className="modal-back" onClick={close}>
@@ -197,9 +200,9 @@ export function AlertsPanel() {
             {Icon.close}
           </IconButton>
         </header>
-        {network.alerts.length === 0 && <p className="dim">{t.noAlerts}</p>}
+        {list.length === 0 && <p className="dim">{t.noAlerts}</p>}
         <ul className="alert-list">
-          {network.alerts.map((a) => (
+          {list.map((a) => (
             <li key={a.id}>
               <div className="chips">
                 {a.routes.map((r) => <RouteChip key={r} route={engine?.routes.get(r)} size="sm" />)}
@@ -207,7 +210,16 @@ export function AlertsPanel() {
                   <span key={s} className="small dim">{engine?.stops.get(s)?.name ?? s}</span>
                 ))}
               </div>
-              <p>{a.text[lang]}</p>
+              <p>
+                {!isOngoing(a, now) && <strong>{t.pub.upcoming}: </strong>}
+                {a.text[lang]}
+                {a.reason && <span className="dim"> · {t.pub.reason}: {a.reason[lang]}</span>}
+              </p>
+              {a.attachments?.map((f) => (
+                <a key={f.url} className="small" href={f.url} target="_blank" rel="noopener noreferrer">
+                  {f.title} ↗
+                </a>
+              ))}
               {a.url && (
                 <a className="small" href={a.url} target="_blank" rel="noopener noreferrer">
                   tus.es ↗

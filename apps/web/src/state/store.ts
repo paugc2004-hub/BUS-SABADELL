@@ -21,7 +21,9 @@ export type View =
   /** generador de QR de parada */
   | { name: 'qr'; id: string | null }
   /** pàgines legals públiques */
-  | { name: 'legal'; page: LegalPage };
+  | { name: 'legal'; page: LegalPage }
+  /** horaris i freqüències d'una línia, imprimible (PPT 2024 §2.2.1) */
+  | { name: 'timetable'; ref: string; stop?: string };
 
 export type LegalPage = 'privacitat' | 'avis-legal' | 'galetes';
 
@@ -69,6 +71,8 @@ export function parseView(path: string): View {
   if (m) return { name: 'stopCard', id: m[1]! };
   m = /^\/qr(?:\/([^/]+))?$/.exec(p);
   if (m) return { name: 'qr', id: m[1] ?? null };
+  m = /^\/horari\/([^/]+)$/.exec(p);
+  if (m) return { name: 'timetable', ref: m[1]!.toUpperCase(), stop: new URLSearchParams(location.search).get('parada') ?? undefined };
   if (p === '/privacitat' || p === '/avis-legal' || p === '/galetes') return { name: 'legal', page: p.slice(1) as LegalPage };
   if (p === '/') return { name: 'landing' };
   if (p === '/entra') return { name: 'login', next: new URLSearchParams(location.search).get('next') ?? undefined };
@@ -112,6 +116,8 @@ export function viewPath(v: View): string {
       return v.id ? `/qr/${encodeURIComponent(v.id)}` : '/qr';
     case 'legal':
       return `/${v.page}`;
+    case 'timetable':
+      return `/horari/${encodeURIComponent(v.ref)}${v.stop ? `?parada=${encodeURIComponent(v.stop)}` : ''}`;
     default:
       return '/';
   }
