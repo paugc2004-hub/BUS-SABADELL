@@ -209,7 +209,8 @@ export function planTrip(engine: SimEngine, from: LonLat, to: LonLat[], t: numbe
     walk: walkLeg,
     // a peu només si és curt: < 450 m, o arribes abans i no passa de ~15 min caminant
     walkIsBetter: Boolean(
-      walkLeg && (walkLeg.meters < 450 || (walkLeg.meters <= 15 * WALK_M_PER_MIN && (itineraries.length === 0 || walkLeg.end <= itineraries[0]!.arrive))),
+      walkLeg &&
+        (walkLeg.meters < 450 || (walkLeg.meters <= 15 * WALK_M_PER_MIN && (itineraries.length === 0 || walkLeg.end <= itineraries[0]!.arrive))),
     ),
     reason,
   });
@@ -276,7 +277,10 @@ export function planTrip(engine: SimEngine, from: LonLat, to: LonLat[], t: numbe
     const cur = byTrips.get(key);
     if (!cur || it.arrive < cur.arrive || (it.arrive === cur.arrive && it.walkMeters < cur.walkMeters)) byTrips.set(key, it);
   }
-  const uniq = [...byTrips.values()];
+  // un bus que et fa caminar tant o més que anar-hi directament a peu no és una opció (p. ex. 570 m fins a la
+  // parada per fer-ne una quan el destí és a 170 m)
+  const uniq = [...byTrips.values()].filter((it) => !walkLeg || it.walkMeters < walkLeg.meters);
+  if (uniq.length === 0) return result([], 'ok');
   const kept = uniq.filter((b) => !uniq.some((a) => dominates(a, b) && !(dominates(b, a) && uniq.indexOf(b) < uniq.indexOf(a))));
   // la millor opció primer (puntuació), i opcions variades: no tres vegades el mateix bus a la mateixa parada
   kept.sort((a, b) => scoreOf(a) - scoreOf(b));

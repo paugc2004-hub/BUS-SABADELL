@@ -1056,7 +1056,8 @@ html:has(.landing), body:has(.landing), #root:has(.landing) { height: auto; min-
 /* ---------- maplibre */
 /* mòbil: amb una pàgina a sobre del mapa (inici, línies, els meus), l'atribució va a dalt perquè no quedi tapada */
 @media (max-width: 760px) {
-  .route-panel { max-height: 58dvh; }
+  /* la ruta és el que importa (puja, baixa, quan arribes): el mapa, de context, i es pot ampliar arrossegant */
+  .sheet.route-panel { max-height: 76dvh; }
   .base-home:not(.presenting) .maplibregl-ctrl-bottom-right, .base-mine .maplibregl-ctrl-bottom-right, .base-line .maplibregl-ctrl-bottom-right { top: 0; bottom: auto; }
 }
 .maplibregl-ctrl-attrib { background: #08090bcc !important; color: var(--text-2) !important; font-size: var(--fs-meta); }
@@ -1480,8 +1481,8 @@ html:has(.landing), body:has(.landing), #root:has(.landing) { height: auto; min-
 .line-alert { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; background: #fef3c7; color: #78350f; font-size: var(--fs-meta, 12px); font-weight: 700; }
 .lp-timetable-link { display: inline-flex; margin: 8px 0 0; }
 @media print { .tt-table { font-size: 11px; } .tt-table th, .tt-table td { padding: 3px 6px; } }
-.plan-when { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; }
-.plan-when button { min-height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface, var(--bg-2)); color: var(--text); font: inherit; font-size: var(--fs-small); font-weight: 600; cursor: pointer; }
+.plan-when { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; }
+.plan-when button { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface, var(--bg-2)); color: var(--text); font: inherit; font-size: var(--fs-small); font-weight: 600; cursor: pointer; }
 .plan-when button.on { background: var(--text); color: var(--bg); border-color: var(--text); }
 .plan-time input { min-height: 40px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--surface, var(--bg-2)); color: var(--text); font: inherit; }
 .plan-gmaps { margin: 8px 0 0; }
@@ -1604,3 +1605,7 @@ html:has(.landing), body:has(.landing), #root:has(.landing) { height: auto; min-
 details[open] > summary::after { transform: rotate(180deg); }
 @media (prefers-reduced-motion: reduce) { .fare-more summary::after, .sp-hours summary::after, .fare-faq summary::after { transition: none; } }
 @media (max-width: 360px) { .pub-head .logo-name { display: none; } }
+.best-walk-title { margin: 6px 0 0; display: flex; align-items: center; gap: 8px; font-size: var(--fs-l, 18px); font-weight: 800; }
+.best-walk-main { margin: 2px 0 0; font-size: 28px; font-weight: 800; letter-spacing: -.01em; line-height: 1.1; }
+.best-walk-sub { margin: 2px 0 0; color: var(--text-2); font-weight: 600; }
+.best.best-alt { border-width: 1px; }
