@@ -15,7 +15,7 @@ import { PUBLIC_ORIGIN, qrPath, qrSvg, stopCardUrl, validStopCode } from '../dat
 import { RouteChip, SourceTag, hm, useNow } from '../ui/common.tsx';
 import { Logo } from '../ui/Logo.tsx';
 
-function useNetwork() {
+export function useNetwork() {
   const engine = useApp((s) => s.engine);
   const network = useApp((s) => s.network);
   const state = useApp((s) => s.loadState);
@@ -25,7 +25,7 @@ function useNetwork() {
   return { engine, network, state };
 }
 
-function Shell({ title, children }: { title: string; children: ReactNode }) {
+export function Shell({ title, children }: { title: string; children: ReactNode }) {
   const t = useT();
   const lang = useApp((s) => s.lang);
   const st = useApp.getState();
@@ -39,8 +39,8 @@ function Shell({ title, children }: { title: string; children: ReactNode }) {
           <Logo size={26} />
         </a>
         <nav className="pub-nav" aria-label={t.pub.qrTitle}>
-          <a href="/qr" onClick={(e) => (e.preventDefault(), st.navigate({ name: 'qr', id: null }))}>
-            QR
+          <a href="/tarifes" onClick={(e) => (e.preventDefault(), st.navigate({ name: 'fares' }))}>
+            {t.fares.nav}
           </a>
           <a href="/app" onClick={(e) => (e.preventDefault(), st.navigate({ name: 'home' }))}>
             App

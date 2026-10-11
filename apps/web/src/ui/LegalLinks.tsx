@@ -7,6 +7,12 @@ export function LegalLinks({ className = 'legal-links' }: { className?: string }
   const st = useApp.getState();
   return (
     <nav className={className} aria-label="Legal">
+      <a href="/tarifes" onClick={(e) => (e.preventDefault(), st.navigate({ name: 'fares' }))}>
+        {t.fares.nav}
+      </a>
+      <a href="/punts-de-venda" onClick={(e) => (e.preventDefault(), st.navigate({ name: 'sales' }))}>
+        {t.fares.where}
+      </a>
       {(['privacitat', 'avis-legal', 'galetes'] as const).map((p) => (
         <a key={p} href={`/${p}`} onClick={(e) => (e.preventDefault(), st.navigate({ name: 'legal', page: p }))}>
           {t.pub.legal[p]}

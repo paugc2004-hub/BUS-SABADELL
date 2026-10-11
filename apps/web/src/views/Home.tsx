@@ -218,6 +218,15 @@ export function HomePanel({ autoFocus = false }: { autoFocus?: boolean }) {
       )}
 
       <div className="simple-foot">
+        {/* serveis secundaris: no competeixen amb «On vols anar?» */}
+        <nav className="services-row" aria-label={t.fares.services}>
+          <a href="/tarifes" onClick={(e) => (e.preventDefault(), useApp.getState().navigate({ name: 'fares' }))}>
+            {t.fares.nav}
+          </a>
+          <a href="/punts-de-venda" onClick={(e) => (e.preventDefault(), useApp.getState().navigate({ name: 'sales' }))}>
+            {t.fares.where}
+          </a>
+        </nav>
         <InstallButton />
       </div>
     </aside>

@@ -23,7 +23,11 @@ export type View =
   /** pàgines legals públiques */
   | { name: 'legal'; page: LegalPage }
   /** horaris i freqüències d'una línia, imprimible (PPT 2024 §2.2.1) */
-  | { name: 'timetable'; ref: string; stop?: string };
+  | { name: 'timetable'; ref: string; stop?: string }
+  /** tarifes i títols (TUS i sistema integrat) */
+  | { name: 'fares' }
+  /** punts de venda (Oficina de Mobilitat i xarxa PunTUS), opcionalment filtrats per títol */
+  | { name: 'sales'; title?: string };
 
 export type LegalPage = 'privacitat' | 'avis-legal' | 'galetes';
 
@@ -71,6 +75,8 @@ export function parseView(path: string): View {
   if (m) return { name: 'stopCard', id: m[1]! };
   m = /^\/qr(?:\/([^/]+))?$/.exec(p);
   if (m) return { name: 'qr', id: m[1] ?? null };
+  if (p === '/tarifes') return { name: 'fares' };
+  if (p === '/punts-de-venda') return { name: 'sales', title: new URLSearchParams(location.search).get('titol') ?? undefined };
   m = /^\/horari\/([^/]+)$/.exec(p);
   if (m) return { name: 'timetable', ref: m[1]!.toUpperCase(), stop: new URLSearchParams(location.search).get('parada') ?? undefined };
   if (p === '/privacitat' || p === '/avis-legal' || p === '/galetes') return { name: 'legal', page: p.slice(1) as LegalPage };
@@ -116,6 +122,10 @@ export function viewPath(v: View): string {
       return v.id ? `/qr/${encodeURIComponent(v.id)}` : '/qr';
     case 'legal':
       return `/${v.page}`;
+    case 'fares':
+      return '/tarifes';
+    case 'sales':
+      return `/punts-de-venda${v.title ? `?titol=${encodeURIComponent(v.title)}` : ''}`;
     case 'timetable':
       return `/horari/${encodeURIComponent(v.ref)}${v.stop ? `?parada=${encodeURIComponent(v.stop)}` : ''}`;
     default:
