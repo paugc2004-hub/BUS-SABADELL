@@ -106,6 +106,18 @@ export function useRemotePlaces(q: string, lang: string, provider: PlacesProvide
   const enough = normalize(clean).replace(/\s/g, '').length >= MIN_REMOTE;
   const k = keyOf(clean, lang);
   const [state, setState] = useState<RemoteState & { k: string }>({ status: 'idle', data: null, k: '' });
+  // en tornar la connexió es torna a buscar (si no, la cerca feta sense xarxa quedaria en error)
+  const [online, setOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine !== false);
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    addEventListener('online', on);
+    addEventListener('offline', off);
+    return () => {
+      removeEventListener('online', on);
+      removeEventListener('offline', off);
+    };
+  }, []);
   useEffect(() => {
     if (!enough) return;
     const hit = memo.get(k);
@@ -135,7 +147,7 @@ export function useRemotePlaces(q: string, lang: string, provider: PlacesProvide
       clearTimeout(id);
       ctl.abort();
     };
-  }, [k, enough]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [k, enough, online]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!enough) return { status: 'idle', data: null };
   // mentre carrega la nova cerca, no es mostren resultats d'una altra
   return state.k === k ? state : { status: 'loading', data: null };

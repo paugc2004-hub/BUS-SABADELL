@@ -5,7 +5,7 @@
  * Les posicions surten del VehicleState (prevStopIndex/nextStopIndex), no es recalculen aquí.
  */
 import { useEffect, useMemo, useState } from 'react';
-import type { Pattern, SimEngine, VehicleState } from '@bus/core';
+import { activeAlerts, type Pattern, type SimEngine, type VehicleState } from '@bus/core';
 import { useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { arrivalsAt, vehiclesAt } from '../data/vehicles.ts';
@@ -41,6 +41,16 @@ export function LinesIndex() {
     if (engine) for (const v of vehiclesAt(engine, now)) if (v.status !== 'RETIRADA') m.set(v.routeId, (m.get(v.routeId) ?? 0) + 1);
     return m;
   }, [engine, Math.floor(now / 10000)]); // eslint-disable-line react-hooks/exhaustive-deps
+  // línies amb algun avís publicat ara (directe o en alguna de les seves parades): PPT 2024 §2.2.1
+  const alerted = useMemo(() => {
+    const set = new Set<string>();
+    if (!network || !engine) return set;
+    for (const a of activeAlerts(network.alerts, now)) {
+      a.routes.forEach((r) => set.add(r));
+      for (const sid of a.stops) engine.stops.get(sid)?.routes.forEach((r) => set.add(r));
+    }
+    return set;
+  }, [network, engine, Math.floor(now / 60000)]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!network || !engine) return null;
   const dayType = engine.dayTypeAt(now);
   const group = (kind: 'diurna' | 'festiva') => network.routes.filter((r) => r.kind === kind);
@@ -59,7 +69,14 @@ export function LinesIndex() {
                 <li key={r.id}>
                   <button type="button" className={`line-row${runs ? '' : ' off'}`} onClick={() => st.navigate({ name: 'line', ref: r.id })}>
                     <RouteChip route={r} size="md" />
-                    <span className="line-row-name">{r.longName}</span>
+                    <span className="line-row-name">
+                      {r.longName}
+                      {alerted.has(r.id) && (
+                        <span className="line-alert">
+                          {Icon.bell} {t.alerts}
+                        </span>
+                      )}
+                    </span>
                     <span className="line-row-meta">
                       {n > 0 ? t.linesPage.busesNow(n) : t.linesPage.notNow}
                       {sum.runsToday && sum.headwayMin ? ` · ${t.linesPage.every(sum.headwayMin)}` : ''}
@@ -188,6 +205,14 @@ export function LinePanel({ routeRef }: { routeRef: string }) {
           </div>
         </section>
       )}
+
+      <a
+        className="cta lp-timetable-link"
+        href={`/horari/${route.ref}`}
+        onClick={(e) => (e.preventDefault(), st.navigate({ name: 'timetable', ref: route.ref, stop: main.stopIds[0] }))}
+      >
+        {t.pub.tt.printable}
+      </a>
 
       <section>
         <div className="sec-title">{t.linePanel.stopsList}</div>

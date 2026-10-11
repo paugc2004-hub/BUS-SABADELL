@@ -4,7 +4,7 @@
  * «Vaig a agafar aquest bus». La ubicació només es fa servir al dispositiu.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { normalize, type BusLeg, type Itinerary, type LonLat, type PlanResult, type SimEngine } from '@bus/core';
+import { localDate, normalize, serviceDayOrigin, type BusLeg, type Itinerary, type LonLat, type PlanResult, type SimEngine } from '@bus/core';
 import { clock, useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { loadStreets, placeById, searchPlaces, streetById, type Gazetteer, type Place as Poi, type Street } from '../data/streets.ts';
@@ -315,6 +315,9 @@ export function RoutePanel({ to, from }: { to: string; from?: string }) {
   const [picking, setPicking] = useState(false);
   const [sel, setSel] = useState(0);
   const [result, setResult] = useState<PlanResult | null>(null);
+  // quan: ara, sortir a una hora o arribar abans d'una hora (PPT 2024 §2.2.1)
+  const [when, setWhen] = useState<'now' | 'depart' | 'arrive'>('now');
+  const [hhmmIn, setHhmmIn] = useState(() => hm(clock.now() + 30 * 60_000));
 
   // la meva ubicació: la porta LocationService (s'engega en obrir l'app; només al dispositiu)
 
@@ -331,9 +334,27 @@ export function RoutePanel({ to, from }: { to: string; from?: string }) {
   const originKey = origin.status === 'ok' ? origin.pt.join(',') : origin.status;
   useEffect(() => {
     if (!engine || !dest || origin.status !== 'ok') return;
-    const id = setTimeout(() => setResult(planFor(engine, origin.pt, dest.pts, clock.now())), 0);
+    const at = (() => {
+      if (when === 'now') return clock.now();
+      const m = /^(\d{1,2}):(\d{2})$/.exec(hhmmIn);
+      if (!m) return clock.now();
+      return serviceDayOrigin(localDate(clock.now())) + (Number(m[1]) * 60 + Number(m[2])) * 60_000;
+    })();
+    const id = setTimeout(() => setResult(planFor(engine, origin.pt, dest.pts, at, when === 'arrive' ? 'arrive' : 'depart')), 0);
     return () => clearTimeout(id);
-  }, [engine, dest?.code, originKey, tick]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [engine, dest?.code, originKey, when === 'now' ? tick : 0, when, hhmmIn]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const openGoogleMaps = () => {
+    if (origin.status !== 'ok' || !dest) return;
+    const d = dest.pts[Math.floor(dest.pts.length / 2)]!;
+    // només en prémer: Google rep l'origen i el destí (l'usuari ho ha triat)
+    const u = new URL('https://www.google.com/maps/dir/');
+    u.searchParams.set('api', '1');
+    u.searchParams.set('origin', `${origin.pt[1].toFixed(5)},${origin.pt[0].toFixed(5)}`);
+    u.searchParams.set('destination', `${d[1].toFixed(5)},${d[0].toFixed(5)}`);
+    u.searchParams.set('travelmode', 'transit');
+    window.open(u.toString(), '_blank', 'noopener,noreferrer');
+  };
 
   const options = result?.itineraries ?? [];
   const chosen = options[Math.min(sel, options.length - 1)] ?? null;
@@ -391,6 +412,20 @@ export function RoutePanel({ to, from }: { to: string; from?: string }) {
         </div>
       )}
 
+      <div className="plan-when" role="group" aria-label={t.plan.whenLabel}>
+        {(['now', 'depart', 'arrive'] as const).map((w) => (
+          <button key={w} type="button" aria-pressed={when === w} className={when === w ? 'on' : ''} onClick={() => (setWhen(w), setSel(0), setResult(null))}>
+            {w === 'now' ? t.plan.whenNow : w === 'depart' ? t.plan.departAt : t.plan.arriveBy}
+          </button>
+        ))}
+        {when !== 'now' && (
+          <label className="plan-time">
+            <span className="sr-only">{t.plan.timeLabel}</span>
+            <input type="time" value={hhmmIn} onChange={(e) => (setHhmmIn(e.target.value), setResult(null))} required />
+          </label>
+        )}
+      </div>
+
       {origin.status === 'ok' && dest && !result && <p className="dim plan-msg">{t.plan.calculating}</p>}
       {result?.reason === 'destination-far' && <p className="plan-msg">{t.plan.destFar}</p>}
       {result?.reason === 'no-service' && <p className="plan-msg">{t.plan.none}</p>}
@@ -404,6 +439,14 @@ export function RoutePanel({ to, from }: { to: string; from?: string }) {
             it === chosen ? null : <AltOption key={it.legs.map((l) => (l.kind === 'bus' ? l.tripKey : '')).join('>')} it={it} engine={engine} now={now} onPick={() => setSel(i)} />,
           )}
         </section>
+      )}
+      {origin.status === 'ok' && dest && (
+        <p className="plan-gmaps">
+          <button type="button" className="text-btn" onClick={openGoogleMaps}>
+            {t.plan.gmaps} ↗
+          </button>
+          <span className="dim small"> {t.plan.gmapsHint}</span>
+        </p>
       )}
       <p className="dim small plan-note">{t.plan.note}</p>
     </Sheet>

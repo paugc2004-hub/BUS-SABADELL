@@ -54,7 +54,15 @@ pnpm dev:api        # API a http://localhost:8787
 pnpm test           # vitest (core, pipeline, api)
 pnpm typecheck && pnpm lint
 pnpm test:e2e       # Playwright (apps/web)
+# Claude Code web: Chromium preinstal·lat d'una altra versió → PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm test:e2e
+bash apps/web/scripts/zap-baseline.sh   # OWASP ZAP passiu contra `vite preview` (cal Docker amb dimoni)
 ```
+Qualitat: `e2e/quality.spec.ts` (axe-core WCAG 2.1 AA, 320 px sense desbordar, errors i càrrega de la cerca, GPS esgotat),
+`location/location.test.ts` (LocationService amb GPS fals), `core/test/plan-network.test.ts` (propietats del planificador
+sobre la xarxa real, fast-check amb llavor fixa).
+Skills de Claude Code al repo (`.claude/skills/`): `ui-ux-pro-max` (CLI oficial `uipro init --ai claude`, només aquesta),
+`vercel-react-best-practices` i `web-design-guidelines` (`npx skills add vercel-labs/agent-skills --copy`, `skills-lock.json`);
+plugin `frontend-design@claude-code-plugins` declarat a `.claude/settings.json`.
 
 ## Estructura
 - `packages/core` — tipus, geo, temps (Europe/Madrid), **motor de simulació determinista** (`sim/engine.ts`),
@@ -77,6 +85,13 @@ pnpm test:e2e       # Playwright (apps/web)
 - `apps/api` — Fastify: red, snapshot, SSE, llegades, `GtfsRtProvider`.
 - `data/raw` — extractes fetxats (l'HTML de tus.es i el ZIP GTFS no es versionen; els JSON extrets sí).
 - `data/config` — `festius.yaml`, `avisos.yaml`, `overrides.yaml` (editats a mà, validats amb zod).
+
+## Licitació 2024 (OTU/2024/113, web de TUS) — 2026-10-11
+Pàgines **públiques sense sessió** (`views/Public.tsx`, tros a part, sense mapa): `/p/<codi>` fitxa de parada (destí
+dels QR), `/qr[/<codi>]` generador de QR (`data/qr.ts`, al dispositiu), `/horari/<línia>` freqüències i horari per
+parada imprimibles, `/privacitat` `/avis-legal` `/galetes`. Core: `timetable.ts` (horari teòric = hora d'horari del
+motor), `alerts.ts` (avisos per publicació/expiració; mai mostrar `network.alerts` sense filtrar), `planArriveBy`.
+Traçabilitat i decisions: `docs/LICITACIO_2024_*.md`, `docs/SUPER_MASTER_PROMPT_LICITACIO_2024.md`.
 
 ## Ubicació i cerca de destins (2026-10-07)
 - **Ubicació**: només `apps/web/src/location/location.ts` (LocationService) crida `navigator.geolocation`. Estats:

@@ -6,10 +6,15 @@ import { AuthScreen } from './views/Auth.tsx';
 import { LocationStep, locationAsked } from './views/Welcome.tsx';
 
 /** vistes públiques: no cal sessió ni carregar la xarxa */
-const PUBLIC = new Set(['landing', 'login', 'register']);
+const PUBLIC = new Set(['landing', 'login', 'register', 'stopCard', 'qr', 'legal', 'timetable']);
 
 // l'app sencera (mapa, panells, motor) en un tros a part: la landing es pinta sense descarregar-la
 const AppMain = lazy(() => import('./AppMain.tsx').then((m) => ({ default: m.AppMain })));
+// fitxa de parada (QR), generador de QR i pàgines legals: públiques, lleugeres i sense mapa
+const StopCard = lazy(() => import('./views/Public.tsx').then((m) => ({ default: m.StopCard })));
+const QrPage = lazy(() => import('./views/Public.tsx').then((m) => ({ default: m.QrPage })));
+const Legal = lazy(() => import('./views/Public.tsx').then((m) => ({ default: m.Legal })));
+const Timetable = lazy(() => import('./views/Public.tsx').then((m) => ({ default: m.Timetable })));
 
 export function App() {
   const view = useApp((s) => s.view);
@@ -37,6 +42,7 @@ export function App() {
 
   const presenting = useApp((s) => s.presenting);
   useEffect(() => {
+    if (['stopCard', 'qr', 'legal', 'timetable'].includes(view.name)) return; // ho posa cada pàgina pública
     document.title = presenting ? 'NextMobility Sabadell · Presentació' : view.name === 'landing' ? t.landingTitle : 'NextMobility Sabadell';
   }, [presenting, lang, view.name, t]);
   // l'app instal·lada (o dins d'un contenidor d'app) s'obre directament a l'app, no a la landing
@@ -46,6 +52,20 @@ export function App() {
     return null;
   }
   if (view.name === 'landing') return <Landing />;
+  if (view.name === 'stopCard' || view.name === 'qr' || view.name === 'legal' || view.name === 'timetable')
+    return (
+      <Suspense fallback={<div className="loader" aria-hidden />}>
+        {view.name === 'stopCard' ? (
+          <StopCard id={view.id} />
+        ) : view.name === 'qr' ? (
+          <QrPage id={view.id} />
+        ) : view.name === 'timetable' ? (
+          <Timetable routeRef={view.ref} stopId={view.stop} />
+        ) : (
+          <Legal page={view.page} />
+        )}
+      </Suspense>
+    );
   if (view.name === 'login' || view.name === 'register') return <AuthScreen mode={view.name} next={view.next} />;
   if (!user) return null;
   if (!locDone) return <LocationStep onDone={() => setLocDone(true)} />;

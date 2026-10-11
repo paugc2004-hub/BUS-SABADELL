@@ -38,7 +38,8 @@ pnpm data:audit     # validació línia per línia
 Desplegament: vegeu [CLAUDE.md](CLAUDE.md#desplegament-vercel-equip-paugc2004-4556s-projects).
 
 ## Qualitat
-- 100 tests unitaris/API (inclosa l'auditoria de la xarxa i `/api/places`) + 87 e2e (escriptori, iPhone, Android).
+- 116 tests unitaris/API (inclosa l'auditoria de la xarxa, `/api/places`, la ubicació i propietats del planificador) + 99 e2e
+  (escriptori, iPhone, Android; inclou accessibilitat automàtica amb axe-core i mòbil de 320 px).
 - Lighthouse mòbil (producció, laboratori sense GPU): rendiment 68–69, accessibilitat 100, bones pràctiques 100,
   FCP/LCP 1,2–1,8 s. 60 fps en règim estable a totes les vistes (`scripts/perf-probe.mjs`).
 

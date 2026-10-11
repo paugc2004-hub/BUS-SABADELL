@@ -103,6 +103,9 @@ export function SearchBox({ autoFocus = false, toRoute = false, placeholder }: {
             <div className="sr-empty">
               {remote.status === 'error' && typeof navigator !== 'undefined' && navigator.onLine === false ? (
                 t.find.offline
+              ) : remote.status === 'error' ? (
+                // el servei ha fallat: no és el mateix que «no existeix»
+                t.find.failed
               ) : (
                 <>
                   <strong>{t.find.notFound}</strong>
@@ -143,6 +146,7 @@ export function SearchBox({ autoFocus = false, toRoute = false, placeholder }: {
             );
           })}
           {remote.status === 'loading' && <div className="sr-more dim small">{t.find.searching}</div>}
+          {remote.status === 'error' && items.length > 0 && <div className="sr-more dim small">{navigator.onLine === false ? t.find.offline : t.find.failed}</div>}
           {streets.length > 0 && <div className="sr-group">{t.plan.streets}</div>}
           {streets.map((x) => {
             const i = row();

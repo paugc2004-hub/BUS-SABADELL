@@ -10,7 +10,15 @@ import { clock, useApp } from '../state/store.ts';
 
 const API = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
 
-export async function loadNetwork(): Promise<void> {
+let inflight: Promise<void> | null = null;
+
+/** Carrega la xarxa (una sola petició alhora: l'app i les pàgines públiques poden demanar-la a la vegada). */
+export function loadNetwork(): Promise<void> {
+  inflight ??= fetchNetwork().finally(() => (inflight = null));
+  return inflight;
+}
+
+async function fetchNetwork(): Promise<void> {
   useApp.setState({ loadState: 'loading' });
   try {
     const ctrl = new AbortController();

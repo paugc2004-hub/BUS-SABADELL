@@ -2,3 +2,5 @@ data/
 dist/
 pnpm-lock.yaml
 apps/web/public/data/
+.claude/skills/
+skills-lock.json

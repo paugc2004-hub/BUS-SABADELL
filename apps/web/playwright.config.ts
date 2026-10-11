@@ -12,7 +12,11 @@ export default defineConfig({
   use: {
     baseURL: process.env.BASE_URL ?? 'http://localhost:4173',
     timezoneId: 'Europe/Madrid',
-    launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] },
+    // PW_CHROMIUM_PATH: navegador ja instal·lat quan no coincideix amb la versió de Playwright (p. ex. Claude Code web: /opt/pw-browsers/chromium)
+    launchOptions: {
+      args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+      executablePath: process.env.PW_CHROMIUM_PATH || undefined,
+    },
   },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 }, locale: 'ca-ES' } },

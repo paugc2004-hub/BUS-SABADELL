@@ -23,6 +23,11 @@ export const AvisosSchema = z.object({
       fins_a: isoDate.nullable().default(null),
       text: z.object({ ca: z.string().min(1), es: z.string().min(1) }),
       url: z.string().url().optional(),
+      // licitació 2024 (PPT §2.2.1): motiu, publicació/expiració i adjunts
+      motiu: z.object({ ca: z.string().min(1), es: z.string().min(1) }).optional(),
+      publicacio: isoDate.optional(),
+      expiracio: isoDate.nullable().optional(),
+      adjunts: z.array(z.object({ titol: z.string().min(1), url: z.string().url() })).default([]),
     }),
   ),
 });

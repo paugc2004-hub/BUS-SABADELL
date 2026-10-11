@@ -323,6 +323,10 @@ export async function build(opts: { refresh?: boolean } = {}) {
       to: a.fins_a,
       text: a.text,
       ...(a.url ? { url: a.url } : {}),
+      ...(a.motiu ? { reason: a.motiu } : {}),
+      ...(a.publicacio ? { published: a.publicacio } : {}),
+      ...(a.expiracio !== undefined ? { expires: a.expiracio } : {}),
+      ...(a.adjunts.length ? { attachments: a.adjunts.map((x) => ({ title: x.titol, url: x.url })) } : {}),
     })),
     ...stopAlerts,
   ];
