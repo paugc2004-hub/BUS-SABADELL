@@ -433,6 +433,7 @@ export const es: Dict = {
     notFound: 'No hemos encontrado ese lugar.',
     tryWith: 'Prueba con una dirección, una calle u otro nombre.',
     offline: 'Sin conexión: solo calles, lugares y paradas guardados.',
+    failed: 'Ahora no podemos buscar más lugares. Vuelve a intentarlo en unos segundos.',
     source: (a: string) => `Lugares: ${a}`,
     dist: (m: number) => (m < 1000 ? `a ${Math.max(10, Math.round(m / 10) * 10)} m` : `a ${(m / 1000).toFixed(1).replace('.', ',')} km`),
   },

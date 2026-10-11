@@ -431,6 +431,7 @@ export const ca = {
     notFound: 'No hem trobat aquest lloc.',
     tryWith: 'Prova amb una adreça, un carrer o un altre nom.',
     offline: 'Sense connexió: només carrers, llocs i parades guardats.',
+    failed: 'Ara no podem buscar més llocs. Torna-ho a provar d’aquí a uns segons.',
     source: (a: string) => `Llocs: ${a}`,
     dist: (m: number) => (m < 1000 ? `a ${Math.max(10, Math.round(m / 10) * 10)} m` : `a ${(m / 1000).toFixed(1).replace('.', ',')} km`),
   },

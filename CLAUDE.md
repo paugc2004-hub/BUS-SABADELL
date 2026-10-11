@@ -54,7 +54,15 @@ pnpm dev:api        # API a http://localhost:8787
 pnpm test           # vitest (core, pipeline, api)
 pnpm typecheck && pnpm lint
 pnpm test:e2e       # Playwright (apps/web)
+# Claude Code web: Chromium preinstal·lat d'una altra versió → PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm test:e2e
+bash apps/web/scripts/zap-baseline.sh   # OWASP ZAP passiu contra `vite preview` (cal Docker amb dimoni)
 ```
+Qualitat: `e2e/quality.spec.ts` (axe-core WCAG 2.1 AA, 320 px sense desbordar, errors i càrrega de la cerca, GPS esgotat),
+`location/location.test.ts` (LocationService amb GPS fals), `core/test/plan-network.test.ts` (propietats del planificador
+sobre la xarxa real, fast-check amb llavor fixa).
+Skills de Claude Code al repo (`.claude/skills/`): `ui-ux-pro-max` (CLI oficial `uipro init --ai claude`, només aquesta),
+`vercel-react-best-practices` i `web-design-guidelines` (`npx skills add vercel-labs/agent-skills --copy`, `skills-lock.json`);
+plugin `frontend-design@claude-code-plugins` declarat a `.claude/settings.json`.
 
 ## Estructura
 - `packages/core` — tipus, geo, temps (Europe/Madrid), **motor de simulació determinista** (`sim/engine.ts`),

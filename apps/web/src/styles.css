@@ -1162,6 +1162,9 @@ html:has(.landing), body:has(.landing), #root:has(.landing) { height: auto; min-
 .citizen .account-item:hover { background: var(--surface-3); }
 .citizen .chip { box-shadow: inset 0 0 0 1px #0e111626; }
 .citizen .search-results { background: var(--surface); }
+/* fila activa (fons --surface-3): textos secundaris més foscos per arribar a 4,5:1 (WCAG AA, axe) */
+.citizen .sr-item.on .sr-sub { color: #565b63; }
+.citizen .sr-item.on .sr-go { color: #94420a; }
 .citizen .search-field { background: var(--surface-2); }
 .citizen .lang-btn { border-color: var(--line-2); }
 .citizen .maplibregl-ctrl-attrib { background: #ffffffd9 !important; color: var(--text-2) !important; }

@@ -17,3 +17,6 @@ apps/web/playwright-report/
 apps/web/dev-dist/
 .vercel-deploy/
 dist-deploy/
+# skills de Claude Code: memòria cau de Python dels scripts de cerca
+__pycache__/
+apps/web/zap-report.*

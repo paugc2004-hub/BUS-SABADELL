@@ -124,17 +124,19 @@ function HeroDemo() {
         </text>
       </svg>
 
-      <div className="demo-card" role="img" aria-label={`${C.demo}. ${C.myStop}: ${L2_STOPS[last]!.name}. L2 → Creu de Barberà. ${here ? C.now : `${C.arrives} ${mins} min`}.`}>
-        <div className="demo-top">
+      {/* sense role="img" al contenidor: amagaria el botó «Veure» als lectors de pantalla (axe: nested-interactive) */}
+      <div className="demo-card">
+        <span className="sr-only">{`${C.demo}. ${C.myStop}: ${L2_STOPS[last]!.name}. L2 → Creu de Barberà. ${here ? C.now : `${C.arrives} ${mins} min`}.`}</span>
+        <div className="demo-top" aria-hidden>
           <span className="demo-eyebrow">{C.myStop}</span>
           <span className="demo-tag">{C.demo}</span>
         </div>
-        <strong className="demo-stop">{L2_STOPS[last]!.name}</strong>
-        <div className="demo-line">
+        <strong className="demo-stop" aria-hidden>{L2_STOPS[last]!.name}</strong>
+        <div className="demo-line" aria-hidden>
           <RouteChip route={L2} />
           <span>→ Creu de Barberà</span>
         </div>
-        <div className="demo-eta" aria-live="off">
+        <div className="demo-eta" aria-hidden>
           {here ? (
             <span className="demo-now">{C.now}</span>
           ) : (
@@ -147,7 +149,7 @@ function HeroDemo() {
             </>
           )}
         </div>
-        <div className="demo-meta">
+        <div className="demo-meta" aria-hidden>
           <span className={away <= 2 ? 'near' : ''}>{C.stopsAway(away)}</span>
           <span className="demo-ok">● {C.onTime}</span>
         </div>
