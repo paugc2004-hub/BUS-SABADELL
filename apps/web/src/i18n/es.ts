@@ -454,6 +454,13 @@ export const es: Dict = {
     examples: 'Por ejemplo: Parc Taulí, Mercadona, Rambla 100, una tienda…',
   },
   plan: {
+    whenNow: 'Ahora',
+    departAt: 'Salir a las',
+    arriveBy: 'Llegar a las',
+    whenLabel: 'Cuándo',
+    timeLabel: 'Hora',
+    gmaps: 'Abrir en Google Maps',
+    gmapsHint: 'Comparte el origen y el destino con Google.',
     title: 'Cómo llego',
     where: '¿Adónde vas?',
     searchPlaceholder: '¿Adónde vas? Lugar, calle, parada o línea',
@@ -535,6 +542,7 @@ export const es: Dict = {
     options: 'Opciones',
   },
   pub: {
+    notTodayLines: 'Hoy no pasan:',
     demo: 'Demostración',
     stopCard: 'Ficha de parada',
     code: 'Código de parada',

@@ -1,4 +1,5 @@
 /** Compte (/meus): el compte i, en segon terme, les parades desades. Amb la demostració, la invitació a crear un compte. */
+import { LegalLinks } from '../ui/LegalLinks.tsx';
 import { useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { HomeStops } from './Home.tsx';
@@ -43,6 +44,7 @@ export function MinePanel() {
         </section>
       )}
       {favorites.length > 0 && <HomeStops />}
+      <LegalLinks />
     </aside>
   );
 }

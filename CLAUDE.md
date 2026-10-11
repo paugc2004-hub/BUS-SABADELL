@@ -86,6 +86,13 @@ plugin `frontend-design@claude-code-plugins` declarat a `.claude/settings.json`.
 - `data/raw` — extractes fetxats (l'HTML de tus.es i el ZIP GTFS no es versionen; els JSON extrets sí).
 - `data/config` — `festius.yaml`, `avisos.yaml`, `overrides.yaml` (editats a mà, validats amb zod).
 
+## Licitació 2024 (OTU/2024/113, web de TUS) — 2026-10-11
+Pàgines **públiques sense sessió** (`views/Public.tsx`, tros a part, sense mapa): `/p/<codi>` fitxa de parada (destí
+dels QR), `/qr[/<codi>]` generador de QR (`data/qr.ts`, al dispositiu), `/horari/<línia>` freqüències i horari per
+parada imprimibles, `/privacitat` `/avis-legal` `/galetes`. Core: `timetable.ts` (horari teòric = hora d'horari del
+motor), `alerts.ts` (avisos per publicació/expiració; mai mostrar `network.alerts` sense filtrar), `planArriveBy`.
+Traçabilitat i decisions: `docs/LICITACIO_2024_*.md`, `docs/SUPER_MASTER_PROMPT_LICITACIO_2024.md`.
+
 ## Ubicació i cerca de destins (2026-10-07)
 - **Ubicació**: només `apps/web/src/location/location.ts` (LocationService) crida `navigator.geolocation`. Estats:
   `locating/ok/denied/timeout/unavailable/unsupported`. UI: `views/LocationStatus.tsx`. Mai es desa ni s'envia.

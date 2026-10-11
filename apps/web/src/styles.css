@@ -1480,3 +1480,11 @@ html:has(.landing), body:has(.landing), #root:has(.landing) { height: auto; min-
 .line-alert { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; background: #fef3c7; color: #78350f; font-size: var(--fs-meta, 12px); font-weight: 700; }
 .lp-timetable-link { display: inline-flex; margin: 8px 0 0; }
 @media print { .tt-table { font-size: 11px; } .tt-table th, .tt-table td { padding: 3px 6px; } }
+.plan-when { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; }
+.plan-when button { min-height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface, var(--bg-2)); color: var(--text); font: inherit; font-size: var(--fs-small); font-weight: 600; cursor: pointer; }
+.plan-when button.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+.plan-time input { min-height: 40px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--surface, var(--bg-2)); color: var(--text); font: inherit; }
+.plan-gmaps { margin: 8px 0 0; }
+.legal-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; margin-top: 12px; font-size: var(--fs-small, 14px); }
+.legal-links a { color: inherit; opacity: .85; min-height: 32px; display: inline-flex; align-items: center; }
+.sc-off { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0 0; }

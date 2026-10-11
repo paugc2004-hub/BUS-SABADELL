@@ -131,16 +131,25 @@ export function StopCard({ id }: { id: string }) {
             {t.pub.lines}
           </h2>
           <ul className="chips sc-lines">
-            {routes.map((r) => {
-              const runs = engine.runsOn(r, dayType);
-              return (
-                <li key={r} title={runs ? engine.routes.get(r)?.longName : `${engine.routes.get(r)?.longName} · ${t.pub.notToday}`}>
-                  <RouteChip route={engine.routes.get(r)} size="md" dim={!runs} />
-                  {!runs && <span className="sr-only"> ({t.pub.notToday})</span>}
+            {routes
+              .filter((r) => engine.runsOn(r, dayType))
+              .map((r) => (
+                <li key={r} title={engine.routes.get(r)?.longName}>
+                  <RouteChip route={engine.routes.get(r)} size="md" />
                 </li>
-              );
-            })}
+              ))}
           </ul>
+          {routes.some((r) => !engine.runsOn(r, dayType)) && (
+            // sense atenuar (contrast AA): una fila a part diu quines avui no hi passen
+            <p className="sc-off small">
+              <span className="dim">{t.pub.notTodayLines}</span>{' '}
+              {routes
+                .filter((r) => !engine.runsOn(r, dayType))
+                .map((r) => (
+                  <RouteChip key={r} route={engine.routes.get(r)} size="sm" />
+                ))}
+            </p>
+          )}
         </section>
 
         {alerts.length > 0 && (

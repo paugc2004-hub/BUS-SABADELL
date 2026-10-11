@@ -4,6 +4,7 @@
  * (etiquetada «Demostració») sobre parades i recorreguts reals de la L2; no és una dada en directe.
  * «Prova-ho ara» entra a l'app sense registre (compte de demostració).
  */
+import { LegalLinks } from '../ui/LegalLinks.tsx';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Route } from '@bus/core';
 import { auth } from '../auth/auth.ts';
@@ -416,6 +417,7 @@ export function Landing() {
         <button type="button" className="btn-text" onClick={() => st.navigate({ name: 'login' })}>
           {L.haveAccount}
         </button>
+        <LegalLinks />
       </footer>
     </div>
   );

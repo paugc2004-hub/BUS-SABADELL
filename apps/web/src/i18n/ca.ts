@@ -452,6 +452,13 @@ export const ca = {
     examples: 'Per exemple: Parc Taulí, Mercadona, Rambla 100, una botiga…',
   },
   plan: {
+    whenNow: 'Ara',
+    departAt: 'Sortir a les',
+    arriveBy: 'Arribar a les',
+    whenLabel: 'Quan',
+    timeLabel: 'Hora',
+    gmaps: 'Obre a Google Maps',
+    gmapsHint: 'Comparteix l’origen i el destí amb Google.',
     title: 'Com hi arribo',
     where: 'On vas?',
     searchPlaceholder: 'On vas? Lloc, carrer, parada o línia',
@@ -533,6 +540,7 @@ export const ca = {
     options: 'Opcions',
   },
   pub: {
+    notTodayLines: 'Avui no hi passen:',
     demo: 'Demostració',
     stopCard: 'Fitxa de parada',
     code: 'Codi de parada',

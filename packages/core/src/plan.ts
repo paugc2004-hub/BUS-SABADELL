@@ -294,3 +294,33 @@ export function planTrip(engine: SimEngine, from: LonLat, to: LonLat[], t: numbe
   for (const it of kept) if (picked.length < limit && !picked.includes(it)) picked.push(it);
   return result(picked, 'ok');
 }
+
+/**
+ * «Arribar a les…» (licitació 2024, PPT §2.2.1: hora de sortida o d'arribada). Busca cap enrere des de l'hora
+ * límit, de 10 en 10 min (fins a 2 h abans), i es queda amb les opcions que hi arriben a temps i surten més tard.
+ * Les hores són les mateixes estimacions que la resta de l'app.
+ */
+export function planArriveBy(engine: SimEngine, from: LonLat, to: LonLat[], deadline: number, opts: PlanOptions = {}): PlanResult {
+  const limit = opts.limit ?? 3;
+  let last: PlanResult | null = null;
+  for (let k = 1; k <= 12; k++) {
+    const r = planTrip(engine, from, to, deadline - k * 10 * 60_000, { ...opts, limit: 12, horizonMin: Math.max(opts.horizonMin ?? 0, k * 10 + 15) });
+    last = r;
+    if (r.reason === 'origin-far' || r.reason === 'destination-far') return { ...r, itineraries: [] };
+    const ok = r.itineraries.filter((it) => it.arrive <= deadline);
+    if (ok.length) {
+      const seen = new Set<string>();
+      const picked = ok
+        .sort((a, b) => b.leaveAt - a.leaveAt || a.arrive - b.arrive)
+        .filter((it) => {
+          const key = it.legs.flatMap((l) => (l.kind === 'bus' ? [l.tripKey] : [])).join('>');
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .slice(0, limit);
+      return { ...r, itineraries: picked, reason: 'ok' };
+    }
+  }
+  return { ...(last ?? planTrip(engine, from, to, deadline)), itineraries: [], reason: 'no-service' };
+}

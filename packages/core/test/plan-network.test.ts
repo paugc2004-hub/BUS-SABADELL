@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { MAX_ACCESS_M, SimEngine, planTrip, scoreOf, type Itinerary, type LonLat, type NetworkData } from '../src/index.ts';
+import { MAX_ACCESS_M, SimEngine, planArriveBy, planTrip, scoreOf, type Itinerary, type LonLat, type NetworkData } from '../src/index.ts';
 
 const net = JSON.parse(readFileSync(join(__dirname, '../../../apps/web/public/data/network.json'), 'utf8')) as NetworkData;
 const engine = new SimEngine(net);
@@ -111,5 +111,40 @@ describe('planificador sobre la xarxa real', () => {
     if (r.reason !== 'ok') return;
     const last = r.itineraries[0]!.legs.at(-1)!;
     expect(last.kind === 'walk' && street.some((p) => p[0] === last.to[0] && p[1] === last.to[1])).toBe(true);
+  });
+});
+
+describe('«Arribar a les…» sobre la xarxa real', () => {
+  it('totes les opcions arriben abans de l’hora límit i són coherents; surten tan tard com es pot', () => {
+    let found = 0;
+    fc.assert(
+      fc.property(placeArb, placeArb, fc.integer({ min: 8 * 60, max: 20 * 60 }), (from, to, min) => {
+        const deadline = DAY + min * 60_000;
+        const r = planArriveBy(engine, from, [to], deadline);
+        if (r.reason !== 'ok') return;
+        found++;
+        for (const it of r.itineraries) {
+          expect(it.arrive).toBeLessThanOrEqual(deadline);
+          checkItinerary(it, deadline - 2 * H - 15 * 60_000);
+        }
+        const leaves = r.itineraries.map((i) => i.leaveAt);
+        expect(leaves).toEqual([...leaves].sort((a, b) => b - a));
+        // no hi ha cap opció d'una sortida posterior que també arribi a temps (dins del que veu el planificador)
+        const later = planTrip(engine, from, [to], r.itineraries[0]!.leaveAt + 60_000, { limit: 12 }).itineraries.filter((i) => i.arrive <= deadline);
+        for (const i of later) expect(i.leaveAt).toBeLessThanOrEqual(r.itineraries[0]!.leaveAt + 10 * 60_000);
+      }),
+      { numRuns: 25, seed: 20261011 },
+    );
+    expect(found).toBeGreaterThan(15);
+  }, 60_000);
+
+  it('rendiment: una consulta «arribar a les» triga poc (es fa al mòbil)', () => {
+    const from: LonLat = [stops[10]!.lon, stops[10]!.lat];
+    const to: LonLat = [stops[200]!.lon, stops[200]!.lat];
+    const t0 = performance.now();
+    const r = planArriveBy(engine, from, [to], DAY + 9 * H);
+    const ms = performance.now() - t0;
+    expect(r.reason).toBe('ok');
+    expect(ms).toBeLessThan(1500);
   });
 });
