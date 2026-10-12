@@ -27,12 +27,45 @@ export type View =
   /** tarifes i títols (TUS i sistema integrat) */
   | { name: 'fares' }
   /** punts de venda (Oficina de Mobilitat i xarxa PunTUS), opcionalment filtrats per títol */
-  | { name: 'sales'; title?: string };
+  | { name: 'sales'; title?: string }
+  // ---- paritat amb l'app oficial de TUS (docs/TUS_PARITY.md)
+  /** «Com hi arribo»: formulari explícit d'origen i destí (el resultat és la ruta) */
+  | { name: 'plan' }
+  /** «Més»: punts de venda, oficina, idioma, accessibilitat, TUS, xarxes, legal, versió */
+  | { name: 'more' }
+  /** avisos del servei (actius ara i propers) */
+  | { name: 'alerts' }
+  /** cercar una parada pel codi, el nom o el QR */
+  | { name: 'findStop' }
+  /** lector de QR de parada (càmera, al dispositiu) */
+  | { name: 'scan' }
+  /** Oficina de Mobilitat */
+  | { name: 'office' }
+  /** parades preferides */
+  | { name: 'favs' }
+  /** títols de demostració */
+  | { name: 'tickets'; page: TicketPage; id?: string }
+  /** targetes de demostració */
+  | { name: 'cards'; page: CardPage }
+  /** compte: subpàgines */
+  | { name: 'account'; page: AccountPage };
 
 export type LegalPage = 'privacitat' | 'avis-legal' | 'galetes';
+export type TicketPage = 'list' | 'buy' | 'product' | 'purchases' | 'trips' | 'exhausted' | 'use';
+export type CardPage = 'list' | 'link' | 'check' | 'recharge';
+export type AccountPage = 'info' | 'profile' | 'faq' | 'password' | 'settings' | 'delete';
 
 /** vistes de base: tancar una parada o un bus torna a la darrera d'aquestes */
-export type BaseView = 'home' | 'map' | 'line' | 'network' | 'mine';
+export type BaseView = 'home' | 'map' | 'line' | 'network' | 'mine' | 'plan' | 'more' | 'alerts' | 'findStop' | 'office' | 'favs';
+const BASES: readonly string[] = ['home', 'map', 'network', 'mine', 'plan', 'more', 'alerts', 'findStop', 'office', 'favs'];
+
+/** vistes que, al mòbil, són una pàgina sencera (sense mapa a sota) */
+export const PAGE_VIEWS: readonly string[] = ['home', 'mine', 'line', 'plan', 'more', 'alerts', 'findStop', 'scan', 'office', 'favs', 'tickets', 'cards', 'account'];
+
+const TICKET_PATHS: Record<string, TicketPage> = { '': 'list', comprar: 'buy', compres: 'purchases', viatges: 'trips', esgotats: 'exhausted' };
+const CARD_PATHS: Record<string, CardPage> = { '': 'list', vincula: 'link', consulta: 'check', recarrega: 'recharge' };
+const ACCOUNT_PATHS: Record<string, AccountPage> = { informacio: 'info', perfil: 'profile', preguntes: 'faq', contrasenya: 'password', configuracio: 'settings', elimina: 'delete' };
+const keyOf = <T extends string>(m: Record<string, T>, v: T) => Object.entries(m).find(([, x]) => x === v)?.[0] ?? '';
 
 export interface InterurbanData {
   source: { name: string; url: string; fetched: string; license: string };
@@ -69,7 +102,7 @@ export function parseView(path: string): View {
   if (m) return { name: 'line', ref: m[1]?.toUpperCase() ?? null };
   m = /^\/parada\/([^/]+)$/.exec(p);
   if (m) return { name: 'stop', id: m[1]! };
-  m = /^\/ruta\/([clpg][^/]+)$/.exec(p);
+  m = /^\/ruta\/([clpg][^/]+|me)$/.exec(p);
   if (m) return { name: 'route', to: m[1]!, from: new URLSearchParams(location.search).get('de') ?? undefined };
   m = /^\/p\/([^/]+)$/.exec(p);
   if (m) return { name: 'stopCard', id: m[1]! };
@@ -89,6 +122,22 @@ export function parseView(path: string): View {
   if (p === '/xarxa') return { name: 'network' };
   if (p === '/meus') return { name: 'mine' };
   if (p === '/presentacio') return { name: 'present' };
+  if (p === '/com-hi-arribo') return { name: 'plan' };
+  if (p === '/mes') return { name: 'more' };
+  if (p === '/avisos') return { name: 'alerts' };
+  if (p === '/cerca') return { name: 'findStop' };
+  if (p === '/qr-lector') return { name: 'scan' };
+  if (p === '/oficina') return { name: 'office' };
+  if (p === '/preferides') return { name: 'favs' };
+  m = /^\/titols\/(comprar|fes-servir)\/([^/]+)$/.exec(p);
+  if (m) return { name: 'tickets', page: m[1] === 'comprar' ? 'product' : 'use', id: m[2]! };
+  m = /^\/titols(?:\/([^/]+))?$/.exec(p);
+  if (m && (m[1] ?? '') in TICKET_PATHS) return { name: 'tickets', page: TICKET_PATHS[m[1] ?? '']! };
+  m = /^\/targetes(?:\/([^/]+))?$/.exec(p);
+  if (m && (m[1] ?? '') in CARD_PATHS) return { name: 'cards', page: CARD_PATHS[m[1] ?? '']! };
+  m = /^\/compte\/([^/]+)$/.exec(p);
+  if (m && m[1]! in ACCOUNT_PATHS) return { name: 'account', page: ACCOUNT_PATHS[m[1]!]! };
+  if (p === '/compte') return { name: 'mine' };
   return { name: 'home' };
 }
 
@@ -128,6 +177,28 @@ export function viewPath(v: View): string {
       return `/punts-de-venda${v.title ? `?titol=${encodeURIComponent(v.title)}` : ''}`;
     case 'timetable':
       return `/horari/${encodeURIComponent(v.ref)}${v.stop ? `?parada=${encodeURIComponent(v.stop)}` : ''}`;
+    case 'plan':
+      return '/com-hi-arribo';
+    case 'more':
+      return '/mes';
+    case 'alerts':
+      return '/avisos';
+    case 'findStop':
+      return '/cerca';
+    case 'scan':
+      return '/qr-lector';
+    case 'office':
+      return '/oficina';
+    case 'favs':
+      return '/preferides';
+    case 'tickets':
+      if (v.page === 'product') return `/titols/comprar/${encodeURIComponent(v.id ?? '')}`;
+      if (v.page === 'use') return `/titols/fes-servir/${encodeURIComponent(v.id ?? '')}`;
+      return `/titols${keyOf(TICKET_PATHS, v.page) ? `/${keyOf(TICKET_PATHS, v.page)}` : ''}`;
+    case 'cards':
+      return `/targetes${keyOf(CARD_PATHS, v.page) ? `/${keyOf(CARD_PATHS, v.page)}` : ''}`;
+    case 'account':
+      return `/compte/${keyOf(ACCOUNT_PATHS, v.page)}`;
     default:
       return '/';
   }
@@ -187,6 +258,15 @@ function readFavs(uid: string | null = auth.current()?.id ?? null): string[] {
   }
 }
 
+function readRecents(uid: string | null = auth.current()?.id ?? null): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(keyFor('recents', uid)) ?? '[]') as unknown;
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').slice(0, 5) : [];
+  } catch {
+    return [];
+  }
+}
+
 interface AppState {
   lang: Lang;
   view: View;
@@ -207,6 +287,19 @@ interface AppState {
   /** després d'entrar o sortir del compte */
   setUser(u: User | null): void;
   clockVersion: number;
+  /** puja quan canvien els títols o les targetes de demostració (per tornar a pintar) */
+  walletVersion: number;
+  bumpWallet(): void;
+  /** el «quan» triat al formulari Com hi arribo (la ruta l'agafa en obrir-se) */
+  planWhen: { when: 'now' | 'depart' | 'arrive'; hhmm: string } | null;
+  /** targeta de demostració que s'està recarregant (Targetes › Recarrega) */
+  rechargeCard: string | null;
+  /** data triada a Línies (YYYY-MM-DD); null = avui */
+  lineDate: string | null;
+  /** parades cercades fa poc (només al dispositiu, per compte) */
+  recents: string[];
+  addRecent(stopId: string): void;
+  clearRecents(): void;
   aboutOpen: boolean;
   alertsOpen: boolean;
   userPos: [number, number] | null;
@@ -265,9 +358,34 @@ export const useApp = create<AppState>((set, get) => ({
   user: auth.current(),
   setUser(u) {
     // en canviar de compte, cada usuari recupera les seves parades i el seu viatge
-    set({ user: u, favorites: readFavs(u?.id ?? null), trip: u ? readTrip(u.id) : null, selectedBus: null, follow: false });
+    set({ user: u, favorites: readFavs(u?.id ?? null), recents: readRecents(u?.id ?? null), trip: u ? readTrip(u.id) : null, selectedBus: null, follow: false, walletVersion: get().walletVersion + 1 });
   },
   clockVersion: 0,
+  walletVersion: 0,
+  lineDate: null,
+  planWhen: null,
+  rechargeCard: null,
+  bumpWallet() {
+    set({ walletVersion: get().walletVersion + 1 });
+  },
+  recents: readRecents(),
+  addRecent(stopId) {
+    const next = [stopId, ...get().recents.filter((x) => x !== stopId)].slice(0, 5);
+    try {
+      localStorage.setItem(keyFor('recents', get().user?.id), JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+    set({ recents: next });
+  },
+  clearRecents() {
+    try {
+      localStorage.removeItem(keyFor('recents', get().user?.id));
+    } catch {
+      /* ignore */
+    }
+    set({ recents: [] });
+  },
   aboutOpen: false,
   alertsOpen: false,
   userPos: null,
@@ -303,7 +421,7 @@ export const useApp = create<AppState>((set, get) => ({
     const url = viewPath(v) + (qs ? `?${qs}` : '');
     if (opts.replace) history.replaceState(null, '', url);
     else history.pushState(null, '', url);
-    const base: BaseView | null = v.name === 'home' || v.name === 'map' || v.name === 'network' || v.name === 'mine' ? v.name : v.name === 'line' ? 'line' : null;
+    const base: BaseView | null = BASES.includes(v.name) ? (v.name as BaseView) : v.name === 'line' ? 'line' : null;
     set({ view: v, ...(v.name !== 'route' ? { plan: null } : {}), ...(base ? { base, ...(base === 'line' && v.name === 'line' ? { baseLine: v.ref } : {}) } : {}), ...(v.name === 'present' ? { presenting: true } : {}) });
   },
   selectBus(id) {

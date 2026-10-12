@@ -132,7 +132,7 @@ function FareCard({ f }: { f: Fare }) {
             </>
           )}
         </dl>
-        <a href={f.officialUrl === LINKS.tus.ca ? LINKS.tus[lang] : f.officialUrl} target="_blank" rel="noopener noreferrer">
+        <a className="fare-official" href={f.officialUrl === LINKS.tus.ca ? LINKS.tus[lang] : f.officialUrl} target="_blank" rel="noopener noreferrer">
           {t.fares.officialInfo} ↗
         </a>
       </details>

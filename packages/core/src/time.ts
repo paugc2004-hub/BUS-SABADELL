@@ -21,6 +21,14 @@ export function localDate(epochMs: number): string {
   return DateTime.fromMillis(epochMs, { zone: TZ }).toISODate()!;
 }
 
+/**
+ * Instant (ISO amb el desplaçament de Madrid) d'una data local, amb hora opcional: «2026-10-13» o «2026-10-13 09:30».
+ * Els avisos s'escriuen en hora local i s'han de llegir igual en un servidor en UTC (bug 12.2-13).
+ */
+export function localIso(local: string): string {
+  return DateTime.fromISO(local.trim().replace(' ', 'T'), { zone: TZ }).toISO()!;
+}
+
 export function addDays(date: string, n: number): string {
   return DateTime.fromISO(date, { zone: TZ }).plus({ days: n }).toISODate()!;
 }
@@ -70,80 +78,4 @@ export function parseHM(hm: string): number {
   return h * 3600 + min * 60;
 }
 
-/**
- * Reloj de la aplicación: tiempo real corregido con el reloj del servidor (bug 12.2-17)
- * y, en modo demo, con hora forzada y multiplicador.
- * Siempre se deriva del reloj absoluto: nunca acumula deltas (bugs 12.2-18 y 12.2-19).
- */
-export class SimClock {
-  private realBase: number;
-  private simBase: number;
-  private speed: number;
-  private skewMs = 0;
-
-  constructor(opts: { start?: number; speed?: number; nowFn?: () => number } = {}) {
-    this.nowFn = opts.nowFn ?? (() => Date.now());
-    this.realBase = this.nowFn();
-    this.simBase = opts.start ?? this.realBase;
-    this.speed = opts.speed ?? 1;
-  }
-
-  private nowFn: () => number;
-
-  /** Diferencia servidor − dispositivo. */
-  setServerSkew(serverTimeMs: number, receivedAtMs: number = this.nowFn()): void {
-    const skew = serverTimeMs - receivedAtMs;
-    // si no hay hora forzada, corregimos el desfase del dispositivo
-    this.skewMs = skew;
-  }
-
-  now(): number {
-    const elapsed = this.nowFn() - this.realBase;
-    return this.simBase + elapsed * this.speed + (this.isLive() ? this.skewMs : 0);
-  }
-
-  isLive(): boolean {
-    return this.speed === 1 && Math.abs(this.simBase - this.realBase) < 1000;
-  }
-
-  getSpeed(): number {
-    return this.speed;
-  }
-
-  /** Fija una hora simulada (epoch ms) y un multiplicador. */
-  set(start: number | null, speed = 1): void {
-    const cur = this.nowFn();
-    this.realBase = cur;
-    this.simBase = start ?? cur;
-    this.speed = speed;
-  }
-}
-
-/**
- * Construye un instante "dia de la setmana + hora" para el modo demo
- * (?hora=08:00&dia=dilluns). Elige el próximo día de ese tipo desde `from`.
- */
-const WEEKDAYS: Record<string, number> = {
-  dilluns: 1, lunes: 1, dimarts: 2, martes: 2, dimecres: 3, miercoles: 3, 'miércoles': 3,
-  dijous: 4, jueves: 4, divendres: 5, viernes: 5, dissabte: 6, sabado: 6, 'sábado': 6,
-  diumenge: 7, domingo: 7,
-};
-
-export function forcedInstant(from: number, hora: string | null, dia: string | null): number | null {
-  if (!hora && !dia) return null;
-  let dt = DateTime.fromMillis(from, { zone: TZ });
-  if (dia) {
-    const wd = WEEKDAYS[dia.toLowerCase()];
-    if (wd) {
-      const delta = (wd - dt.weekday + 7) % 7;
-      dt = dt.plus({ days: delta });
-    } else if (/^\d{4}-\d{2}-\d{2}$/.test(dia)) {
-      dt = DateTime.fromISO(dia, { zone: TZ }).set({ hour: dt.hour, minute: dt.minute });
-    }
-  }
-  if (hora) {
-    const m = /^(\d{1,2}):(\d{2})$/.exec(hora);
-    if (m) dt = dt.set({ hour: Number(m[1]), minute: Number(m[2]), second: 0, millisecond: 0 });
-  }
-  return dt.toMillis();
-}
+export { SimClock, forcedInstant } from './clock.ts';

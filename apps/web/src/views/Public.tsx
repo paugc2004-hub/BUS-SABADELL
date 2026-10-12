@@ -45,7 +45,7 @@ export function Shell({ title, children }: { title: string; children: ReactNode 
           <a href="/app" onClick={(e) => (e.preventDefault(), st.navigate({ name: 'home' }))}>
             App
           </a>
-          <button type="button" className="pub-lang" onClick={() => st.setLang(lang === 'ca' ? 'es' : 'ca')} aria-label={t.lang}>
+          <button type="button" className="pub-lang" onClick={() => st.setLang(lang === 'ca' ? 'es' : 'ca')} aria-label={`${lang === 'ca' ? 'ES' : 'CA'} · ${t.lang}`}>
             {lang === 'ca' ? 'ES' : 'CA'}
           </button>
         </nav>
@@ -132,19 +132,19 @@ export function StopCard({ id }: { id: string }) {
           </h2>
           <ul className="chips sc-lines">
             {routes
-              .filter((r) => engine.runsOn(r, dayType))
+              .filter((r) => engine.runsAt(r, now))
               .map((r) => (
                 <li key={r} title={engine.routes.get(r)?.longName}>
                   <RouteChip route={engine.routes.get(r)} size="md" />
                 </li>
               ))}
           </ul>
-          {routes.some((r) => !engine.runsOn(r, dayType)) && (
+          {routes.some((r) => !engine.runsAt(r, now)) && (
             // sense atenuar (contrast AA): una fila a part diu quines avui no hi passen
             <p className="sc-off small">
               <span className="dim">{t.pub.notTodayLines}</span>{' '}
               {routes
-                .filter((r) => !engine.runsOn(r, dayType))
+                .filter((r) => !engine.runsAt(r, now))
                 .map((r) => (
                   <RouteChip key={r} route={engine.routes.get(r)} size="sm" />
                 ))}

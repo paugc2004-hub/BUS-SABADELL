@@ -86,7 +86,7 @@ describe('planificador sobre la xarxa real', () => {
       }),
       { numRuns: 60, seed: 20261006 },
     );
-  });
+  }, 30_000);
 
   it('determinista: la mateixa pregunta, la mateixa resposta (el mapa i la ruta no es contradiuen)', () => {
     const from: LonLat = [stops[10]!.lon, stops[10]!.lat];

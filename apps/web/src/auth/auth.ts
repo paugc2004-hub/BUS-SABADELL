@@ -34,6 +34,12 @@ export interface AuthProvider {
   signIn(email: string, password: string): Promise<User>;
   signInDemo(): Promise<User>;
   signOut(): Promise<void>;
+  /** canvia el nom visible del compte amb la sessió iniciada */
+  updateName(name: string): Promise<User>;
+  /** cal la contrasenya actual */
+  changePassword(current: string, next: string): Promise<void>;
+  /** esborra el compte (cal la contrasenya) i tot el que és seu en aquest dispositiu */
+  deleteAccount(password: string, extraKeys: string[]): Promise<void>;
 }
 
 /** Emmagatzematge mínim (localStorage al navegador; un Map als tests). */
@@ -149,6 +155,42 @@ export class LocalAuthProvider implements AuthProvider {
   }
 
   async signOut(): Promise<void> {
+    this.kv.removeItem(SESSION);
+  }
+
+  /** l'usuari de la sessió (no el de demostració) amb la contrasenya comprovada */
+  private async own(password?: string): Promise<StoredUser> {
+    const cur = this.current();
+    const u = cur && !cur.demo ? this.users().find((x) => x.id === cur.id) : undefined;
+    if (!u) throw new AuthError('unavailable');
+    if (password !== undefined) {
+      const salt = new Uint8Array(Uint8Array.from(atob(u.salt), (c) => c.charCodeAt(0)));
+      if (!sameText(await hashPassword(password, salt), u.hash)) throw new AuthError('wrong-credentials');
+    }
+    return u;
+  }
+
+  async updateName(name: string): Promise<User> {
+    if (!name.trim()) throw new AuthError('name-required');
+    const u = await this.own();
+    const next = { ...u, name: name.trim().slice(0, 60) };
+    this.save(this.users().map((x) => (x.id === u.id ? next : x)));
+    const { salt: _s, hash: _h, ...pub } = next;
+    return pub;
+  }
+
+  async changePassword(current: string, next: string): Promise<void> {
+    const u = await this.own(current);
+    if (next.length < MIN_PASSWORD) throw new AuthError('weak-password');
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const upd = { ...u, salt: b64(salt), hash: await hashPassword(next, salt) };
+    this.save(this.users().map((x) => (x.id === u.id ? upd : x)));
+  }
+
+  async deleteAccount(password: string, extraKeys: string[]): Promise<void> {
+    const u = await this.own(password);
+    this.save(this.users().filter((x) => x.id !== u.id));
+    for (const k of extraKeys) this.kv.removeItem(k);
     this.kv.removeItem(SESSION);
   }
 }

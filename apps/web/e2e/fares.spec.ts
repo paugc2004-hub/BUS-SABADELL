@@ -179,7 +179,7 @@ test.describe('integració i qualitat', () => {
     });
     await page.goto('/app?hora=08:15&dia=dimarts');
     await expect(page.locator('.simple-title')).toBeVisible();
-    await page.locator('.services-row').getByRole('link', { name: 'Tarifes' }).click();
+    await page.locator('.hub').getByRole('link', { name: 'Informació dels títols' }).click();
     await expect(page).toHaveURL(/\/tarifes(\?|$)/);
     await page.goto('/');
     await page.locator('.lnd-footer').getByRole('link', { name: 'On comprar' }).click();

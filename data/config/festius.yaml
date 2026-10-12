@@ -37,3 +37,11 @@ festius:
   - { data: "2027-12-06", nom: "Dia de la Constitució", ambit: estatal }
   - { data: "2027-12-08", nom: "La Puríssima", ambit: estatal }
   - { data: "2027-12-25", nom: "Nadal", ambit: estatal }
+# Festius d'obertura comercial autoritzada a Sabadell (hi circula la F6).
+# Font: pàgina «Festius d'obertura comercial 2026» de l'Ajuntament de Sabadell (web.sabadell.cat, article 105852),
+# segons el resum del cercador del 2026-10-12 (la pàgina no s'ha pogut obrir des de l'entorn: a confirmar).
+# Coherent amb l'app oficial de TUS, que el 12/10/2026 (festiu comercial) mostra la F6 entre les línies del dia.
+# TODO(DECISION: FESTIUS-COMERCIALS-2027): falten els de 2027 (la F6 no es mostrarà com a circulant fins que hi siguin).
+comercials:
+  font: "Ajuntament de Sabadell, festius d'obertura comercial 2026 (consultat 2026-10-12, a confirmar)"
+  dates: ['2026-01-04', '2026-01-11', '2026-08-15', '2026-10-12', '2026-11-29', '2026-12-06', '2026-12-08', '2026-12-13', '2026-12-20', '2026-12-27']

@@ -7,3 +7,10 @@ excloure:
   # Millor no mostrar-la que mostrar-la malament; pendent de confirmar amb TUS (2026-10-06).
   - '40504787'
 colors: {}
+# Nom de cada línia com el publica TUS a la llista de línies (app oficial TUS Sabadell 3.2.4, pestanya «Líneas»,
+# 2026-10-12). El primer trajecte de tus.es de la F4 és el sentit contrari.
+noms:
+  F4: La Roureda - El Poblenou
+  F6: Pl. Catalunya - S.P. Riu-sec (Festius Comercials)
+# La F6 només circula els festius d'obertura comercial (nom oficial de la línia; festius.yaml › comercials).
+nomes_festius_comercials: [F6]

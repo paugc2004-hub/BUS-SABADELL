@@ -98,6 +98,24 @@ Revisió de producte: el planificador no proposa cap bus que faci caminar més q
 opció); al mòbil el viatge actiu és una barra plegada a baix (`.has-trip`); la navegació tanca la fitxa del bus.
 Regressions: `e2e/product.spec.ts`.
 
+## Paritat amb l'app oficial de TUS (2026-10-12)
+Mateixa arquitectura d'informació que «TUS Sabadell» 3.2.4 (GeoActio), disseny propi i cap marca aliena
+(`data/brand.test.ts`). Matriu: `docs/TUS_PARITY.md`; guió de la reunió: `docs/REUNIO_TUS_GUIA.md`.
+- **Navegació**: barra Inici · Mapa · Línies · Com hi arribo · Més (`views/Chrome.tsx`); capçalera amb QR (`/qr-lector`),
+  lupa (`/cerca`) i avisos amb el número dels **en vigor** (`/avisos`). Inici = «On vols anar?» + les 5 targetes de
+  la portada de TUS (`ServicesHub` a `views/Home.tsx`). Pàgines a sobre del mapa: `PAGE_VIEWS` a `state/store.ts`.
+- **Títols i targetes de DEMOSTRACIÓ** (`wallet/wallet.ts`, `views/Tickets.tsx`, tros a part): cap camp de pagament,
+  «Simular pagament (demo · no es cobra res)», Bizum desactivat i sense logo, QR `NM-DEMO:`, marca d'aigua, dades a
+  `wallet:<userId>`. Cap lectura NFC. Per a un servei real, un altre `TicketingProvider`/`CardProvider`.
+- **Avisos** (`data/config/avisos.yaml`): títol, text, `des_de`/`fins_a` en hora local («AAAA-MM-DD HH:MM», `localIso`).
+- **F6**: només festius comercials (`festius.yaml › comercials`, `overrides.yaml › nomes_festius_comercials`,
+  `Route.onlyDates`; al motor, `tablesFor(date)`, `runsOnDate`, `runsAt`). A la UI, «circula avui» = `engine.runsAt`.
+- Compte (`views/Mine.tsx`): informació, perfil, FAQ, contrasenya, configuració (accessibilitat `ui/a11y.ts`), elimina.
+- Captures: `node apps/web/scripts/parity-shots.mjs <dir> 390x844 "/app=inici" …` (contra `vite preview`).
+- Pendents: URL exacta de cada avís (`TODO(DECISION: URL-AVISOS)`), festius comercials 2027, capa de punts de venda.
+- Auditoria del 2026-10-12: `docs/AUDIT_2026-10-12.md`. Responsive: `node apps/web/scripts/responsive-audit.mjs` (7 amples,
+  21 rutes). `SimClock`/`forcedInstant` són a `core/src/clock.ts` sense luxon (la landing no el baixa); `sideEffects: false`.
+
 ## Ubicació i cerca de destins (2026-10-07)
 - **Ubicació**: només `apps/web/src/location/location.ts` (LocationService) crida `navigator.geolocation`. Estats:
   `locating/ok/denied/timeout/unavailable/unsupported`. UI: `views/LocationStatus.tsx`. Mai es desa ni s'envia.

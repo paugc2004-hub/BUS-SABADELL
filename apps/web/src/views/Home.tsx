@@ -10,6 +10,8 @@ import { useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { areaOf, liveArrivals, type LiveArrival } from '../data/derive.ts';
 import { Icon, useNow } from '../ui/common.tsx';
+import { Ic } from '../ui/icons.tsx';
+import { activeAlerts, isOngoing } from '@bus/core';
 import { locationService } from '../location/location.ts';
 import { LocationStatus } from './LocationStatus.tsx';
 import { SearchBox } from './SearchBox.tsx';
@@ -148,6 +150,68 @@ export function NearStops({ skip = null }: { skip?: string | null }) {
   );
 }
 
+/**
+ * Serveis: la mateixa porta d'entrada que la portada de l'app oficial de TUS (targeta, mòbil, servei, àrea personal,
+ * informació dels títols), amb el disseny de NextMobility. Títols i targetes són de demostració i ho diuen.
+ */
+function ServicesHub() {
+  const t = useT();
+  const network = useApp((s) => s.network);
+  const now = useNow(30000);
+  const st = useApp.getState();
+  const n = network ? activeAlerts(network.alerts, now).filter((a) => isOngoing(a, now)).length : 0;
+  return (
+    <section className="hub" aria-labelledby="hub-title">
+      <h2 id="hub-title" className="sr-only">
+        {t.p.hub.services}
+      </h2>
+      <button type="button" className="hub-card wide" onClick={() => st.navigate({ name: 'cards', page: 'list' })}>
+        <span className="hub-art">{Ic.cards}</span>
+        <span className="hub-text">
+          {t.p.hub.card}
+          <span className="hub-demo">{t.p.demoShort}</span>
+        </span>
+      </button>
+      <button type="button" className="hub-card wide rev" onClick={() => st.navigate({ name: 'tickets', page: 'list' })}>
+        <span className="hub-text">
+          {t.p.hub.mobile}
+          <span className="hub-demo">{t.p.demoShort}</span>
+        </span>
+        <span className="hub-art">{Ic.phone}</span>
+      </button>
+      <button type="button" className="hub-card wide" onClick={() => st.navigate({ name: 'map' })}>
+        <span className="hub-art">{Ic.routeArt}</span>
+        <span className="hub-text">
+          {t.p.hub.service}
+          <span className="hub-sub">{t.p.hub.serviceSub}</span>
+        </span>
+      </button>
+      <div className="hub-pair">
+        <button type="button" className="hub-card half" onClick={() => st.navigate({ name: 'mine' })}>
+          <span className="hub-art">{Ic.person}</span>
+          <span className="hub-text">{t.p.hub.personal}</span>
+        </button>
+        <a
+          className="hub-card half"
+          href="/tarifes"
+          onClick={(e) => {
+            e.preventDefault();
+            st.navigate({ name: 'fares' });
+          }}
+        >
+          <span className="hub-art">{Ic.infoBig}</span>
+          <span className="hub-text">{t.p.hub.info}</span>
+        </a>
+      </div>
+      <button type="button" className={`hub-alerts${n > 0 ? ' on' : ''}`} onClick={() => st.navigate({ name: 'alerts' })}>
+        {Ic.alert}
+        <span>{t.p.hub.alerts(n)}</span>
+        {Ic.chevron}
+      </button>
+    </section>
+  );
+}
+
 interface InstallPrompt extends Event {
   prompt(): Promise<void>;
 }
@@ -186,6 +250,7 @@ export function HomePanel({ autoFocus = false }: { autoFocus?: boolean }) {
   const engine = useApp((s) => s.engine);
   const userPos = useApp((s) => s.userPos);
   const user = useApp((s) => s.user);
+  const favorites = useApp((s) => s.favorites);
   const now = useNow(5000);
   // on ets: ho porta LocationService (s'engega en obrir l'app; la ubicació no surt del dispositiu)
   const near = useMemo(() => {
@@ -197,6 +262,7 @@ export function HomePanel({ autoFocus = false }: { autoFocus?: boolean }) {
   if (!engine) return null;
 
   const first = user && !user.demo ? user.name.split(' ')[0] : null;
+  const favCount = favorites.length;
   const nearIds = engine && userPos ? nearestStops(engine, userPos, 2) : [];
 
   return (
@@ -206,6 +272,8 @@ export function HomePanel({ autoFocus = false }: { autoFocus?: boolean }) {
 
       <h1 className="simple-title">{t.simple.title}</h1>
       <SearchBox autoFocus={autoFocus} toRoute placeholder={t.simple.placeholder} />
+
+      <ServicesHub />
 
       {/* si ja ets a la parada: què hi passa (secundari, no competeix amb el cercador) */}
       {near && near.m < 1500 && nearIds.length > 0 && (
@@ -217,16 +285,9 @@ export function HomePanel({ autoFocus = false }: { autoFocus?: boolean }) {
         </section>
       )}
 
+      {favCount > 0 && <HomeStops />}
+
       <div className="simple-foot">
-        {/* serveis secundaris: no competeixen amb «On vols anar?» */}
-        <nav className="services-row" aria-label={t.fares.services}>
-          <a href="/tarifes" onClick={(e) => (e.preventDefault(), useApp.getState().navigate({ name: 'fares' }))}>
-            {t.fares.nav}
-          </a>
-          <a href="/punts-de-venda" onClick={(e) => (e.preventDefault(), useApp.getState().navigate({ name: 'sales' }))}>
-            {t.fares.where}
-          </a>
-        </nav>
         <InstallButton />
       </div>
     </aside>

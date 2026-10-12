@@ -1,3 +1,5 @@
+import { parityCa } from './parity.ts';
+
 export const ca = {
   appName: 'NextMobility Sabadell',
   banner: 'Demo · posicions simulades a partir dels horaris publicats per TUS',
@@ -691,5 +693,7 @@ export const ca = {
     expand: 'Mostra la meva parada',
     poles: (n: number) => `${n} pals`,
   },
+  /** paritat amb l'app oficial de TUS */
+  p: parityCa,
 };
 export type Dict = typeof ca;

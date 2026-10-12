@@ -67,10 +67,10 @@ export function mapPadding() {
 }
 
 /** Líneas del día: patrones del tipo de día actual; las que no circulan, atenuadas. */
-function routeFeatures(net: NetworkData, engine: SimEngine, dayType: DayType): FC {
+function routeFeatures(net: NetworkData, engine: SimEngine, dayType: DayType, t: number): FC {
   const features: GeoJSON.Feature[] = [];
   for (const r of net.routes) {
-    const runs = engine.runsOn(r.id, dayType);
+    const runs = engine.runsAt(r.id, t);
     let pats = net.patterns.filter((p) => p.routeId === r.id && p.dayType === dayType);
     if (!pats.length) {
       for (const dt of ['feiner', 'dissabte', 'festiu'] as DayType[]) {
@@ -230,7 +230,7 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
         const dayType = engine.dayTypeAt(clock.now());
         for (const id of ['routes', 'stops', 'buses', 'inter-lines', 'inter-stops', 'user', 'trip-done', 'trip-todo', 'approach', 'next-stop', 'my-stop', 'plan-walk', 'plan-bus', 'plan-pts'])
           map.addSource(id, { type: 'geojson', data: emptyFC() });
-        (map.getSource('routes') as GeoJSONSource).setData(routeFeatures(network, engine, dayType));
+        (map.getSource('routes') as GeoJSONSource).setData(routeFeatures(network, engine, dayType, clock.now()));
         (map.getSource('stops') as GeoJSONSource).setData(stopFeatures(network));
         // parades agrupades (cluster) a zoom baix, i cadascuna en ampliar (licitació 2024, PPT §2.2.1)
         map.addSource('stops-cluster', { type: 'geojson', data: stopFeatures(network), cluster: true, clusterRadius: 44, clusterMaxZoom: 13 });
@@ -714,7 +714,7 @@ export function MapView({ interactive = true, onReady }: { interactive?: boolean
       const dtNow = engine.dayTypeAt(t);
       if (dtNow !== dayType) {
         dayType = dtNow;
-        src('routes').setData(routeFeatures(network, engine, dayType));
+        src('routes').setData(routeFeatures(network, engine, dayType, t));
       }
       // seguimiento: la cámara va pegada al bus en cada fotograma (sin tirones)
       if (st.follow && sel && !flying) {

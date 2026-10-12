@@ -3,18 +3,22 @@
  * la landing (/) no la descarrega.
  */
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { clock, useApp } from './state/store.ts';
+import { PAGE_VIEWS, clock, useApp } from './state/store.ts';
 import { useT } from './i18n/index.ts';
 import { loadNetwork } from './data/load.ts';
 import { vehiclesAt } from './data/vehicles.ts';
-import { AboutModal, AlertsPanel, BottomNav, HonestyBanner, LineFilter, MapControls, TopBar } from './views/Chrome.tsx';
+import { AboutModal, BottomNav, HonestyBanner, LineFilter, MapControls, TopBar } from './views/Chrome.tsx';
 import { BusCard } from './views/BusCard.tsx';
 import { StopPanel } from './views/StopPanel.tsx';
 import { RoutePanel } from './views/Route.tsx';
 import { HomePanel } from './views/Home.tsx';
 import { LinePanel, LinesIndex } from './views/Lines.tsx';
 import { NetworkPanel } from './views/Network.tsx';
-import { MinePanel } from './views/Mine.tsx';
+import { AccountSubPage, MinePanel } from './views/Mine.tsx';
+import { AlertsPage, FavsPage, MorePage, NewsCarousel, OfficePage } from './views/Pages.tsx';
+import { FindStopPage, ScanPage } from './views/FindStop.tsx';
+import { PlanForm } from './views/PlanForm.tsx';
+import './ui/a11y.ts';
 import { Toasts, TripMonitor, TripPanel } from './views/Trip.tsx';
 import { RouteChip, hm, useNow } from './ui/common.tsx';
 import { locationService, useLocation } from './location/location.ts';
@@ -22,6 +26,9 @@ import { locationService, useLocation } from './location/location.ts';
 // el mapa (MapLibre + CSS) i la presentació van en trossos a part: la carcassa es pinta abans
 const MapView = lazy(() => import('./map/MapView.tsx').then((m) => ({ default: m.MapView })));
 const Presentation = lazy(() => import('./views/Presentation.tsx').then((m) => ({ default: m.Presentation })));
+// títols i targetes de demostració: un tros a part
+const TicketsPage = lazy(() => import('./views/Tickets.tsx').then((m) => ({ default: m.TicketsPage })));
+const CardsPage = lazy(() => import('./views/Tickets.tsx').then((m) => ({ default: m.CardsPage })));
 
 function NoService() {
   const t = useT();
@@ -78,10 +85,10 @@ export function AppMain() {
   const hasTrip = useApp((s) => s.trip !== null);
 
   // al mòbil, l'inici tapa el mapa: primer es pinta l'inici i el mapa (WebGL, ~1,5 MB) arrenca quan el mòbil està lliure
-  const [mapOn, setMapOn] = useState(() => !(window.matchMedia('(max-width: 760px)').matches && ['home', 'mine', 'line'].includes(view.name)));
+  const [mapOn, setMapOn] = useState(() => !(window.matchMedia('(max-width: 760px)').matches && PAGE_VIEWS.includes(view.name)));
   useEffect(() => {
     if (mapOn) return;
-    if (!['home', 'mine', 'line'].includes(view.name)) return setMapOn(true);
+    if (!PAGE_VIEWS.includes(view.name)) return setMapOn(true);
     const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
     const id = ric ? ric(() => setMapOn(true), { timeout: 2500 }) : window.setTimeout(() => setMapOn(true), 1200);
     return () => (ric ? (window as unknown as { cancelIdleCallback: (n: number) => void }).cancelIdleCallback(id) : clearTimeout(id));
@@ -116,9 +123,10 @@ export function AppMain() {
   const lineRef = view.name === 'line' ? view.ref : base === 'line' ? baseLine : null;
   // ciutadà (clar) vs. NextMobility Control i presentació (fosc): docs/APP_UX_STRATEGY.md
   const control = presenting || name === 'network';
+  const isPage = left !== null && PAGE_VIEWS.includes(left) && left !== 'line';
 
   return (
-    <div className={`app view-${name} base-${left ?? 'none'}${presenting ? ' presenting' : ''}${view.name === 'line' && lineRef ? ' has-line' : ''}${control ? ' control' : ' citizen'}${busOpen ? ' bus-open' : ''}${hasTrip ? ' has-trip' : ''}`}>
+    <div className={`app view-${name} base-${left ?? 'none'}${presenting ? ' presenting' : ''}${view.name === 'line' && lineRef ? ' has-line' : ''}${control ? ' control' : ' citizen'}${busOpen ? ' bus-open' : ''}${hasTrip ? ' has-trip' : ''}${isPage ? ' is-page' : ''}`}>
       <TopBar />
       {control && <HonestyBanner />}
       <main className="stage">
@@ -138,6 +146,20 @@ export function AppMain() {
         {ready && left === 'line' && <LinesIndex />}
         {ready && left === 'network' && <NetworkPanel />}
         {ready && left === 'mine' && <MinePanel />}
+        {ready && name === 'map' && !presenting && <NewsCarousel />}
+        {ready && left === 'plan' && <PlanForm />}
+        {ready && left === 'more' && <MorePage />}
+        {ready && left === 'alerts' && <AlertsPage />}
+        {ready && left === 'findStop' && <FindStopPage />}
+        {ready && left === 'scan' && <ScanPage />}
+        {ready && left === 'office' && <OfficePage />}
+        {ready && left === 'favs' && <FavsPage />}
+        {ready && view.name === 'account' && <AccountSubPage page={view.page} />}
+        {ready && (view.name === 'tickets' || view.name === 'cards') && (
+          <Suspense fallback={null}>
+            {view.name === 'tickets' ? <TicketsPage page={view.page} id={view.id} /> : <CardsPage page={view.page} />}
+          </Suspense>
+        )}
         {ready && view.name === 'line' && lineRef && <LinePanel routeRef={lineRef} />}
         {ready && view.name === 'stop' && <StopPanel id={view.id} />}
         {ready && view.name === 'route' && <RoutePanel to={view.to} from={view.from} />}
@@ -155,7 +177,6 @@ export function AppMain() {
       </main>
       {!presenting && <BottomNav />}
       <AboutModal />
-      <AlertsPanel />
       <span className="sr-only" aria-live="off">{clock.isLive() ? '' : 'demo'}</span>
     </div>
   );

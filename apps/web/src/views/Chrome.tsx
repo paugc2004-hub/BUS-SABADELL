@@ -6,17 +6,36 @@ import { useT } from '../i18n/index.ts';
 import { vehicleById } from '../data/vehicles.ts';
 import { Icon, IconButton, RouteChip, hm, useNow } from '../ui/common.tsx';
 import { Logo } from '../ui/Logo.tsx';
+import { Ic } from '../ui/icons.tsx';
 import { auth } from '../auth/auth.ts';
 import { locationService } from '../location/location.ts';
 
-type NavKey = 'home' | 'map' | 'line' | 'mine';
+type NavKey = 'home' | 'map' | 'line' | 'plan' | 'more';
+
+/** a quina pestanya pertany cada vista (com a l'app de TUS: cerca, QR i avisos són del Mapa) */
+const TAB_OF: Record<string, NavKey> = {
+  home: 'home',
+  tickets: 'home',
+  cards: 'home',
+  map: 'map',
+  present: 'map',
+  findStop: 'map',
+  scan: 'map',
+  alerts: 'map',
+  line: 'line',
+  plan: 'plan',
+  route: 'plan',
+  more: 'more',
+  mine: 'more',
+  account: 'more',
+  office: 'more',
+  favs: 'more',
+  network: 'home',
+};
 
 /** Pestanya activa: les vistes de detall (parada, bus) mantenen la vista d'on venien. */
 function activeTab(view: ReturnType<typeof useApp.getState>['view'], base: string): NavKey {
-  if (view.name === 'home' || view.name === 'map' || view.name === 'line' || view.name === 'mine') return view.name;
-  if (view.name === 'network') return 'home';
-  if (view.name === 'present') return 'map';
-  return base as NavKey;
+  return TAB_OF[view.name] ?? TAB_OF[base] ?? 'home';
 }
 
 function useNavItems() {
@@ -28,10 +47,11 @@ function useNavItems() {
     st.navigate(v);
   };
   return [
-    { key: 'home' as const, label: t.nav2.home, icon: Icon.home, go: to({ name: 'home' }) },
-    { key: 'map' as const, label: t.nav2.map, icon: Icon.map, go: to({ name: 'map' }) },
-    { key: 'line' as const, label: t.nav2.lines, icon: Icon.line, go: to({ name: 'line', ref: null }) },
-    { key: 'mine' as const, label: t.nav2.mine, icon: Icon.user, go: to({ name: 'mine' }) },
+    { key: 'home' as const, label: t.p.nav.home, icon: Ic.home, go: to({ name: 'home' }) },
+    { key: 'map' as const, label: t.p.nav.map, icon: Ic.map, go: to({ name: 'map' }) },
+    { key: 'line' as const, label: t.p.nav.lines, icon: Ic.lines, go: to({ name: 'line', ref: null }) },
+    { key: 'plan' as const, label: t.p.nav.plan, icon: Ic.plan, go: to({ name: 'plan' }) },
+    { key: 'more' as const, label: t.p.nav.more, icon: Ic.more, go: to({ name: 'more' }) },
   ];
 }
 
@@ -47,8 +67,8 @@ export function TopBar() {
   const st = useApp.getState();
   const items = useNavItems();
   const tab = activeTab(view, base);
-  // només els avisos publicats ara (publicació → expiració)
-  const alerts = network ? activeAlerts(network.alerts, now).length : 0;
+  // el número: només els avisos en vigor ara (els anunciats per a més endavant surten a «Propers», sense comptar)
+  const alerts = network ? activeAlerts(network.alerts, now).filter((a) => isOngoing(a, now)).length : 0;
   const live = clock.isLive();
   const control = view.name === 'network';
   const clockText = new Intl.DateTimeFormat('ca', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now);
@@ -65,7 +85,10 @@ export function TopBar() {
         // la transparència: sempre a la vista, en petit; obre l'explicació
         <button type="button" className="demo-pill" onClick={() => st.set({ aboutOpen: true })} aria-label={`${t.demoPill}. ${t.whatData}`}>
           <span className="demo-pill-dot" aria-hidden />
-          <span>{t.demoPill}</span>
+          <span className="demo-long">{t.demoPill}</span>
+          <span className="demo-short" aria-hidden>
+            {t.p.demoShort}
+          </span>
           {Icon.info}
         </button>
       )}
@@ -91,12 +114,21 @@ export function TopBar() {
         )}
         {!online && <span className="pill warn" title={t.offline}>offline</span>}
         {backend === 'live' && <span className="pill ok" title={t.backendLive}>API</span>}
-        {alerts > 0 && (
-          <IconButton label={`${t.alerts}: ${t.incidentsN(alerts)}`} onClick={() => st.set({ alertsOpen: true })} className="alerts-btn">
-            {Icon.bell}
-            <span className="badge">{alerts}</span>
-          </IconButton>
+        {!control && (
+          <>
+            <IconButton label={t.p.head.scan} onClick={() => st.navigate({ name: 'scan' })} className="head-btn">
+              {Ic.qr}
+            </IconButton>
+            <IconButton label={t.p.head.find} onClick={() => st.navigate({ name: 'findStop' })} className="head-btn">
+              {Ic.search}
+            </IconButton>
+          </>
         )}
+        {/* avisos: sempre a la vista; el número compta només els publicats ara */}
+        <IconButton label={t.p.head.alerts(alerts)} onClick={() => st.navigate({ name: 'alerts' })} className="alerts-btn head-btn">
+          {Ic.alert}
+          {alerts > 0 && <span className="badge">{alerts}</span>}
+        </IconButton>
         <button type="button" className="lang-btn" aria-label={`${lang === 'ca' ? 'ES' : 'CA'} · ${t.lang}`} onClick={() => st.setLang(lang === 'ca' ? 'es' : 'ca')}>
           {lang === 'ca' ? 'ES' : 'CA'}
         </button>
@@ -106,7 +138,7 @@ export function TopBar() {
   );
 }
 
-/** Navegació inferior al mòbil: Inici · Mapa · Línies · Parades. */
+/** Navegació inferior al mòbil: Inici · Mapa · Línies · Com hi arribo · Més (com l'app de TUS, amb Inici). */
 export function BottomNav() {
   const view = useApp((s) => s.view);
   const base = useApp((s) => s.base);
@@ -144,6 +176,13 @@ export function AboutModal() {
   const t = useT();
   const open = useApp((s) => s.aboutOpen);
   const network = useApp((s) => s.network);
+  // Escape tanca (teclat)
+  useEffect(() => {
+    if (!open) return;
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && useApp.getState().set({ aboutOpen: false });
+    document.addEventListener('keydown', esc);
+    return () => document.removeEventListener('keydown', esc);
+  }, [open]);
   if (!open) return null;
   const close = () => useApp.getState().set({ aboutOpen: false });
   return (
@@ -186,58 +225,6 @@ export function AboutModal() {
   );
 }
 
-export function AlertsPanel() {
-  const t = useT();
-  const open = useApp((s) => s.alertsOpen);
-  const network = useApp((s) => s.network);
-  const lang = useApp((s) => s.lang);
-  const engine = useApp((s) => s.engine);
-  if (!open || !network) return null;
-  const now = clock.now();
-  const list = activeAlerts(network.alerts, now);
-  const close = () => useApp.getState().set({ alertsOpen: false });
-  return (
-    <div className="modal-back" onClick={close}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label={t.alerts} onClick={(e) => e.stopPropagation()}>
-        <header className="card-head">
-          <h2>{t.alerts}</h2>
-          <IconButton label={t.close} onClick={close}>
-            {Icon.close}
-          </IconButton>
-        </header>
-        {list.length === 0 && <p className="dim">{t.noAlerts}</p>}
-        <ul className="alert-list">
-          {list.map((a) => (
-            <li key={a.id}>
-              <div className="chips">
-                {a.routes.map((r) => <RouteChip key={r} route={engine?.routes.get(r)} size="sm" />)}
-                {a.stops.map((s) => (
-                  <span key={s} className="small dim">{engine?.stops.get(s)?.name ?? s}</span>
-                ))}
-              </div>
-              <p>
-                {!isOngoing(a, now) && <strong>{t.pub.upcoming}: </strong>}
-                {a.text[lang]}
-                {a.reason && <span className="dim"> · {t.pub.reason}: {a.reason[lang]}</span>}
-              </p>
-              {a.attachments?.map((f) => (
-                <a key={f.url} className="small" href={f.url} target="_blank" rel="noopener noreferrer">
-                  {f.title} ↗
-                </a>
-              ))}
-              {a.url && (
-                <a className="small" href={a.url} target="_blank" rel="noopener noreferrer">
-                  tus.es ↗
-                </a>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-}
-
 export function LineFilter() {
   const t = useT();
   const network = useApp((s) => s.network);
@@ -247,8 +234,7 @@ export function LineFilter() {
   const now = useNow(30000);
   const st = useApp.getState();
   if (!network || !engine) return null;
-  const dayType = engine.dayTypeAt(now);
-  const routes = [...network.routes].sort((a, b) => Number(engine.runsOn(b.id, dayType)) - Number(engine.runsOn(a.id, dayType)) || a.order - b.order);
+  const routes = [...network.routes].sort((a, b) => Number(engine.runsAt(b.id, now)) - Number(engine.runsAt(a.id, now)) || a.order - b.order);
   const focused = focus ? engine.routes.get(focus) : null;
   return (
     <div className={`line-filter${open ? ' open' : ''}`}>
@@ -268,7 +254,7 @@ export function LineFilter() {
       <div className="lf-chips" role="group" aria-label={t.lines}>
         {routes.map((r) => {
           const on = focus === r.id;
-          const runs = engine.runsOn(r.id, dayType);
+          const runs = engine.runsAt(r.id, now);
           return (
             <button
               key={r.id}

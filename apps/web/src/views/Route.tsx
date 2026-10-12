@@ -30,9 +30,10 @@ export const poiWhere = (p: Poi, t: ReturnType<typeof useT>) => [t.plan.kinds[p.
 const minutes = (ms: number) => Math.max(0, Math.round(ms / 60000));
 
 /** Un lloc a partir del seu codi: c<id> = carrer, l<id> = lloc (OSM), p<id> = parada, g<lon>,<lat>,<nom> = lloc del cercador universal. */
-function usePlace(code: string | undefined): Place | null | undefined {
+export function usePlace(code: string | undefined): Place | null | undefined {
   const t = useT();
   const engine = useApp((s) => s.engine);
+  const userPos = useApp((s) => s.userPos);
   const [gz, setGz] = useState<Gazetteer | null | undefined>(undefined);
   const needs = Boolean(code && (code.startsWith('c') || code.startsWith('l')));
   useEffect(() => {
@@ -46,6 +47,8 @@ function usePlace(code: string | undefined): Place | null | undefined {
     };
   }, [needs]);
   if (!code) return null;
+  // «la meva ubicació» com a destí (intercanviat a Com hi arribo): no surt mai a l'URL, només 'me'
+  if (code === 'me') return userPos ? { code, name: t.plan.myLocation, where: '', pts: [userPos] } : undefined;
   if (code.startsWith('g')) {
     const g = parseGeoCode(code);
     return g ? { code, name: g.name, where: g.label, pts: [g.pt] } : null;
@@ -333,8 +336,10 @@ export function RoutePanel({ to, from }: { to: string; from?: string }) {
   const [sel, setSel] = useState(0);
   const [result, setResult] = useState<PlanResult | null>(null);
   // quan: ara, sortir a una hora o arribar abans d'una hora (PPT 2024 §2.2.1)
-  const [when, setWhen] = useState<'now' | 'depart' | 'arrive'>('now');
-  const [hhmmIn, setHhmmIn] = useState(() => hm(clock.now() + 30 * 60_000));
+  // si ve del formulari «Com hi arribo», amb el «quan» que s'hi ha triat
+  const [when, setWhen] = useState<'now' | 'depart' | 'arrive'>(() => useApp.getState().planWhen?.when ?? 'now');
+  const [hhmmIn, setHhmmIn] = useState(() => useApp.getState().planWhen?.hhmm ?? hm(clock.now() + 30 * 60_000));
+  useEffect(() => () => useApp.getState().set({ planWhen: null }), []);
 
   // la meva ubicació: la porta LocationService (s'engega en obrir l'app; només al dispositiu)
 

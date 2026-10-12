@@ -107,7 +107,7 @@ export async function buildServer(opts: ServerOptions): Promise<{ app: FastifyIn
     return {
       serverTime: t,
       route,
-      runsToday: engine.runsOn(route.id, engine.dayTypeAt(t)),
+      runsToday: engine.runsAt(route.id, t),
       patterns: opts.network.patterns
         .filter((x) => x.routeId === route.id)
         .map((x) => ({ id: x.id, dir: x.dir, name: x.name, headsign: x.headsign, dayType: x.dayType, stopIds: x.stopIds })),

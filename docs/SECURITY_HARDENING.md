@@ -8,7 +8,7 @@
 | X-Frame-Options | `DENY` |
 | X-Content-Type-Options | `nosniff` |
 | Referrer-Policy | `strict-origin-when-cross-origin` (web) · `no-referrer` (`/api/places`) |
-| Permissions-Policy | `geolocation=(self), camera=(), microphone=(), payment=(), usb=(), interest-cohort=(), browsing-topics=()` |
+| Permissions-Policy | `geolocation=(self), camera=(self), microphone=(), payment=(), usb=(), interest-cohort=(), browsing-topics=()` |
 | Cross-Origin-Opener-Policy | `same-origin` |
 
 - Si canvia l'script en línia d'`index.html`, cal actualitzar-ne el hash a la CSP.

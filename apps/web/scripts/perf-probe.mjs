@@ -4,7 +4,7 @@
 // Nota: Chromium sense GPU (SwiftShader): els valors absoluts són pessimistes; serveixen per comparar.
 import { chromium, devices } from '@playwright/test';
 const [, , url, secs = '20', mode = 'desktop', ...flags] = process.argv;
-const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-precise-memory-info'] });
+const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-precise-memory-info'] });
 const ctx = await browser.newContext(mode === 'mobile' ? { ...devices['Pixel 7'] } : { viewport: { width: 1440, height: 900 } });
 // l'app demana sessió: es mesura amb el compte de demostració (i sense el pas d'ubicació)
 await ctx.addInitScript(() => (localStorage.setItem('nextmobility.session', JSON.stringify({ userId: 'demo', at: Date.now() })), localStorage.setItem('nextmobility.locAsked', '1')));

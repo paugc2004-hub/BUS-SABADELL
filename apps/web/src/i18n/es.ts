@@ -1,4 +1,5 @@
 import type { Dict } from './ca.ts';
+import { parityEs } from './parity.ts';
 
 export const es: Dict = {
   appName: 'NextMobility Sabadell',
@@ -693,4 +694,5 @@ export const es: Dict = {
     expand: 'Mostrar mi parada',
     poles: (n: number) => `${n} postes`,
   },
+  p: parityEs,
 };
