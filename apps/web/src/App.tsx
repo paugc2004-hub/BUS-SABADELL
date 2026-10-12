@@ -6,7 +6,7 @@ import { AuthScreen } from './views/Auth.tsx';
 import { LocationStep, locationAsked } from './views/Welcome.tsx';
 
 /** vistes públiques: no cal sessió ni carregar la xarxa */
-const PUBLIC = new Set(['landing', 'login', 'register', 'stopCard', 'qr', 'legal', 'timetable', 'fares', 'sales']);
+const PUBLIC = new Set(['landing', 'login', 'register', 'stopCard', 'qr', 'legal', 'timetable', 'fares', 'sales', 'notFound']);
 
 // l'app sencera (mapa, panells, motor) en un tros a part: la landing es pinta sense descarregar-la
 const AppMain = lazy(() => import('./AppMain.tsx').then((m) => ({ default: m.AppMain })));
@@ -14,6 +14,7 @@ const AppMain = lazy(() => import('./AppMain.tsx').then((m) => ({ default: m.App
 const StopCard = lazy(() => import('./views/Public.tsx').then((m) => ({ default: m.StopCard })));
 const QrPage = lazy(() => import('./views/Public.tsx').then((m) => ({ default: m.QrPage })));
 const Legal = lazy(() => import('./views/Public.tsx').then((m) => ({ default: m.Legal })));
+const NotFound = lazy(() => import('./views/Public.tsx').then((m) => ({ default: m.NotFound })));
 const Timetable = lazy(() => import('./views/Public.tsx').then((m) => ({ default: m.Timetable })));
 const FaresPage = lazy(() => import('./views/Fares.tsx').then((m) => ({ default: m.FaresPage })));
 const SalesPage = lazy(() => import('./views/Fares.tsx').then((m) => ({ default: m.SalesPage })));
@@ -44,7 +45,7 @@ export function App() {
 
   const presenting = useApp((s) => s.presenting);
   useEffect(() => {
-    if (['stopCard', 'qr', 'legal', 'timetable', 'fares', 'sales'].includes(view.name)) return; // ho posa cada pàgina pública
+    if (['stopCard', 'qr', 'legal', 'timetable', 'fares', 'sales', 'notFound'].includes(view.name)) return; // ho posa cada pàgina pública
     document.title = presenting ? 'NextMobility Sabadell · Presentació' : view.name === 'landing' ? t.landingTitle : 'NextMobility Sabadell';
   }, [presenting, lang, view.name, t]);
   // l'app instal·lada (o dins d'un contenidor d'app) s'obre directament a l'app, no a la landing
@@ -54,6 +55,12 @@ export function App() {
     return null;
   }
   if (view.name === 'landing') return <Landing />;
+  if (view.name === 'notFound')
+    return (
+      <Suspense fallback={<div className="loader" aria-hidden />}>
+        <NotFound />
+      </Suspense>
+    );
   if (view.name === 'fares' || view.name === 'sales')
     return <Suspense fallback={<div className="loader" aria-hidden />}>{view.name === 'fares' ? <FaresPage /> : <SalesPage title={view.title} />}</Suspense>;
   if (view.name === 'stopCard' || view.name === 'qr' || view.name === 'legal' || view.name === 'timetable')

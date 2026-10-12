@@ -44,35 +44,42 @@ describe('perfil de velocitat trapezoidal', () => {
 
 describe('estat del vehicle (xarxa real)', () => {
   it('el bus mai abandona la geometria i progrés, ETA, propera parada i rumb són coherents', () => {
+    // ~9.000 estats × ~40 comprovacions: s'acumulen les incoherències i s'afirma un cop (amb vitest 4, un expect()
+    // per comprovació fa que el test passi de 5 s sense que el motor sigui més lent; les comprovacions són les mateixes)
+    const bad: string[] = [];
+    const check = (ok: boolean, what: string) => {
+      if (!ok && bad.length < 20) bad.push(what);
+    };
     let checked = 0;
     for (const t of instants) {
       for (const v of engine.snapshot(t)) {
         const p = engine.patternById(v.patternId)!;
         // sobre la línia
         const pr = projectOnLine(p.coords, p.cum, [v.lon, v.lat]);
-        expect(pr.offset, v.id).toBeLessThan(0.5);
+        check(pr.offset < 0.5, `${v.id}: a ${pr.offset} m de la línia`);
         // progrés en [0,1]
-        expect(v.progress).toBeGreaterThanOrEqual(0);
-        expect(v.progress).toBeLessThanOrEqual(1);
+        check(v.progress >= 0 && v.progress <= 1, `${v.id}: progrés ${v.progress}`);
         // ETA mai negativa: totes futures i ordenades
         for (let i = 0; i < v.etas.length; i++) {
-          if (v.status !== 'EN_PARADA' || i > 0) expect(v.etas[i]!.at, v.id).toBeGreaterThanOrEqual(t - 1000);
-          if (i > 0) expect(v.etas[i]!.at).toBeGreaterThan(v.etas[i - 1]!.at);
+          if (v.status !== 'EN_PARADA' || i > 0) check(v.etas[i]!.at >= t - 1000, `${v.id}: ETA ${i} al passat`);
+          if (i > 0) check(v.etas[i]!.at > v.etas[i - 1]!.at, `${v.id}: ETA ${i} desordenada`);
         }
         if (v.status === 'RETIRADA') continue;
         // propera parada: per davant del bus
-        expect(p.stopDist[v.nextStopIndex]!, v.id).toBeGreaterThanOrEqual(v.dist - 0.01);
-        expect(v.etas[0]?.stopId).toBe(v.nextStopId);
-        expect(v.stopsRemaining).toBe(v.atStopIndex === p.stopIds.length - 1 ? 0 : p.stopIds.length - v.nextStopIndex);
+        check(p.stopDist[v.nextStopIndex]! >= v.dist - 0.01, `${v.id}: propera parada darrere el bus`);
+        check(v.etas[0]?.stopId === v.nextStopId, `${v.id}: la primera ETA no és la propera parada`);
+        const left = v.atStopIndex === p.stopIds.length - 1 ? 0 : p.stopIds.length - v.nextStopIndex;
+        check(v.stopsRemaining === left, `${v.id}: parades restants ${v.stopsRemaining} ≠ ${left}`);
         // rumb: mira cap endavant del recorregut (mai al revés), suavitzat a ±25 m a les cantonades
         if (v.status === 'EN_RUTA' && v.speedKmh > 5) {
           const here = pointAlong(p.coords, p.cum, v.dist);
           const ahead = pointAlong(p.coords, p.cum, Math.min(p.length, v.dist + 30));
-          expect(angDiff(v.bearing, bearing(here, ahead)), v.id).toBeLessThan(90);
+          check(angDiff(v.bearing, bearing(here, ahead)) < 90, `${v.id}: rumb al revés`);
         }
         checked++;
       }
     }
+    expect(bad).toEqual([]);
     expect(checked).toBeGreaterThan(5000);
   });
 

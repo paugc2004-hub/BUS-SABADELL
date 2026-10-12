@@ -425,6 +425,35 @@ const LEGAL: Record<'ca' | 'es', Record<LegalPage, { h: string; p: string[] }[]>
   },
 };
 
+/** ruta inexistent: no s'indexa i ofereix tornar a l'app o a l'inici */
+export function NotFound() {
+  const t = useT();
+  const st = useApp.getState();
+  useEffect(() => {
+    const m = document.createElement('meta');
+    m.name = 'robots';
+    m.content = 'noindex';
+    document.head.appendChild(m);
+    return () => m.remove();
+  }, []);
+  return (
+    <Shell title={t.pub.notFoundTitle}>
+      <section className="pub-notfound">
+        <h1 className="pub-h1">{t.pub.notFoundTitle}</h1>
+        <p className="dim">{t.pub.notFoundText}</p>
+        <div className="pub-actions">
+          <a className="cta cta-primary" href="/app" onClick={(e) => (e.preventDefault(), st.navigate({ name: 'home' }))}>
+            {t.pub.notFoundApp}
+          </a>
+          <a className="cta" href="/" onClick={(e) => (e.preventDefault(), st.navigate({ name: 'landing' }))}>
+            {t.pub.notFoundHome}
+          </a>
+        </div>
+      </section>
+    </Shell>
+  );
+}
+
 export function Legal({ page }: { page: LegalPage }) {
   const t = useT();
   const lang = useApp((s) => s.lang);

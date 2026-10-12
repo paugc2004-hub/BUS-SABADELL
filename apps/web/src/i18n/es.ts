@@ -265,7 +265,6 @@ export const es: Dict = {
   },
   // ---- iteración 2: navegación, inicio, puntualidad, líneas, red
   nav2: { home: 'Inicio', map: 'Mapa', lines: 'Líneas', network: 'Red', mine: 'Cuenta' },
-  liveSim: 'Simulación en directo',
   noIncidents: 'Sin incidencias publicadas',
   incidentsN: (n: number) => (n === 1 ? '1 aviso publicado' : `${n} avisos publicados`),
   searchAll: 'Buscar parada, línea o destino',
@@ -631,6 +630,10 @@ export const es: Dict = {
     titles: { 't-sabadell': 'T-Sabadell', t10: 'T-10', 't-mensual': 'T-mensual', 't-mensual-jove': 'T-mensual Jove' } as Record<'t-sabadell' | 't10' | 't-mensual' | 't-mensual-jove', string>,
   },
   pub: {
+    notFoundTitle: 'Esta página no existe',
+    notFoundText: 'El enlace puede estar mal escrito o ser antiguo. Desde la app puedes buscar adónde quieres ir, una parada o una línea.',
+    notFoundApp: 'Abre la app',
+    notFoundHome: 'Página de inicio',
     notTodayLines: 'Hoy no pasan:',
     demo: 'Demostración',
     stopCard: 'Ficha de parada',

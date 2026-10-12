@@ -402,7 +402,7 @@ export class SimEngine {
     const sep = id.indexOf(':');
     const date = id.slice(0, sep);
     const blockId = id.slice(sep + 1);
-    const b = this.tablesFor(date).blocks.find((x) => x.id === blockId);
+    const b = this.tablesFor(date).blockById.get(blockId);
     if (!b) return null;
     const origin = serviceDayOrigin(date);
     return this.blockState(b, (t - origin) / 1000, origin, date, t);
@@ -572,7 +572,7 @@ export class SimEngine {
     const sep = id.indexOf(':');
     const date = id.slice(0, sep);
     const blockId = id.slice(sep + 1);
-    const b = this.tablesFor(date).blocks.find((x) => x.id === blockId);
+    const b = this.tablesFor(date).blockById.get(blockId);
     const trip = b?.trips.find((x) => x.key === v.tripKey);
     const pp = this.patterns.get(v.patternId);
     if (!trip || !pp || !b) return null;
@@ -738,28 +738,38 @@ export class SimEngine {
   }
 
   private filtered = new Map<string, DayTables>();
+  /** taules ja resoltes per data: el tipus de dia i el filtre de `onlyDates` no canvien per a una mateixa data */
+  private byDate = new Map<string, DayTables>();
 
   /**
    * Taules d'un dia de servei concret: les del seu tipus de dia, sense les línies que només circulen unes dates
    * (`Route.onlyDates`) si aquell dia no hi és. Els torns són d'una sola línia, així que es treuen sencers.
    */
   private tablesFor(date: string): DayTables {
+    const hit = this.byDate.get(date);
+    if (hit) return hit;
     const dayType = dayTypeFor(date, this.network.holidays);
     const base = this.days.get(dayType)!;
     const off = this.network.routes.filter((r) => r.onlyDates && !r.onlyDates.includes(date)).map((r) => r.id);
-    if (off.length === 0) return base;
-    const key = `${dayType}|${off.join(',')}`;
-    let t = this.filtered.get(key);
-    if (!t) {
-      const o = new Set(off);
-      t = {
-        trips: base.trips.filter((x) => !o.has(x.pattern.route.id)),
-        blocks: base.blocks.filter((b) => !o.has(b.routeId)),
-        blockById: new Map([...base.blockById].filter(([, b]) => !o.has(b.routeId))),
-        byStop: new Map([...base.byStop].map(([k, v]) => [k, v.filter((e) => !o.has(e.trip.pattern.route.id))])),
-      };
-      this.filtered.set(key, t);
+    let t = base;
+    if (off.length > 0) {
+      const key = `${dayType}|${off.join(',')}`;
+      let f = this.filtered.get(key);
+      if (!f) {
+        const o = new Set(off);
+        f = {
+          trips: base.trips.filter((x) => !o.has(x.pattern.route.id)),
+          blocks: base.blocks.filter((b) => !o.has(b.routeId)),
+          blockById: new Map([...base.blockById].filter(([, b]) => !o.has(b.routeId))),
+          byStop: new Map([...base.byStop].map(([k, v]) => [k, v.filter((e) => !o.has(e.trip.pattern.route.id))])),
+        };
+        this.filtered.set(key, f);
+      }
+      t = f;
     }
+    // poques dates per sessió (ahir, avui, demà i les que es consultin a Línies); acotat per si de cas
+    if (this.byDate.size > 400) this.byDate.clear();
+    this.byDate.set(date, t);
     return t;
   }
 

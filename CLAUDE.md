@@ -21,7 +21,7 @@ presentació; s'hi entra des del menú de l'avatar). Flux de l'app: **entrar** (
 (`views/Welcome.tsx`, `nextmobility.locAsked`) → **Inici «On vols anar?»** (on ets, cerca, parades a prop) →
 **resultat** (`views/Route.tsx`: *Millor opció* amb Puja a / Arriba en / Baixa a, màx. 2 alternatives, sense pas a
 pas a peu; puntuació `scoreOf` a `core/plan.ts`) → bus / viatge. Mapa contextual amb pla o viatge (només aquelles
-línies i busos). Navegació: Inici · Mapa · Línies · Compte. Només TUS (fora interurbans). Docs: `docs/APP_*.md`. Una acció per bus: «Agafaré aquest bus» → la fitxa es converteix en «El teu viatge»
+línies i busos). Navegació: Inici · Mapa · Línies · Com hi arribo · Més (vegeu «Paritat» més avall). Només TUS (fora interurbans). Docs: `docs/APP_*.md`. Una acció per bus: «Agafaré aquest bus» → la fitxa es converteix en «El teu viatge»
 (`TripFocus` a `views/Trip.tsx`). Estats: A l'hora · N min tard · Retard important (≥ 5 min) · Fora de servei.
 Recorregut visual: `node apps/web/scripts/ux-tour.mjs <dir> 390x844 <prefix>`.
 
@@ -113,7 +113,8 @@ Mateixa arquitectura d'informació que «TUS Sabadell» 3.2.4 (GeoActio), dissen
 - Compte (`views/Mine.tsx`): informació, perfil, FAQ, contrasenya, configuració (accessibilitat `ui/a11y.ts`), elimina.
 - Captures: `node apps/web/scripts/parity-shots.mjs <dir> 390x844 "/app=inici" …` (contra `vite preview`).
 - Pendents: URL exacta de cada avís (`TODO(DECISION: URL-AVISOS)`), festius comercials 2027, capa de punts de venda.
-- Auditoria del 2026-10-12: `docs/AUDIT_2026-10-12.md`. Responsive: `node apps/web/scripts/responsive-audit.mjs` (7 amples,
+- Auditoria del 2026-10-12: `docs/AUDIT_2026-10-12.md` (dues passades). Ruta desconeguda → «No trobat» (`NotFound` a
+  `views/Public.tsx`, `noindex`). `/punts-de-venda` només carrega els festius (`loadHolidayDates`), no el motor. Responsive: `node apps/web/scripts/responsive-audit.mjs` (7 amples,
   21 rutes). `SimClock`/`forcedInstant` són a `core/src/clock.ts` sense luxon (la landing no el baixa); `sideEffects: false`.
 
 ## Ubicació i cerca de destins (2026-10-07)

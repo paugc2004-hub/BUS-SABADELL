@@ -3,14 +3,15 @@
  * Primer l'essencial (preu, per a qui, avantatges); les condicions completes, a «Més informació».
  * Dades: data/fares.ts i data/salesPoints.ts (font inicial facilitada; pendents de verificar a la font oficial).
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { normalize } from '@bus/core';
 import { useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { FARES, LINKS, euros, fareById, monthlyCost, type Fare, type FareCategory, type SalesTitle } from '../data/fares.ts';
 import { NEIGHBOURHOODS, SALES_POINTS, hhmmMin, mapsSearchUrl, openState, type OpenState, type SalesPoint, type Weekday } from '../data/salesPoints.ts';
 import { useNow } from '../ui/common.tsx';
-import { Shell, useNetwork } from './Public.tsx';
+import { Shell } from './Public.tsx';
+import { loadHolidayDates } from '../data/load.ts';
 
 type Cat = 'all' | FareCategory;
 const CATS: Cat[] = ['all', 'single', 'multi', 'pass', 'social', 'integrated'];
@@ -362,9 +363,18 @@ const PAGE = 8;
 
 export function SalesPage({ title }: { title?: string }) {
   const t = useT();
-  const { network } = useNetwork();
   const now = useNow(60000);
-  const holidays = useMemo(() => (network ? new Set(network.holidays.map((h) => h.date)) : null), [network]);
+  // només el calendari de festius (sense el motor de simulació); sense calendari, l'estat és «a confirmar»
+  const [holidays, setHolidays] = useState<ReadonlySet<string> | null>(null);
+  useEffect(() => {
+    let alive = true;
+    loadHolidayDates()
+      .then((d) => alive && setHolidays(new Set(d)))
+      .catch((e: unknown) => console.error('holidays load failed', e));
+    return () => {
+      alive = false;
+    };
+  }, []);
   const [q, setQ] = useState('');
   const [tf, setTf] = useState<SalesTitle | 'all'>(TITLES.includes(title as SalesTitle) ? (title as SalesTitle) : 'all');
   const [area, setArea] = useState<string>('all');
@@ -475,6 +485,7 @@ export function SalesPage({ title }: { title?: string }) {
         </div>
       ) : (
         <>
+          {visibleInside.length > 0 && <h2 className="sr-only">Sabadell</h2>}
           <div className="sp-list">
             {visibleInside.map((p) => (
               <PointCard key={p.id} p={p} state={states.get(p.id)!} />

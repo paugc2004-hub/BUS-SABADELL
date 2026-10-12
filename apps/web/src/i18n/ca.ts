@@ -264,7 +264,6 @@ export const ca = {
   },
   // ---- iteració 2: navegació, inici, puntualitat, línies, xarxa
   nav2: { home: 'Inici', map: 'Mapa', lines: 'Línies', network: 'Xarxa', mine: 'Compte' },
-  liveSim: 'Simulació en directe',
   noIncidents: 'Sense incidències publicades',
   incidentsN: (n: number) => (n === 1 ? '1 avís publicat' : `${n} avisos publicats`),
   searchAll: 'Cerca parada, línia o destinació',
@@ -630,6 +629,10 @@ export const ca = {
     titles: { 't-sabadell': 'T-Sabadell', t10: 'T-10', 't-mensual': 'T-mensual', 't-mensual-jove': 'T-mensual Jove' } as Record<'t-sabadell' | 't10' | 't-mensual' | 't-mensual-jove', string>,
   },
   pub: {
+    notFoundTitle: 'Aquesta pàgina no existeix',
+    notFoundText: 'L’enllaç pot estar mal escrit o ser antic. Des de l’app pots buscar on vols anar, una parada o una línia.',
+    notFoundApp: 'Obre l’app',
+    notFoundHome: 'Pàgina d’inici',
     notTodayLines: 'Avui no hi passen:',
     demo: 'Demostració',
     stopCard: 'Fitxa de parada',

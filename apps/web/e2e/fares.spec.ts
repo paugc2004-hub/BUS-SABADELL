@@ -24,14 +24,14 @@ test.describe('tarifes', () => {
     const prices: [RegExp, string][] = [
       [/^Bitllet senzill$/, '1,80'],
       [/^Targeta T-10$/, '10,10'],
-      [/^T-mensual$/, '20,60'],
-      [/^T-mensual Jove$/, '14,35'],
+      [/^T-mensual bonificada$/, '20,60'],
+      [/^T-mensual Jove bonificada$/, '14,35'],
     ];
     for (const [name, p] of prices) await expect(card(page, name).locator('.fare-price')).toContainText(p);
     await expect(card(page, /^Bitllet senzill$/)).toContainText('Sense transbord');
     await expect(card(page, /^Targeta T-10$/)).toContainText('Transbord 1 h 15 min');
     // condicions completes, plegades
-    const m = card(page, /^T-mensual$/).locator('details');
+    const m = card(page, /^T-mensual bonificada$/).locator('details');
     await expect(m.getByText(/document oficial d’identitat/)).toBeHidden();
     await m.locator('summary').click();
     await expect(m.getByText(/document oficial d’identitat/)).toBeVisible();
@@ -60,7 +60,7 @@ test.describe('tarifes', () => {
   test('categories: filtren sense perdre la distinció TUS / ATM', async ({ page }) => {
     await page.goto('/tarifes');
     await page.getByRole('button', { name: 'Abonaments' }).click();
-    await expect(page.locator('.fare-card h3')).toHaveText(['T-mensual', 'T-mensual Jove']);
+    await expect(page.locator('.fare-card h3')).toHaveText(['T-mensual bonificada', 'T-mensual Jove bonificada']);
     await page.getByRole('button', { name: 'Integrats (ATM)' }).click();
     await expect(page.getByRole('heading', { name: /Títols del bus urbà/ })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: /T-16/ })).toBeVisible();
@@ -71,9 +71,9 @@ test.describe('tarifes', () => {
     await page.goto('/tarifes');
     await expect(page.locator('.fc-best')).toContainText('Targeta T-10');
     await page.locator('#fc-trips').fill('40');
-    await expect(page.locator('.fc-best')).toContainText('T-mensual · 20,60');
+    await expect(page.locator('.fc-best')).toContainText('T-mensual bonificada · 20,60');
     await page.getByLabel('Tinc menys de 30 anys').check();
-    await expect(page.locator('.fc-best')).toContainText('T-mensual Jove · 14,35');
+    await expect(page.locator('.fc-best')).toContainText('T-mensual Jove bonificada · 14,35');
   });
 
   test('enllaços oficials: s’obren en una pestanya nova', async ({ page }) => {

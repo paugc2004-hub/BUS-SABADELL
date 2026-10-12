@@ -1,6 +1,6 @@
 # Auditoria línia per línia
 
-Generat per `pnpm data:audit` sobre la versió de dades `2026-10-06-57e36b18aedd`. No editar a mà.
+Generat per `pnpm data:audit` sobre la versió de dades `2026-10-06-a0102b1d2935`. No editar a mà.
 
 Per a cada variant (recorregut publicat per tus.es) es comprova, amb fonts independents:
 

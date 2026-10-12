@@ -173,6 +173,25 @@ export function rateLimited(ip, now = Date.now()) {
   return h.n > RATE_MAX;
 }
 
+/**
+ * Pressupost del proveïdor de pagament (Google) per instància: el límit per IP no frena qui reparteix les
+ * peticions entre moltes IP o crida sense navegador. Passat el pressupost, Photon (gratuït) respon fins al minut
+ * següent. Configurable amb GOOGLE_PLACES_MAX_PER_MIN (per defecte 60). El límit global de debò s'ha de posar
+ * a Vercel (Firewall) i a la quota de la clau a Google Cloud (docs/SECURITY_HARDENING.md).
+ */
+const paid = { start: 0, n: 0 };
+export function paidBudgetLeft(env = {}, now = Date.now()) {
+  const max = Number.parseInt(String(env.GOOGLE_PLACES_MAX_PER_MIN ?? ''), 10);
+  const limit = Number.isFinite(max) && max >= 0 ? max : 60;
+  if (now < paid.start || now - paid.start > RATE_WINDOW_MS) {
+    paid.start = now;
+    paid.n = 0;
+  }
+  if (paid.n >= limit) return false;
+  paid.n++;
+  return true;
+}
+
 /** Lògica pura (testable): retorna { status, body, cacheSeconds }. */
 export async function placesSearch({
   q: rawQ,
@@ -187,7 +206,7 @@ export async function placesSearch({
     typeof env.GOOGLE_PLACES_API_KEY === 'string' && env.GOOGLE_PLACES_API_KEY.length > 10
       ? env.GOOGLE_PLACES_API_KEY
       : null;
-  const name = key ? 'google' : 'photon';
+  const name = key && paidBudgetLeft(env, now) ? 'google' : 'photon';
   const prov = providers[name];
   const ck = `${name}|${lang}|${q.toLowerCase()}`;
   const hit = prov.cacheable ? cache.get(ck) : null;
