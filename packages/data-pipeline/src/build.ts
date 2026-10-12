@@ -10,7 +10,9 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   SimEngine,
+  addDays,
   haversine,
+  localIso,
   normalizeColour,
   secondsToHM,
   textColorFor,
@@ -42,6 +44,9 @@ import { loadDirected, loadRoads } from './audit.ts';
 import { assignDirections, isCircular, repairSegments } from './repair.ts';
 import { buildInterurbans } from './interurbans.ts';
 import { writeStreets } from './streets.ts';
+
+/** «fins a» una data sola inclou tot aquell dia (fins a les 00:00 de l'endemà, hora de Sabadell) */
+const untilIso = (v: string | null): string | null => (v === null ? null : v.length === 10 ? localIso(addDays(v, 1)) : localIso(v));
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const RAW = join(ROOT, 'data/raw');
@@ -118,11 +123,12 @@ export async function build(opts: { refresh?: boolean } = {}) {
     const route: Route = {
       id: routeId,
       ref: routeId,
-      longName: main ? cleanName(main.name) : routeId,
+      longName: overrides.noms[routeId] ?? (main ? cleanName(main.name) : routeId),
       color: colour,
       textColor: textColorFor(colour),
       kind: /^F/.test(lf.line) ? 'festiva' : 'diurna',
       order: li + 1,
+      ...(overrides.nomes_festius_comercials.includes(routeId) ? { onlyDates: festius.comercials?.dates ?? [], onlyLabel: 'Festius comercials' } : {}),
       agency: 'TUS',
     };
     routes.push(route);
@@ -319,13 +325,15 @@ export async function build(opts: { refresh?: boolean } = {}) {
       id: a.id,
       routes: a.linies,
       stops: a.parades,
-      from: a.des_de,
-      to: a.fins_a,
+      // hora local de Sabadell; una data sola «fins a» inclou tot aquell dia
+      from: localIso(a.des_de),
+      to: untilIso(a.fins_a),
+      ...(a.titol ? { title: a.titol } : {}),
       text: a.text,
       ...(a.url ? { url: a.url } : {}),
       ...(a.motiu ? { reason: a.motiu } : {}),
-      ...(a.publicacio ? { published: a.publicacio } : {}),
-      ...(a.expiracio !== undefined ? { expires: a.expiracio } : {}),
+      ...(a.publicacio ? { published: localIso(a.publicacio) } : {}),
+      ...(a.expiracio !== undefined ? { expires: untilIso(a.expiracio) } : {}),
       ...(a.adjunts.length ? { attachments: a.adjunts.map((x) => ({ title: x.titol, url: x.url })) } : {}),
     })),
     ...stopAlerts,

@@ -4,15 +4,7 @@
  */
 import qrcode from 'qrcode-generator';
 
-/** adreça pública on apunten els QR impresos (estable encara que l'app s'obri des d'un altre domini) */
-export const PUBLIC_ORIGIN: string = (import.meta.env?.VITE_PUBLIC_ORIGIN as string | undefined) ?? 'https://bus-sabadell.vercel.app';
-
-/** codi de parada vàlid a l'URL (els de tus.es són numèrics; s'admet alfanumèric curt per si de cas) */
-export const validStopCode = (code: string) => /^[A-Za-z0-9_-]{1,12}$/.test(code);
-
-export function stopCardUrl(code: string, origin: string = PUBLIC_ORIGIN): string {
-  return `${origin.replace(/\/+$/, '')}/p/${encodeURIComponent(code)}`;
-}
+export { PUBLIC_ORIGIN, stopCardUrl, validStopCode } from './stopCode.ts';
 
 /** matriu de mòduls (true = fosc); correcció d'errors M: aguanta brutícia i rascades a la marquesina */
 export function qrMatrix(text: string): boolean[][] {

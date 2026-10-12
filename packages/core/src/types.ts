@@ -37,6 +37,10 @@ export interface Route {
   kind: 'diurna' | 'festiva';
   order: number;
   agency: 'TUS';
+  /** només circula aquests dies de servei (YYYY-MM-DD), p. ex. la F6 els festius comercials */
+  onlyDates?: string[];
+  /** etiqueta del calendari especial (p. ex. «Festius comercials») */
+  onlyLabel?: string;
 }
 
 export interface Stop {
@@ -77,6 +81,8 @@ export interface Alert {
   stops: string[];
   from: string; // ISO
   to: string | null;
+  /** títol curt (en frase normal) */
+  title?: { ca: string; es: string };
   text: { ca: string; es: string };
   url?: string;
   /** motiu de l'avís (PPT 2024 §2.2.1: «descripció i motiu») */

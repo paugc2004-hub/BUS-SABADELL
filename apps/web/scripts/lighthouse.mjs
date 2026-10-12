@@ -3,7 +3,7 @@ import { chromium } from '@playwright/test';
 import lighthouse from 'lighthouse';
 const url = process.argv[2] ?? 'https://bus-sabadell.vercel.app/';
 const gpu = process.argv.includes('--gpu');
-const browser = await chromium.launch({ ...(gpu ? { channel: 'chromium' } : {}), args: ['--remote-debugging-port=9333', ...(gpu ? ['--enable-gpu', '--ignore-gpu-blocklist', '--use-angle=d3d11'] : [])] });
+const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, ...(gpu ? { channel: 'chromium' } : {}), args: ['--remote-debugging-port=9333', ...(gpu ? ['--enable-gpu', '--ignore-gpu-blocklist', '--use-angle=d3d11'] : [])] });
 const r = await lighthouse(url, { port: 9333, output: 'json', logLevel: 'error', onlyCategories: ['performance', 'accessibility', 'best-practices'], formFactor: 'mobile' });
 await browser.close();
 const lhr = r.lhr;

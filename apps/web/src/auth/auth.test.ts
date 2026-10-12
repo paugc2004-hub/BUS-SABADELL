@@ -57,3 +57,38 @@ describe('comptes (ficticis, al navegador)', () => {
     expect(a.current()).toEqual(DEMO_USER);
   });
 });
+
+describe('compte: nom, contrasenya i eliminació', () => {
+  it('canvia el nom i la contrasenya (cal l’actual)', async () => {
+    const kv = memory();
+    const a = new LocalAuthProvider(kv);
+    await a.signUp('Pau', 'pau@exemple.cat', 'secret-molt-llarg');
+    expect((await a.updateName('  Pau G  ')).name).toBe('Pau G');
+    expect(await code(a.changePassword('dolenta', 'nova-contrasenya'))).toBe('wrong-credentials');
+    expect(await code(a.changePassword('secret-molt-llarg', 'curta'))).toBe('weak-password');
+    await a.changePassword('secret-molt-llarg', 'nova-contrasenya');
+    await a.signOut();
+    expect(await code(a.signIn('pau@exemple.cat', 'secret-molt-llarg'))).toBe('wrong-credentials');
+    expect((await a.signIn('pau@exemple.cat', 'nova-contrasenya')).name).toBe('Pau G');
+  });
+
+  it('eliminar el compte no en deixa res al dispositiu (usuari, sessió, moneder, preferides…)', async () => {
+    const kv = memory();
+    const a = new LocalAuthProvider(kv);
+    const u = await a.signUp('Pau', 'pau@exemple.cat', 'secret-molt-llarg');
+    kv.setItem(`wallet:${u.id}`, '{}');
+    kv.setItem(`favs:${u.id}`, '[]');
+    expect(await code(a.deleteAccount('dolenta', [`wallet:${u.id}`]))).toBe('wrong-credentials');
+    await a.deleteAccount('secret-molt-llarg', [`wallet:${u.id}`, `favs:${u.id}`]);
+    expect(a.current()).toBeNull();
+    expect(kv.dump()).not.toContain(u.id);
+    expect(kv.dump()).not.toContain('pau@exemple.cat');
+  });
+
+  it('el compte de demostració no es pot modificar ni eliminar', async () => {
+    const a = new LocalAuthProvider(memory());
+    await a.signInDemo();
+    expect(await code(a.updateName('X'))).toBe('unavailable');
+    expect(await code(a.deleteAccount('x', []))).toBe('unavailable');
+  });
+});

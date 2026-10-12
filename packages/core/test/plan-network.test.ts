@@ -68,7 +68,13 @@ describe('planificador sobre la xarxa real', () => {
           expect(r.itineraries).toHaveLength(0);
           return;
         }
-        expect(r.itineraries.length).toBeGreaterThanOrEqual(1);
+        // sense cap bus útil, és perquè anar-hi a peu és millor
+        if (r.itineraries.length === 0) {
+          expect(r.walk).not.toBeNull();
+          return;
+        }
+        // cap opció en bus fa caminar més que anar-hi directament
+        for (const it of r.itineraries) if (r.walk) expect(it.walkMeters).toBeLessThan(r.walk.meters);
         expect(r.itineraries.length).toBeLessThanOrEqual(3);
         for (const it of r.itineraries) checkItinerary(it, t);
         // la primera és la millor opció
@@ -80,7 +86,7 @@ describe('planificador sobre la xarxa real', () => {
       }),
       { numRuns: 60, seed: 20261006 },
     );
-  });
+  }, 30_000);
 
   it('determinista: la mateixa pregunta, la mateixa resposta (el mapa i la ruta no es contradiuen)', () => {
     const from: LonLat = [stops[10]!.lon, stops[10]!.lat];

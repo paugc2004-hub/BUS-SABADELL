@@ -30,9 +30,10 @@ export const poiWhere = (p: Poi, t: ReturnType<typeof useT>) => [t.plan.kinds[p.
 const minutes = (ms: number) => Math.max(0, Math.round(ms / 60000));
 
 /** Un lloc a partir del seu codi: c<id> = carrer, l<id> = lloc (OSM), p<id> = parada, g<lon>,<lat>,<nom> = lloc del cercador universal. */
-function usePlace(code: string | undefined): Place | null | undefined {
+export function usePlace(code: string | undefined): Place | null | undefined {
   const t = useT();
   const engine = useApp((s) => s.engine);
+  const userPos = useApp((s) => s.userPos);
   const [gz, setGz] = useState<Gazetteer | null | undefined>(undefined);
   const needs = Boolean(code && (code.startsWith('c') || code.startsWith('l')));
   useEffect(() => {
@@ -46,6 +47,8 @@ function usePlace(code: string | undefined): Place | null | undefined {
     };
   }, [needs]);
   if (!code) return null;
+  // «la meva ubicació» com a destí (intercanviat a Com hi arribo): no surt mai a l'URL, només 'me'
+  if (code === 'me') return userPos ? { code, name: t.plan.myLocation, where: '', pts: [userPos] } : undefined;
   if (code.startsWith('g')) {
     const g = parseGeoCode(code);
     return g ? { code, name: g.name, where: g.label, pts: [g.pt] } : null;
@@ -213,26 +216,43 @@ function RideStops({ leg, engine }: { leg: BusLeg; engine: SimEngine }) {
 }
 
 /** La millor opció: què agafar, on pujar, quan passa, on baixar; i les accions. */
-function BestOption({ it, engine, now, destName }: { it: Itinerary; engine: SimEngine; now: number; destName: string }) {
+/** Anar-hi a peu, quan és la millor opció: primer, gran i sense ambigüitat */
+function WalkBest({ walk, now }: { walk: { meters: number; start: number; end: number }; now: number }) {
+  const t = useT();
+  const m = Math.max(1, minutes(walk.end - walk.start));
+  return (
+    <section className="best best-walk" aria-label={`${t.res.best}: ${t.res.onFoot}`}>
+      <div className="best-tag">{t.res.best}</div>
+      <p className="best-walk-title">
+        {Icon.walk} {t.res.onFoot}
+      </p>
+      <p className="best-walk-main">{m} min</p>
+      <p className="best-walk-sub">{t.res.walkBest(walk.meters)}</p>
+      <p className="best-summary">{t.res.arriveAt(hm(now + (walk.end - walk.start)))}</p>
+    </section>
+  );
+}
+
+function BestOption({ it, engine, now, destName, tag }: { it: Itinerary; engine: SimEngine; now: number; destName: string; tag?: string }) {
   const t = useT();
   const st = useApp.getState();
   const [showRoute, setShowRoute] = useState(false);
   const buses = it.legs.filter((l): l is BusLeg => l.kind === 'bus');
   const first = buses[0]!;
-  const last = buses[buses.length - 1]!;
   const walkToBoard = it.legs[0]?.kind === 'walk' ? it.legs[0].meters : 0;
   const lastLeg = it.legs[it.legs.length - 1];
   const destAway = destName ? { name: destName, m: lastLeg?.kind === 'walk' ? lastLeg.meters : 0 } : null;
   // «On és el bus» només si el bus ja fa el trajecte que agafaràs (si no, encara fa l'anterior, en sentit contrari)
   const live = Boolean(first.vehicleId && vehicleById(engine, first.vehicleId, now)?.patternId === first.patternId);
   return (
-    <section className="best" aria-label={t.res.best}>
-      <div className="best-tag">{t.res.best}</div>
+    <section className={`best${tag ? ' best-alt' : ''}`} aria-label={tag ?? t.res.best}>
+      <div className="best-tag">{tag ?? t.res.best}</div>
       {buses.map((leg, i) => (
         <BusSegment key={leg.tripKey} leg={leg} engine={engine} now={now} first={i === 0} walkToBoard={walkToBoard} destAway={i === buses.length - 1 ? destAway : null} />
       ))}
       <p className="best-summary">
-        {t.res.ride(minutes(last.arrive - first.depart))} · {t.res.arriveAt(hm(it.arrive))}
+        {/* el que compta amb pressa: quant falta per arribar, des d'ara */}
+        {t.res.total(Math.max(1, minutes(it.arrive - now)))} · {t.res.arriveAt(hm(it.arrive))}
         {it.transfers > 0 && ` · ${t.plan.transfers(it.transfers)}`}
       </p>
       <div className="best-ctas">
@@ -291,7 +311,7 @@ function AltOption({ it, engine, now, onPick }: { it: Itinerary; engine: SimEngi
           {t.res.direction} {first.headsign}
         </strong>
         <span className="dim small">
-          {t.res.boardShort(engine.stops.get(first.boardStopId)?.name ?? '')} · {t.res.ride(minutes(last.arrive - first.depart))}
+          {t.res.boardShort(engine.stops.get(first.boardStopId)?.name ?? '')} · {t.res.ride(Math.max(1, minutes(last.arrive - first.depart)))}
         </span>
       </span>
       <span className="alt-min">{mins <= 0 ? t.res.now : `${mins} min`}</span>
@@ -316,8 +336,10 @@ export function RoutePanel({ to, from }: { to: string; from?: string }) {
   const [sel, setSel] = useState(0);
   const [result, setResult] = useState<PlanResult | null>(null);
   // quan: ara, sortir a una hora o arribar abans d'una hora (PPT 2024 §2.2.1)
-  const [when, setWhen] = useState<'now' | 'depart' | 'arrive'>('now');
-  const [hhmmIn, setHhmmIn] = useState(() => hm(clock.now() + 30 * 60_000));
+  // si ve del formulari «Com hi arribo», amb el «quan» que s'hi ha triat
+  const [when, setWhen] = useState<'now' | 'depart' | 'arrive'>(() => useApp.getState().planWhen?.when ?? 'now');
+  const [hhmmIn, setHhmmIn] = useState(() => useApp.getState().planWhen?.hhmm ?? hm(clock.now() + 30 * 60_000));
+  useEffect(() => () => useApp.getState().set({ planWhen: null }), []);
 
   // la meva ubicació: la porta LocationService (s'engega en obrir l'app; només al dispositiu)
 
@@ -430,8 +452,18 @@ export function RoutePanel({ to, from }: { to: string; from?: string }) {
       {result?.reason === 'destination-far' && <p className="plan-msg">{t.plan.destFar}</p>}
       {result?.reason === 'no-service' && <p className="plan-msg">{t.plan.none}</p>}
 
-      {chosen && dest && <BestOption key={chosen.legs.map((l) => (l.kind === 'bus' ? l.tripKey : '')).join('>')} it={chosen} engine={engine} now={now} destName={dest.code.startsWith('p') ? '' : dest.name} />}
-      {result?.walk && result.walkIsBetter && <p className="walk-note">{t.res.walkNote(minutes(result.walk.end - result.walk.start))}</p>}
+      {/* si a peu és millor, és la primera opció; el bus queda com a alternativa */}
+      {result?.walk && result.walkIsBetter && <WalkBest walk={result.walk} now={now} />}
+      {chosen && dest && (
+        <BestOption
+          key={chosen.legs.map((l) => (l.kind === 'bus' ? l.tripKey : '')).join('>')}
+          it={chosen}
+          engine={engine}
+          now={now}
+          destName={dest.code.startsWith('p') ? '' : dest.name}
+          tag={result?.walkIsBetter ? t.res.byBus : undefined}
+        />
+      )}
       {options.length > 1 && (
         <section className="alts" aria-label={t.res.others}>
           <h3 className="sec-title">{t.res.others}</h3>

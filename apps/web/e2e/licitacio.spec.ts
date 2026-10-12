@@ -94,10 +94,12 @@ test.describe('línies i horaris (PPT §2.2.1)', () => {
     await expect(l2.locator('.line-alert')).toBeVisible();
     const l1 = page.locator('.line-row', { hasText: 'Estació Sud' }).first();
     await expect(l1.locator('.line-alert')).toHaveCount(0);
+    // el triangle de la capçalera porta a la pàgina d'avisos
     await page.locator('.alerts-btn').click();
-    await expect(page.getByRole('dialog')).toContainText('Avís de prova L2');
-    await expect(page.getByRole('dialog')).toContainText(/Motiu|Motivo/);
-    await expect(page.getByRole('dialog')).not.toContainText('Avís caducat');
+    const list = page.locator('.alerts-page');
+    await expect(list).toContainText('Avís de prova L2');
+    await expect(list).toContainText(/Motiu|Motivo/);
+    await expect(list).not.toContainText('Avís caducat');
   });
 });
 

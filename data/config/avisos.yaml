@@ -1,6 +1,66 @@
-# Avisos de servei editats a mà a partir de les notícies de tus.es.
-# Format: id, linies, parades (ids TUS), des_de, fins_a (o null), text ca/es, url de la font.
+# Avisos de servei editats a mà a partir dels que publica TUS.
+# Format: id, linies, parades (ids TUS), des_de, fins_a (o null = fins a nou avís), titol i text ca/es, url, font.
+# Dates en hora local de Sabadell: «AAAA-MM-DD» o «AAAA-MM-DD HH:MM». Un «fins_a» amb data sola inclou tot el dia.
 # Opcionals (licitació 2024, PPT §2.2.1): motiu ca/es, publicacio i expiracio (si no, = des_de / fins_a),
-# adjunts [{titol, url}]. Només avisos publicats per TUS, amb la URL de la font: no se n'inventa cap.
+# adjunts [{titol, url}]. Només avisos publicats per TUS: no se n'inventa cap.
 # Els avisos que TUS publica a cada parada (camp msgincidencia) s'hi afegeixen automàticament.
-avisos: []
+#
+# Font dels 4 avisos d'avui: pantalla «Incidencias» de l'app oficial TUS Sabadell 3.2.4, captura del 2026-10-12
+# a les 11:54 (facilitada pel responsable del projecte). L'enllaç «Más información» de cada avís no es veu a la
+# captura i tus.es no és accessible des de l'entorn de desenvolupament: `url` apunta a la portada de tus.es, on es
+# publiquen, fins que es confirmi l'adreça exacta (TODO(DECISION: URL-AVISOS)).
+# Textos: transcrits i corregits sense canviar-ne el sentit («la línea 8 es desvía» → «la línia 8 es desvia»);
+# els títols, en frase normal en lloc de majúscules.
+avisos:
+  - id: tus-2026-10-13-pg-comerc
+    linies: [L8]
+    des_de: '2026-10-13 09:30'
+    fins_a: '2026-10-13 19:00'
+    publicacio: '2026-10-12'
+    titol:
+      ca: Informació del servei · tall del pg. del Comerç
+      es: Información del servicio · corte del pg. del Comerç
+    text:
+      ca: Dimarts 13 d’octubre, de 9.30 h a 19 h, la línia 8 es desvia pel c. de Goya.
+      es: El martes 13 de octubre, de 9.30 h a 19 h, la línea 8 se desvía por el c. de Goya.
+    url: https://www.tus.es/
+    font: App oficial TUS Sabadell 3.2.4, «Incidencias», 2026-10-12
+  - id: tus-2026-09-21-c-adriana
+    linies: [L4, L44, L14, F4]
+    des_de: '2026-09-21'
+    fins_a: null
+    titol:
+      ca: Afectacions al servei · tall del c. d’Adriana
+      es: Afectaciones al servicio · corte del c. d’Adriana
+    text:
+      ca: A partir del dilluns 21 de setembre i fins a nou avís, tall del c. d’Adriana per obres. Línies afectades L4, L44, L14 (variant L14ds) i F4.
+      es: A partir del lunes 21 de septiembre y hasta nuevo aviso, corte del c. d’Adriana por obras. Líneas afectadas L4, L44, L14 (variante L14ds) y F4.
+    motiu:
+      ca: Obres
+      es: Obras
+    url: https://www.tus.es/
+    font: App oficial TUS Sabadell 3.2.4, «Incidencias», 2026-10-12
+  - id: tus-2026-03-09-collsalarca-sud
+    linies: [L80, F3]
+    des_de: '2026-03-09 09:30'
+    fins_a: null
+    titol:
+      ca: Afectacions al servei · tall de la ronda de Collsalarca en sentit sud
+      es: Afectaciones al servicio · corte de la ronda de Collsalarca en sentido sur
+    text:
+      ca: A partir del dilluns 9 de març de 2026 a les 9.30 h i fins a nou avís, les línies L80 i F3 en sentit pl. Picasso i la Romànica es desvien per l’av. de Matadepera.
+      es: A partir del lunes 9 de marzo de 2026 a las 9.30 h y hasta nuevo aviso, las líneas L80 y F3 en sentido pl. Picasso y la Romànica se desvían por la av. de Matadepera.
+    url: https://www.tus.es/
+    font: App oficial TUS Sabadell 3.2.4, «Incidencias», 2026-10-12
+  - id: tus-2026-09-28-collsalarca-nord
+    linies: [L80, F3]
+    des_de: '2026-09-28 09:30'
+    fins_a: null
+    titol:
+      ca: Afectacions al servei · tall de la ronda de Collsalarca en sentit nord
+      es: Afectaciones al servicio · corte de la ronda de Collsalarca en sentido norte
+    text:
+      ca: A partir del dilluns 28 de setembre a les 9.30 h, línies afectades L80 i F3.
+      es: A partir del lunes 28 de septiembre a las 9.30 h, líneas afectadas L80 y F3.
+    url: https://www.tus.es/
+    font: App oficial TUS Sabadell 3.2.4, «Incidencias», 2026-10-12

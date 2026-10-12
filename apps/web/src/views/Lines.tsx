@@ -5,13 +5,14 @@
  * Les posicions surten del VehicleState (prevStopIndex/nextStopIndex), no es recalculen aquí.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { activeAlerts, type Pattern, type SimEngine, type VehicleState } from '@bus/core';
+import { activeAlerts, addDays, alertsFor, dayTypeFor, localDate, normalize, serviceDayOrigin, type NetworkData, type Pattern, type Route, type SimEngine, type VehicleState } from '@bus/core';
 import { useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { arrivalsAt, vehiclesAt } from '../data/vehicles.ts';
 import { Icon, IconButton, Punctuality, RouteChip, SourceTag, hm, useNow } from '../ui/common.tsx';
 import { BusVehicleMarker } from '../ui/BusVehicleMarker.tsx';
 import { Sheet } from '../ui/Sheet.tsx';
+import { Ic } from '../ui/icons.tsx';
 
 /** Variant principal de cada sentit per al tipus de dia (la de més expedicions). */
 export function mainPatterns(engine: SimEngine, routeId: string, dayType: string): { dirs: Pattern[]; runsToday: boolean } {
@@ -30,12 +31,49 @@ function durationMin(p: Pattern): number | null {
   return m ? Math.round(m / 60) : null;
 }
 
+/** tipus de dia per mostrar (amb el festiu comercial, que fa circular la F6) */
+export function dayKindOf(engine: SimEngine, network: NetworkData, date: string): 'feiner' | 'dissabte' | 'festiu' | 'comercial' {
+  if (network.routes.some((r) => r.onlyDates?.includes(date))) return 'comercial';
+  return dayTypeFor(date, network.holidays);
+}
+
+const fmtDay = (date: string, lang: string) =>
+  new Intl.DateTimeFormat(lang, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Madrid' }).format(new Date(`${date}T12:00:00Z`));
+
+/** Triar el dia: Avui · Demà · Tria un dia… (calendari natiu, accessible) */
+function DatePicker({ date, today, onChange }: { date: string; today: string; onChange: (d: string | null) => void }) {
+  const t = useT();
+  const tomorrow = addDays(today, 1);
+  const custom = date !== today && date !== tomorrow;
+  return (
+    <div className="lines-date" role="group" aria-label={t.p.lines.date}>
+      <button type="button" aria-pressed={date === today} className={date === today ? 'on' : ''} onClick={() => onChange(null)}>
+        {t.p.lines.today}
+      </button>
+      <button type="button" aria-pressed={date === tomorrow} className={date === tomorrow ? 'on' : ''} onClick={() => onChange(tomorrow)}>
+        {t.p.lines.tomorrow}
+      </button>
+      <label className={`lines-date-pick${custom ? ' on' : ''}`}>
+        <span className="sr-only">{t.p.lines.pick}</span>
+        <input type="date" value={date} min={today} onChange={(e) => e.target.value && onChange(e.target.value === today ? null : e.target.value)} />
+      </label>
+    </div>
+  );
+}
+
 export function LinesIndex() {
   const t = useT();
   const network = useApp((s) => s.network);
   const engine = useApp((s) => s.engine);
+  const lang = useApp((s) => s.lang);
+  const picked = useApp((s) => s.lineDate);
   const now = useNow(10000);
   const st = useApp.getState();
+  const [q, setQ] = useState('');
+  const [showAll, setShowAll] = useState(false);
+  const today = localDate(now);
+  const date = picked && picked >= today ? picked : today;
+  const isToday = date === today;
   const counts = useMemo(() => {
     const m = new Map<string, number>();
     if (engine) for (const v of vehiclesAt(engine, now)) if (v.status !== 'RETIRADA') m.set(v.routeId, (m.get(v.routeId) ?? 0) + 1);
@@ -52,42 +90,68 @@ export function LinesIndex() {
     return set;
   }, [network, engine, Math.floor(now / 60000)]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!network || !engine) return null;
-  const dayType = engine.dayTypeAt(now);
-  const group = (kind: 'diurna' | 'festiva') => network.routes.filter((r) => r.kind === kind);
+  const kind = dayKindOf(engine, network, date);
+  const nq = normalize(q.trim());
+  const match = (r: Route) => !nq || normalize(`${r.ref} ${r.longName}`).includes(nq) || normalize(r.ref.replace(/^L/, '')) === nq;
+  const all = network.routes.filter(match);
+  const running = all.filter((r) => engine.runsOnDate(r.id, date));
+  const off = all.filter((r) => !engine.runsOnDate(r.id, date));
+  const pending = network.holidaysPending.some((p) => p.startsWith(date.slice(0, 4)));
+  const row = (r: Route, runs: boolean) => {
+    const n = counts.get(r.id) ?? 0;
+    const sum = isToday ? engine.routeSummary(r.id, now) : null;
+    return (
+      <li key={r.id}>
+        <button type="button" className={`line-row${runs ? '' : ' off'}`} onClick={() => st.navigate({ name: 'line', ref: r.id })}>
+          <RouteChip route={r} size="md" />
+          <span className="line-row-name">
+            {r.longName}
+            {alerted.has(r.id) && (
+              <span className="line-alert">
+                {Icon.bell} {t.alerts}
+              </span>
+            )}
+          </span>
+          <span className="line-row-meta">
+            {!runs
+              ? t.p.lines.off
+              : isToday
+                ? `${n > 0 ? t.linesPage.busesNow(n) : t.linesPage.notNow}${sum?.runsToday && sum.headwayMin ? ` · ${t.linesPage.every(sum.headwayMin)}` : ''}`
+                : t.p.lines.kind[kind]}
+          </span>
+          <span className="line-row-go" aria-hidden>
+            {Ic.chevron}
+          </span>
+        </button>
+      </li>
+    );
+  };
   return (
     <aside className="home lines-index" aria-label={t.linesPage.title}>
       <h1 className="page-title">{t.linesPage.title}</h1>
-      {(['diurna', 'festiva'] as const).map((kind) => (
-        <section key={kind} className="home-sec">
-          <h2 className="sec-title">{kind === 'diurna' ? t.linesPage.day : t.linesPage.holiday}</h2>
-          <ul className="line-list">
-            {group(kind).map((r) => {
-              const runs = engine.runsOn(r.id, dayType);
-              const n = counts.get(r.id) ?? 0;
-              const sum = engine.routeSummary(r.id, now);
-              return (
-                <li key={r.id}>
-                  <button type="button" className={`line-row${runs ? '' : ' off'}`} onClick={() => st.navigate({ name: 'line', ref: r.id })}>
-                    <RouteChip route={r} size="md" />
-                    <span className="line-row-name">
-                      {r.longName}
-                      {alerted.has(r.id) && (
-                        <span className="line-alert">
-                          {Icon.bell} {t.alerts}
-                        </span>
-                      )}
-                    </span>
-                    <span className="line-row-meta">
-                      {n > 0 ? t.linesPage.busesNow(n) : t.linesPage.notNow}
-                      {sum.runsToday && sum.headwayMin ? ` · ${t.linesPage.every(sum.headwayMin)}` : ''}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      ))}
+      <DatePicker date={date} today={today} onChange={(d) => st.set({ lineDate: d })} />
+      <p className="lines-daykind">
+        <strong>{isToday ? t.p.lines.today : fmtDay(date, lang)}</strong> · {t.p.lines.kind[kind]}
+      </p>
+      {pending && <p className="form-msg err">{t.p.lines.pending2027}</p>}
+      <label className="lines-search">
+        <span className="sr-only">{t.p.lines.search}</span>
+        <input type="search" value={q} placeholder={t.p.lines.search} onChange={(e) => setQ(e.target.value)} autoComplete="off" />
+        {Ic.search}
+      </label>
+      {all.length === 0 && <p className="empty">{t.p.lines.none}</p>}
+      <ul className="line-list">{running.map((r) => row(r, true))}</ul>
+      {off.length > 0 && (
+        <>
+          <label className="switch-row">
+            <input type="checkbox" checked={showAll || Boolean(nq)} onChange={(e) => setShowAll(e.target.checked)} disabled={Boolean(nq)} />
+            <span>
+              {t.p.lines.showAll} <span className="dim">({off.length})</span>
+            </span>
+          </label>
+          {(showAll || nq) && <ul className="line-list">{off.map((r) => row(r, false))}</ul>}
+        </>
+      )}
     </aside>
   );
 }
@@ -120,15 +184,34 @@ function placeBuses(engine: SimEngine, main: Pattern, vs: VehicleState[]): Place
   return out;
 }
 
+/** Hora d'horari a cada parada: la propera a partir de `fromS` (avui) o la primera del dia (null). */
+export function passTimes(p: Pattern, fromS: number | null): (number | null)[] {
+  return p.stopIds.map((_, i) => {
+    let best: number | null = null;
+    for (const [dep, k] of p.trips) {
+      const v = dep + (p.profiles[k]?.[i] ?? 0);
+      if ((fromS === null || v >= fromS) && (best === null || v < best)) best = v;
+    }
+    return best;
+  });
+}
+
 export function LinePanel({ routeRef }: { routeRef: string }) {
   const t = useT();
   const engine = useApp((s) => s.engine);
+  const network = useApp((s) => s.network);
+  const lang = useApp((s) => s.lang);
+  const picked = useApp((s) => s.lineDate);
   const selectedBus = useApp((s) => s.selectedBus);
   const now = useNow(1000);
   const st = useApp.getState();
   const route = engine?.routes.get(routeRef);
-  const dayType = engine ? engine.dayTypeAt(now) : 'feiner';
-  const { dirs, runsToday } = useMemo(() => (engine && route ? mainPatterns(engine, route.id, dayType) : { dirs: [], runsToday: false }), [engine, route, dayType]);
+  const today = localDate(now);
+  const date = picked && picked >= today ? picked : today;
+  const isToday = date === today;
+  const dayType = network ? dayTypeFor(date, network.holidays) : 'feiner';
+  const { dirs } = useMemo(() => (engine && route ? mainPatterns(engine, route.id, dayType) : { dirs: [] }), [engine, route, dayType]);
+  const runsToday = Boolean(engine && route && engine.runsOnDate(route.id, date));
   const [dirIdx, setDirIdx] = useState(0);
   const main = dirs[Math.min(dirIdx, dirs.length - 1)];
 
@@ -147,11 +230,15 @@ export function LinePanel({ routeRef }: { routeRef: string }) {
       .slice(0, 4);
   }, [engine, main, tick]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!engine || !route || !main) return null;
+  const origin = serviceDayOrigin(date);
+  const times = useMemo(() => (main && runsToday ? passTimes(main, isToday ? (now - origin) / 1000 : null) : []), [main, runsToday, isToday, origin, Math.floor(now / 30000)]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!engine || !route || !main || !network) return null;
   // amb un bus triat, la seva fitxa ocupa el panell (amb tornada a la línia)
   if (selectedBus) return null;
+  const lineAlerts = alertsFor(network.alerts, now, { routes: [route.id] });
   const vs = vehiclesAt(engine, now).filter((v) => v.routeId === route.id);
-  const placed = placeBuses(engine, main, vs);
+  const placed = isToday ? placeBuses(engine, main, vs) : [];
   const sum = engine.routeSummary(route.id, now);
   const dur = durationMin(main);
   const active = vs.filter((v) => v.status !== 'RETIRADA').length;
@@ -163,14 +250,24 @@ export function LinePanel({ routeRef }: { routeRef: string }) {
         <div className="lp-title">
           <h2>{route.longName}</h2>
           <div className="dim">
-            {t.routeKind[route.kind]}
-            {!runsToday && <strong className="warn"> · {t.notToday}</strong>}
+            {route.onlyLabel ?? t.routeKind[route.kind]}
+            {!isToday && ` · ${fmtDay(date, lang)}`}
+            {!runsToday && <strong className="warn"> · {isToday ? t.notToday : t.p.lines.off}</strong>}
           </div>
         </div>
         <IconButton label={t.close} onClick={() => st.navigate({ name: 'line', ref: null })}>
           {Icon.close}
         </IconButton>
       </header>
+
+      {lineAlerts.map((a) => (
+        <button key={a.id} type="button" className="alert-inline lp-alert" onClick={() => st.navigate({ name: 'alerts' })}>
+          {Ic.alert}
+          <span>
+            <strong>{a.title?.[lang] ?? t.alerts}</strong> {a.text[lang]}
+          </span>
+        </button>
+      ))}
 
       {dirs.length > 1 && (
         <div className="seg-ctl" role="tablist" aria-label={t.linePanel.direction}>
@@ -182,15 +279,23 @@ export function LinePanel({ routeRef }: { routeRef: string }) {
         </div>
       )}
 
-      {/* la línia en una frase: quants busos hi ha ara, cada quant passen i quan funciona */}
-      <p className="lp-summary">
-        <strong>{t.linesPage.busesNow(active)}</strong>
-        {sum.runsToday && sum.headwayMin ? ` · ${t.linesPage.every(sum.headwayMin)}` : ''}
-        {dur ? ` · ${t.linePanel.min(dur)} ${t.linePanel.endToEnd}` : ''}
-        {sum.runsToday ? ` · ${hm(sum.first)}–${hm(sum.last)}` : ''}
-      </p>
+      {/* la línia en una frase: quants busos hi ha ara, cada quant passen i quan funciona (només avui: un altre
+          dia no hi ha «ara», només l'horari) */}
+      {isToday ? (
+        <p className="lp-summary">
+          <strong>{t.linesPage.busesNow(active)}</strong>
+          {sum.runsToday && sum.headwayMin ? ` · ${t.linesPage.every(sum.headwayMin)}` : ''}
+          {dur ? ` · ${t.linePanel.min(dur)} ${t.linePanel.endToEnd}` : ''}
+          {sum.runsToday ? ` · ${hm(sum.first)}–${hm(sum.last)}` : ''}
+        </p>
+      ) : (
+        <p className="lp-summary">
+          <strong>{runsToday ? fmtDay(date, lang) : t.p.lines.off}</strong>
+          {dur ? ` · ${t.linePanel.min(dur)} ${t.linePanel.endToEnd}` : ''}
+        </p>
+      )}
 
-      {next.length > 0 && (
+      {isToday && next.length > 0 && (
         <section className="lp-next">
           <div className="sec-title">
             {t.linePanel.nextBuses} <span className="dim">{t.linePanel.from(engine.stops.get(main.stopIds[0]!)?.name ?? '')}</span>
@@ -215,7 +320,10 @@ export function LinePanel({ routeRef }: { routeRef: string }) {
       </a>
 
       <section>
-        <div className="sec-title">{t.linePanel.stopsList}</div>
+        <div className="sec-title lp-stops-head">
+          <span>{t.linePanel.stopsList}</span>
+          {runsToday && <span className="dim">{isToday ? t.p.lines.nextCol : t.p.lines.firstCol}</span>}
+        </div>
         <ol className="lp-stops" style={{ ['--c' as string]: route.color }}>
           {main.stopIds.map((id, i) => {
             const here = placed.filter((p) => p.before === i);
@@ -236,7 +344,19 @@ export function LinePanel({ routeRef }: { routeRef: string }) {
                 ))}
                 <button type="button" className="lp-stop-name linklike" onClick={() => st.navigate({ name: 'stop', id })}>
                   <span className="lp-dot" aria-hidden />
-                  {engine.stops.get(id)?.name ?? id}
+                  <span className="lp-stop-label">
+                    {engine.stops.get(id)?.name ?? id}
+                    {/* transbords: altres línies que hi passen aquell dia */}
+                    <span className="lp-transfers">
+                      {(engine.stops.get(id)?.routes ?? [])
+                        .filter((r) => r !== route.id && engine.runsOnDate(r, date))
+                        .slice(0, 5)
+                        .map((r) => (
+                          <RouteChip key={r} route={engine.routes.get(r)} size="sm" />
+                        ))}
+                    </span>
+                  </span>
+                  {times[i] != null && <span className="lp-time mono">{hm(origin + times[i]! * 1000)}</span>}
                 </button>
               </li>
             );

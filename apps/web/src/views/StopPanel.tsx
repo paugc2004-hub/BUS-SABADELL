@@ -5,6 +5,7 @@ import { useApp } from '../state/store.ts';
 import { useT } from '../i18n/index.ts';
 import { Icon, IconButton, Punctuality, RouteChip, SourceTag, hm, relativeLabel, shareUrl, useNow } from '../ui/common.tsx';
 import { Sheet } from '../ui/Sheet.tsx';
+import { stopCardUrl } from '../data/stopCode.ts';
 
 export function StopPanel({ id }: { id: string }) {
   if (id.startsWith('gi:')) return <InterurbanStop id={id.slice(3)} />;
@@ -63,11 +64,14 @@ function TusStop({ id }: { id: string }) {
       <header className="card-head">
         <div>
           <div className="eyebrow">{t.stop}</div>
-          <h2 className="stop-name">{stop.name}</h2>
+          {/* com a la marquesina i a l'app de TUS: «codi - nom» (el codi és el de TUS, no l'ordre dins una línia) */}
+          <h2 className="stop-name">
+            <span className="stop-code">{stop.id}</span> - {stop.name}
+          </h2>
           <div className="chips mt-s">
-            {routes.filter((r) => engine.runsOn(r, engine.dayTypeAt(now))).map((r) => (
+            {routes.filter((r) => engine.runsAt(r, now)).map((r) => (
               <button key={r} type="button" className="chip-btn" onClick={() => st.navigate({ name: 'line', ref: r })}>
-                <RouteChip route={engine.routes.get(r)} size="sm" dim={!engine.runsOn(r, engine.dayTypeAt(now))} />
+                <RouteChip route={engine.routes.get(r)} size="sm" dim={!engine.runsAt(r, now)} />
               </button>
             ))}
           </div>
@@ -79,7 +83,8 @@ function TusStop({ id }: { id: string }) {
           <IconButton
             label={copied ? t.copied : t.share}
             onClick={() =>
-              shareUrl(location.href, stop.name, () => {
+              // la fitxa pública (/p/<codi>): s'obre sense compte ni app, com els QR
+              shareUrl(stopCardUrl(stop.id, location.origin), `${stop.id} - ${stop.name}`, () => {
                 setCopied(true);
                 setTimeout(() => setCopied(false), 1600);
               })
@@ -94,9 +99,13 @@ function TusStop({ id }: { id: string }) {
       </header>
 
       {alerts.map((a) => (
-        <div key={a.id} className="alert-inline">
-          {Icon.bell} {a.text[lang]}
-        </div>
+        <button key={a.id} type="button" className="alert-inline" onClick={() => st.navigate({ name: 'alerts' })}>
+          {Icon.bell}
+          <span>
+            {a.title && <strong>{a.title[lang]} </strong>}
+            {a.text[lang]}
+          </span>
+        </button>
       ))}
 
       <div className="sr-only" aria-live="polite">
@@ -199,7 +208,10 @@ function InterurbanStop({ id }: { id: string }) {
     <Sheet label={stop.name} onClose={() => st.back()} className="stop-panel">
       <header className="card-head">
         <div>
-          <h2 className="stop-name">{stop.name}</h2>
+          {/* com a la marquesina i a l'app de TUS: «codi - nom» (el codi és el de TUS, no l'ordre dins una línia) */}
+          <h2 className="stop-name">
+            <span className="stop-code">{stop.id}</span> - {stop.name}
+          </h2>
           <div className="stop-meta">
             <span className="dim">{t.interurbans}</span>
             <span className="chips">

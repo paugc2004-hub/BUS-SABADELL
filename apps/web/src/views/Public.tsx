@@ -15,7 +15,7 @@ import { PUBLIC_ORIGIN, qrPath, qrSvg, stopCardUrl, validStopCode } from '../dat
 import { RouteChip, SourceTag, hm, useNow } from '../ui/common.tsx';
 import { Logo } from '../ui/Logo.tsx';
 
-function useNetwork() {
+export function useNetwork() {
   const engine = useApp((s) => s.engine);
   const network = useApp((s) => s.network);
   const state = useApp((s) => s.loadState);
@@ -25,7 +25,7 @@ function useNetwork() {
   return { engine, network, state };
 }
 
-function Shell({ title, children }: { title: string; children: ReactNode }) {
+export function Shell({ title, children }: { title: string; children: ReactNode }) {
   const t = useT();
   const lang = useApp((s) => s.lang);
   const st = useApp.getState();
@@ -39,13 +39,13 @@ function Shell({ title, children }: { title: string; children: ReactNode }) {
           <Logo size={26} />
         </a>
         <nav className="pub-nav" aria-label={t.pub.qrTitle}>
-          <a href="/qr" onClick={(e) => (e.preventDefault(), st.navigate({ name: 'qr', id: null }))}>
-            QR
+          <a href="/tarifes" onClick={(e) => (e.preventDefault(), st.navigate({ name: 'fares' }))}>
+            {t.fares.nav}
           </a>
           <a href="/app" onClick={(e) => (e.preventDefault(), st.navigate({ name: 'home' }))}>
             App
           </a>
-          <button type="button" className="pub-lang" onClick={() => st.setLang(lang === 'ca' ? 'es' : 'ca')} aria-label={t.lang}>
+          <button type="button" className="pub-lang" onClick={() => st.setLang(lang === 'ca' ? 'es' : 'ca')} aria-label={`${lang === 'ca' ? 'ES' : 'CA'} · ${t.lang}`}>
             {lang === 'ca' ? 'ES' : 'CA'}
           </button>
         </nav>
@@ -132,19 +132,19 @@ export function StopCard({ id }: { id: string }) {
           </h2>
           <ul className="chips sc-lines">
             {routes
-              .filter((r) => engine.runsOn(r, dayType))
+              .filter((r) => engine.runsAt(r, now))
               .map((r) => (
                 <li key={r} title={engine.routes.get(r)?.longName}>
                   <RouteChip route={engine.routes.get(r)} size="md" />
                 </li>
               ))}
           </ul>
-          {routes.some((r) => !engine.runsOn(r, dayType)) && (
+          {routes.some((r) => !engine.runsAt(r, now)) && (
             // sense atenuar (contrast AA): una fila a part diu quines avui no hi passen
             <p className="sc-off small">
               <span className="dim">{t.pub.notTodayLines}</span>{' '}
               {routes
-                .filter((r) => !engine.runsOn(r, dayType))
+                .filter((r) => !engine.runsAt(r, now))
                 .map((r) => (
                   <RouteChip key={r} route={engine.routes.get(r)} size="sm" />
                 ))}

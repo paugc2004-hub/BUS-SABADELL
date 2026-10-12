@@ -376,7 +376,7 @@ export class SimEngine {
     if (extraForward) dates.push(addDays(today, 1));
     return dates.map((date) => {
       const dayType = dayTypeFor(date, this.network.holidays);
-      return { date, dayType, origin: serviceDayOrigin(date), tables: this.days.get(dayType)! };
+      return { date, dayType, origin: serviceDayOrigin(date), tables: this.tablesFor(date) };
     });
   }
 
@@ -402,8 +402,7 @@ export class SimEngine {
     const sep = id.indexOf(':');
     const date = id.slice(0, sep);
     const blockId = id.slice(sep + 1);
-    const dayType = dayTypeFor(date, this.network.holidays);
-    const b = this.days.get(dayType)!.blocks.find((x) => x.id === blockId);
+    const b = this.tablesFor(date).blocks.find((x) => x.id === blockId);
     if (!b) return null;
     const origin = serviceDayOrigin(date);
     return this.blockState(b, (t - origin) / 1000, origin, date, t);
@@ -573,7 +572,7 @@ export class SimEngine {
     const sep = id.indexOf(':');
     const date = id.slice(0, sep);
     const blockId = id.slice(sep + 1);
-    const b = this.days.get(dayTypeFor(date, this.network.holidays))!.blocks.find((x) => x.id === blockId);
+    const b = this.tablesFor(date).blocks.find((x) => x.id === blockId);
     const trip = b?.trips.find((x) => x.key === v.tripKey);
     const pp = this.patterns.get(v.patternId);
     if (!trip || !pp || !b) return null;
@@ -671,7 +670,7 @@ export class SimEngine {
     const date = localDate(t);
     const dayType = dayTypeFor(date, this.network.holidays);
     const origin = serviceDayOrigin(date);
-    const tables = this.days.get(dayType)!;
+    const tables = this.tablesFor(date);
     const trips = tables.trips.filter((x) => x.pattern.route.id === routeId);
     if (!trips.length) return { runsToday: false as const, dayType };
     const s = (t - origin) / 1000;
@@ -697,10 +696,9 @@ export class SimEngine {
   nextService(t: number): { at: number; routeId: string } | null {
     for (let k = 0; k < 3; k++) {
       const date = addDays(localDate(t), k);
-      const dayType = dayTypeFor(date, this.network.holidays);
       const origin = serviceDayOrigin(date);
       const s = (t - origin) / 1000;
-      const tr = this.days.get(dayType)!.trips.find((x) => x.dep >= s);
+      const tr = this.tablesFor(date).trips.find((x) => x.dep >= s);
       if (tr) return { at: origin + tr.dep * 1000, routeId: tr.pattern.route.id };
     }
     return null;
@@ -724,8 +722,45 @@ export class SimEngine {
     return { blocks: d.blocks.length, trips: d.trips.length, peak, peakAt };
   }
 
+  /** la línia té servei en aquest tipus de dia (sense comptar les línies que només van uns dies concrets) */
   runsOn(routeId: string, dayType: DayType): boolean {
     return this.days.get(dayType)!.trips.some((x) => x.pattern.route.id === routeId);
+  }
+
+  /** la línia té servei aquest dia de servei (YYYY-MM-DD), p. ex. la F6 només els festius comercials */
+  runsOnDate(routeId: string, date: string): boolean {
+    return this.tablesFor(date).trips.some((x) => x.pattern.route.id === routeId);
+  }
+
+  /** la línia té servei el dia (local) de l'instant t */
+  runsAt(routeId: string, t: number): boolean {
+    return this.runsOnDate(routeId, localDate(t));
+  }
+
+  private filtered = new Map<string, DayTables>();
+
+  /**
+   * Taules d'un dia de servei concret: les del seu tipus de dia, sense les línies que només circulen unes dates
+   * (`Route.onlyDates`) si aquell dia no hi és. Els torns són d'una sola línia, així que es treuen sencers.
+   */
+  private tablesFor(date: string): DayTables {
+    const dayType = dayTypeFor(date, this.network.holidays);
+    const base = this.days.get(dayType)!;
+    const off = this.network.routes.filter((r) => r.onlyDates && !r.onlyDates.includes(date)).map((r) => r.id);
+    if (off.length === 0) return base;
+    const key = `${dayType}|${off.join(',')}`;
+    let t = this.filtered.get(key);
+    if (!t) {
+      const o = new Set(off);
+      t = {
+        trips: base.trips.filter((x) => !o.has(x.pattern.route.id)),
+        blocks: base.blocks.filter((b) => !o.has(b.routeId)),
+        blockById: new Map([...base.blockById].filter(([, b]) => !o.has(b.routeId))),
+        byStop: new Map([...base.byStop].map(([k, v]) => [k, v.filter((e) => !o.has(e.trip.pattern.route.id))])),
+      };
+      this.filtered.set(key, t);
+    }
+    return t;
   }
 
   patternById(id: string): Pattern | undefined {
