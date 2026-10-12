@@ -179,10 +179,18 @@ describe('xarxa real generada (network.json)', () => {
 
   it('un tick de ~90 buses costa menys de 2 ms', () => {
     const t = Date.parse('2026-10-06T06:00:00Z');
-    engine.snapshot(t);
-    const t0 = performance.now();
-    for (let i = 0; i < 100; i++) engine.snapshot(t + i * 1000);
-    expect((performance.now() - t0) / 100).toBeLessThan(2);
+    // escalfament: a l'app el tick corre cada segon durant hores; sense escalfar, el que es mesura és el JIT
+    // (en fred ~1,5 ms; escalfat ~1 ms, 72 buses). Després, mediana de 9 tandes de 20 ticks: una tanda que coincideix
+    // amb un altre fil de vitest ocupant la CPU no el fa fallar. El pressupost és el mateix: 2 ms.
+    for (let i = 0; i < 300; i++) engine.snapshot(t - 3_600_000 + i * 1000);
+    const batches: number[] = [];
+    for (let b = 0; b < 9; b++) {
+      const t0 = performance.now();
+      for (let i = 0; i < 20; i++) engine.snapshot(t + (b * 20 + i) * 1000);
+      batches.push((performance.now() - t0) / 20);
+    }
+    batches.sort((a, b) => a - b);
+    expect(batches[4]!).toBeLessThan(2);
   });
   it('auditoria: cap variant amb error (recorregut al carrer, parades sobre el recorregut i en ordre)', () => {
     const res = audit(net);

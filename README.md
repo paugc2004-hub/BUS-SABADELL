@@ -13,7 +13,9 @@ Obres l'app, entres (o «Entra sense compte»), et detecta la ubicació (no surt
 arriba el bus, on baixar** i quant dura; el mapa mostra només aquest bus i per on va. Pots seguir-lo fins que
 arriba («Agafaré aquest bus»), amb avisos. Només autobusos urbans de Sabadell (TUS); res de trens ni altres operadors.
 
-- Navegació: Inici («On vols anar?») · Mapa · Línies · Compte.
+- Navegació: Inici («On vols anar?» i serveis) · Mapa · Línies · Com hi arribo · Més; a la capçalera, lector de QR,
+  cerca de parades i avisos en vigor. Tarifes i punts de venda (`/tarifes`, `/punts-de-venda`); títols i targetes **de
+  demostració** (no es cobra res).
 - 23 línies, 105 variants, 408 parades validades ([docs/LINE_AUDIT.md](docs/LINE_AUDIT.md)); 1.680 carrers i
   ~1.350 llocs (OpenStreetMap) per buscar on vas.
 - Comptes ficticis (al navegador) i «Entra sense compte». Preparat per a un servei real (`AuthProvider`).
@@ -38,10 +40,11 @@ pnpm data:audit     # validació línia per línia
 Desplegament: vegeu [CLAUDE.md](CLAUDE.md#desplegament-vercel-equip-paugc2004-4556s-projects).
 
 ## Qualitat
-- 116 tests unitaris/API (inclosa l'auditoria de la xarxa, `/api/places`, la ubicació i propietats del planificador) + 99 e2e
-  (escriptori, iPhone, Android; inclou accessibilitat automàtica amb axe-core i mòbil de 320 px).
-- Lighthouse mòbil (producció, laboratori sense GPU): rendiment 68–69, accessibilitat 100, bones pràctiques 100,
-  FCP/LCP 1,2–1,8 s. 60 fps en règim estable a totes les vistes (`scripts/perf-probe.mjs`).
+- 189 tests unitaris/API (`pnpm test`: auditoria de la xarxa, `/api/places`, ubicació, propietats del planificador,
+  tarifes i els 33 punts de venda) + 303 e2e (`pnpm test:e2e`, escriptori, iPhone i Android; axe-core i mòbil de 320 px).
+- Lighthouse mòbil (`vite preview` local, laboratori sense GPU, 2026-10-12): landing 98, `/tarifes` 93,
+  `/punts-de-venda` 87–88, `/p/<codi>` 79–80; accessibilitat i bones pràctiques 100. Detall i límits de la mesura:
+  [docs/AUDIT_2026-10-12.md](docs/AUDIT_2026-10-12.md).
 
 ## Documentació
 [Auditoria i pla](docs/EVOLUTION_AUDIT.md) · [Resum d'implementació](docs/IMPLEMENTATION_SUMMARY.md) ·

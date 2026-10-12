@@ -19,6 +19,9 @@ Dades: `apps/web/src/data/fares.ts` i `apps/web/src/data/salesPoints.ts`. Tests:
   dies lectius) o quan no hi ha calendari.
 - **TUS vs ATM**: la T-16 i els títols integrats es mostren com a ATM/T-mobilitat, separats dels títols propis de TUS.
 - **Divulgació progressiva**: no es mostra la llista sencera; hi ha cerca, filtres per barri, per «obert ara» i per títol.
+- **Noms**: «T-mensual bonificada» i «T-mensual Jove bonificada», com a la llista oficial facilitada (2026-10-12).
+- **«Obert ara» sense motor**: la pàgina només baixa les dates festives (`loadHolidayDates` a `data/load.ts`); si no
+  arriben, l'estat és «a confirmar». Test camp a camp dels 33 punts contra la llista: `src/data/fares.test.ts`.
 
 ## Límits coneguts
 - Els preus s'han de revisar contra tus.es abans de presentar-ho com a servei real (posar `verified: true` i la data).

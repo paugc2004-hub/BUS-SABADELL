@@ -48,7 +48,9 @@ export type View =
   /** targetes de demostració */
   | { name: 'cards'; page: CardPage }
   /** compte: subpàgines */
-  | { name: 'account'; page: AccountPage };
+  | { name: 'account'; page: AccountPage }
+  /** ruta que no existeix: pàgina «No trobat» (abans portava a l'inici sense dir res) */
+  | { name: 'notFound'; path: string };
 
 export type LegalPage = 'privacitat' | 'avis-legal' | 'galetes';
 export type TicketPage = 'list' | 'buy' | 'product' | 'purchases' | 'trips' | 'exhausted' | 'use';
@@ -138,7 +140,7 @@ export function parseView(path: string): View {
   m = /^\/compte\/([^/]+)$/.exec(p);
   if (m && m[1]! in ACCOUNT_PATHS) return { name: 'account', page: ACCOUNT_PATHS[m[1]!]! };
   if (p === '/compte') return { name: 'mine' };
-  return { name: 'home' };
+  return { name: 'notFound', path: p };
 }
 
 export function viewPath(v: View): string {
@@ -199,6 +201,8 @@ export function viewPath(v: View): string {
       return `/targetes${keyOf(CARD_PATHS, v.page) ? `/${keyOf(CARD_PATHS, v.page)}` : ''}`;
     case 'account':
       return `/compte/${keyOf(ACCOUNT_PATHS, v.page)}`;
+    case 'notFound':
+      return v.path;
     default:
       return '/';
   }

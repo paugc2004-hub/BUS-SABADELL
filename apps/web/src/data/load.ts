@@ -36,6 +36,29 @@ async function fetchNetwork(): Promise<void> {
   }
 }
 
+let holidaysInflight: Promise<string[]> | null = null;
+
+/**
+ * Només les dates festives (AAAA-MM-DD), per a les pàgines que no necessiten el motor (punts de venda: «obert ara»).
+ * Construir el SimEngine costa ~100 ms d'escriptori i ~400 ms de bloqueig en un mòbil (Lighthouse); aquí no cal.
+ * Si l'app ja té la xarxa, la reaprofita.
+ */
+export function loadHolidayDates(): Promise<string[]> {
+  const n = useApp.getState().network;
+  if (n) return Promise.resolve(n.holidays.map((h) => h.date));
+  holidaysInflight ??= fetch('/data/network.json')
+    .then((r) => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json() as Promise<NetworkData>;
+    })
+    .then((net) => net.holidays.map((h) => h.date))
+    .catch((e: unknown) => {
+      holidaysInflight = null;
+      throw e;
+    });
+  return holidaysInflight;
+}
+
 /** Vehicles de temps real rebuts del backend (buit mentre el proveïdor sigui simulat). */
 export const realtimeVehicles = new Map<string, VehicleState>();
 

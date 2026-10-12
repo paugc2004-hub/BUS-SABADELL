@@ -81,6 +81,20 @@ test.describe('app (amb sessió)', () => {
     await expect(page.locator('.route-panel .stop-name')).toHaveText('La Creu Alta');
   });
 
+  test('compartir amb l’app (share_target i web+nextmobility): el text arriba a la cerca, net i sense navegar enlloc', async ({ page }) => {
+    let dialog = false;
+    page.on('dialog', (d) => {
+      dialog = true;
+      void d.dismiss();
+    });
+    const payload = '<img src=x onerror=alert(1)>Rambla';
+    await page.goto(`/cercar?text=${encodeURIComponent(`web+nextmobility:${payload}`)}&${AT}`);
+    await expect(page.getByRole('combobox')).toHaveValue(payload);
+    await expect(page).toHaveURL(/\/cercar/);
+    await expect(page.locator('img[src="x"]')).toHaveCount(0);
+    expect(dialog).toBe(false);
+  });
+
   test('canvi d’idioma', async ({ page }) => {
     await page.goto(`/app?${AT}`);
     await ready(page);

@@ -133,6 +133,16 @@ test.describe('pàgines legals i peu comú (PPT §2.1.2, §2.1.4)', () => {
     await expect(page).toHaveURL(/\/privacitat$/);
     await expect(page.getByText(/no es desa ni s’envia|no se guarda ni se envía/i)).toBeVisible();
   });
+
+  test('una ruta que no existeix diu «No trobat» (no indexable) i torna a l’app', async ({ page }) => {
+    await page.addInitScript(DEMO_SESSION);
+    await page.goto('/aquesta-pagina-no-hi-es');
+    await expect(page.locator('h1')).toHaveText(/no existeix|no existe/);
+    await expect(page.locator('meta[name="robots"][content="noindex"]')).toHaveCount(1);
+    await page.getByRole('link', { name: /Obre l’app|Abre la app/ }).click();
+    await expect(page).toHaveURL(/\/app$/);
+    await expect(page.locator('meta[name="robots"][content="noindex"]')).toHaveCount(0);
+  });
 });
 
 test.describe('accessibilitat de les pàgines noves (WCAG 2.1 AA)', () => {
@@ -140,7 +150,7 @@ test.describe('accessibilitat de les pàgines noves (WCAG 2.1 AA)', () => {
   // eslint-disable-next-line no-empty-pattern -- Playwright exigeix desestructurar les fixtures
   test.beforeEach(({}, info) => test.skip(info.project.name !== 'desktop', 'només escriptori'));
 
-  for (const path of [`/p/278?${AT}`, '/qr/278', `/horari/L2?${AT}`, '/privacitat', '/avis-legal', '/galetes']) {
+  for (const path of [`/p/278?${AT}`, '/qr/278', `/horari/L2?${AT}`, '/privacitat', '/avis-legal', '/galetes', '/no-existeix']) {
     test(`sense violacions: ${path.split('?')[0]}`, async ({ page }) => {
       await page.goto(path);
       await expect(page.locator('h1')).toBeVisible();

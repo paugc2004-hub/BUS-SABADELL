@@ -1,3 +1,4 @@
+/* global URL */
 import { describe, expect, it } from 'vitest';
 import { cleanQuery, fromGoogle, fromPhoton, placesSearch, rateLimited } from './places.mjs';
 
@@ -112,6 +113,22 @@ describe('/api/places', () => {
     expect(r.status).toBe(502);
     expect(JSON.stringify(r.body)).not.toMatch(/photon 500|stack/);
     expect((await placesSearch({ q: '', lang: 'ca' })).status).toBe(400);
+  });
+
+  it('pressupost de Google per instància: passat el límit, respon Photon i no es crida Google', async () => {
+    const env = { GOOGLE_PLACES_API_KEY: 'k'.repeat(20), GOOGLE_PLACES_MAX_PER_MIN: '2' };
+    const hosts = [];
+    const fetchImpl = async (u) => {
+      hosts.push(new URL(String(u)).host);
+      return { ok: true, status: 200, json: async () => ({ places: [], features: [] }) };
+    };
+    const t = Date.now() + 10 * 60_000;
+    const sources = [];
+    for (let i = 0; i < 4; i++) sources.push((await placesSearch({ q: `pressupost ${i}`, lang: 'ca', env, fetchImpl, now: t })).body.source);
+    expect(sources).toEqual(['google', 'google', 'photon', 'photon']);
+    expect(hosts.filter((h) => h.includes('googleapis')).length).toBe(2);
+    // el minut següent torna a haver-hi pressupost
+    expect((await placesSearch({ q: 'pressupost nou', lang: 'ca', env, fetchImpl, now: t + 61_000 })).body.source).toBe('google');
   });
 
   it('límit de ritme per IP', () => {

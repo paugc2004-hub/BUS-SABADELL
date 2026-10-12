@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FARES, LINKS, fareById, monthlyCost } from './fares.ts';
-import { NEIGHBOURHOODS, SALES_POINTS, localNow, mapsSearchUrl, openState, parseRanges } from './salesPoints.ts';
+import { NEIGHBOURHOODS, SALES_POINTS, localNow, mapsSearchUrl, openState, parseRanges, hhmmMin } from './salesPoints.ts';
 
 /** instant a l'hora local de Sabadell (octubre 2026: UTC+2) */
 const at = (iso: string) => Date.parse(`${iso}:00+02:00`);
@@ -59,6 +59,57 @@ describe('punts de venda', () => {
       expect(Object.keys(p.hours).length).toBeGreaterThan(0);
       for (const d of Object.values(p.hours)) for (const [a, b] of d!.ranges) expect(a).toBeLessThan(b);
     }
+  });
+
+  // llista de la especificació (2026-10-12), en el mateix ordre; adreces amb les abreviatures normalitzades
+  // (Crta. → Ctra., «C. Lope de Vega» → «C. de Lope de Vega», «Pl. Madrid» → «Pl. de Madrid», apòstrof tipogràfic)
+  const SPEC: [string, string, string | null, Record<string, string>][] = [
+    ['Oficina de Mobilitat', 'C. de l’Estació, 67', 'Centre', { 'dl-dv': '8:00-13:00,16:00-19:00' }],
+    ['ESTANC-1, Aragay', 'C. d’en Font, 26', 'Centre', { 'dl-dv': '9:00-13:45,17:00-20:30', ds: '9:30-13:45' }],
+    ['ESTANC-7, Costa', 'Passeig de la Plaça Major, 25', 'Centre', { 'dl-ds': '8:00-13:30,16:00-20:30' }],
+    ['ESTANC-30, Fontanella', 'C. de Fontanella, 79', 'La Creu de Barberà', { 'dl-dv': '8:30-14:00,16:30-20:30', ds: '9:00-13:30' }],
+    ['ESTANC-42, Matadepera', 'Av. de Matadepera, 147', 'Ca n’Oriac', { 'dl-dv': '8:30-20:30', dg: '8:30-13:30' }],
+    ['ESTANC-16, l’Estanquet de la Rambla', 'C. de Lacy, 4', 'Centre', { 'dl-dv': '9:00-14:00,17:00-20:30', ds: '10:00-13:30,17:00-20:30' }],
+    ['Llibreria Yoli', 'C. de Pizarro, 6', 'La Creu de Barberà', { 'dl-dv': '8:00-14:00', 'ds-dg': '8:00-14:00' }],
+    ['ESTANC-39, Tabacs', 'Plaça Espanya, 21', 'La Concòrdia', { 'dl-dv': '8:00-14:00,16:30-20:30', 'ds-dg': '8:00-14:00' }],
+    ['Papereria Can Deu', 'C. de la Ginesta, 14', 'Can Deu', { 'dl-dv': '8:30-13:30,16:30-20:00', ds: '8:00-13:30' }],
+    ['ESTANC-33', 'C. de Sol i Padrís, 22', 'Sol i Padrís', { 'dl-dv': '8:30-20:30', ds: '9:00-13:30' }],
+    ['ESTANC-8', 'Av. de Matadepera, 243', 'La Roureda', { 'dl-ds': '8:30-13:30,17:00-20:30' }],
+    ['ESTANC-4, Tony', 'Ronda Zamenhof, 66', 'Centre', { 'dl-dv': '7:30-14:00,17:00-20:30', ds: '9:30-14:00,17:00-21:30', dg: '9:00-14:00' }],
+    ['ESTANC-45', 'Via Aurelia, 1', 'La Concòrdia', { 'dl-dv': '8:30-13:30,16:30-20:00', ds: '16:30-20:00' }],
+    ['ESTANC Concòrdia', 'Av. Concòrdia, 56', 'La Concòrdia', { 'dl-dv': '9:00-13:30,17:00-20:30', ds: '9:30-13:30' }],
+    ['ESTANC-9', 'Ctra. de Barcelona, 307', 'Avinguda–Eixample', { 'dl-dv': '8:00-14:00,16:30-20:30', ds: '9:00-13:30,17:00-20:00' }],
+    ['ESTANC-27', 'Av. de Matadepera, 91', 'Ca n’Oriac', { 'dl-ds': '8:30-13:30,16:30-20:30' }],
+    ['ESTANC-5', 'C. de Lope de Vega, 64', 'La Creu de Barberà', { 'dl-ds': '9:00-14:00,16:30-20:30' }],
+    ['ESTANC-29', 'Ctra. de Terrassa, 339', 'Els Merinals', { 'dl-dv': '9:00-13:30,17:00-20:30', ds: '9:00-14:00,17:00-20:00' }],
+    ['ESTANC-36', 'C. de Plaute, 51', 'Can Rull', { 'dl-dg': '9:00-14:00' }],
+    ['ESTANC-35', 'Ronda Zamenhof, 110', 'Centre', { 'dl-dv': '7:30-21:00', 'ds-dg': '8:00-21:00' }],
+    ['ESTANC-23', 'C. de Sol i Padrís, 105', 'Sol i Padrís', { 'dl-ds': '8:00-21:00', dg: '8:00-14:30' }],
+    ['ESTANC-44', 'Pl. de Madrid, 19', 'Can Llong', { 'dl-ds': '8:00-21:00', dg: '8:00-14:30' }],
+    ['ESTANC-18', 'C. de Campoamor, 65', 'Campoamor', { 'dl-dv': '8:30-13:30,17:00-20:00', ds: '9:00-13:30' }],
+    ['TABACS-21', 'C. de Pi i Margall, 6', 'La Creu Alta', { 'dl-ds': '9:00-21:00' }],
+    ['ESTANC-24', 'Av. de Barberà, 318', 'Avinguda–Eixample', { 'dl-ds': '9:00-14:00,17:00-21:00' }],
+    ['ESTANC-14', 'Ctra. de Barcelona, 13', 'Centre', { 'dl-ds': '9:00-14:00,17:00-21:00' }],
+    ['ESTANC-12', 'C. de les Tres Creus, 166', 'Centre', { 'dl-ds': '8:30-20:30', dg: '8:30-13:30' }],
+    ['ESTANC-3', 'C. de Pau Rigalt, 10', 'La Creu Alta', { 'dl-dv': '9:00-13:30,17:00-20:30', ds: '9:00-14:00' }],
+    ['ESTANC Pau Casals', 'Av. de Pau Casals, 29', null, { 'dl-dv': '9:00-14:00,17:00-20:00', ds: '9:00-14:00' }],
+    ['ESTANC-32', 'Ctra. de Terrassa, 440', 'Cifuentes', { 'dl-dv': '9:00-14:00,17:00-21:00', ds: '9:00-14:00' }],
+    ['ESTANC-11', 'Av. de Barberà, 20', 'Avinguda–Eixample', { 'dl-dv': '9:00-13:30,17:00-20:00', ds: '10:00-13:30,18:00-20:30' }],
+    ['ESTANC-6', 'Rambla de Sabadell, 211', 'Centre', { 'dl-dv': '9:00-14:00,16:00-20:30', ds: '10:00-20:30' }],
+    ['ESTANC-20', 'Ctra. de Terrassa, 108', 'Hostafrancs', { 'dl-dv': '8:30-13:30,16:30-20:30', ds: '9:30-13:30,17:00-20:30' }],
+  ];
+  it('cada punt coincideix amb la llista de l’especificació: nom, adreça, barri i horari de cada dia', () => {
+    const DAYS: Record<string, number[]> = { 'dl-dv': [0, 1, 2, 3, 4], ds: [5], dg: [6], 'dl-ds': [0, 1, 2, 3, 4, 5], 'dl-dg': [0, 1, 2, 3, 4, 5, 6], 'ds-dg': [5, 6] };
+    expect(SALES_POINTS.length).toBe(SPEC.length);
+    SPEC.forEach(([name, address, area, spec], i) => {
+      const p = SALES_POINTS[i]!;
+      expect([p.name, p.address, p.neighbourhood], name).toEqual([name, address, area]);
+      const want: (string | null)[] = Array(7).fill(null);
+      for (const [k, v] of Object.entries(spec)) for (const d of DAYS[k]!) want[d] = v;
+      const got = ([0, 1, 2, 3, 4, 5, 6] as const).map((d) => p.hours[d]?.ranges.map(([a, b]) => `${hhmmMin(a)}-${hhmmMin(b)}`).join(',') ?? null);
+      expect(got, name).toEqual(want);
+    });
+    expect(SALES_POINTS.find((p) => p.name === 'ESTANC Pau Casals')!.municipality).toBe('Sant Quirze del Vallès');
   });
 
   it('només l’Oficina de Mobilitat consta que ven T-10 i T-mensual; la resta, T-Sabadell', () => {

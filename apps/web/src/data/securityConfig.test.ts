@@ -29,6 +29,12 @@ describe('capçaleres de seguretat (vercel.json)', () => {
     expect(inline.length).toBeGreaterThan(0);
     for (const code of inline) expect(csp).toContain(`'sha256-${createHash('sha256').update(code).digest('base64')}'`);
   });
+  it('CSP connect-src: només el propi origen, el mapa base i l’API pròpia (cap comodí de dominis aliens)', () => {
+    const connect = /connect-src ([^;]+)/.exec(header('Content-Security-Policy'))![1]!.split(/\s+/);
+    expect(connect).toContain("'self'");
+    expect(connect).toContain('https://bus-sabadell-api.vercel.app');
+    for (const src of connect) expect(src, src).not.toMatch(/^https:\/\/\*\.(vercel\.app|com|net|org)$/);
+  });
   it('HSTS, nosniff i sense marcs', () => {
     expect(header('Strict-Transport-Security')).toMatch(/max-age=\d{8,}/);
     expect(header('X-Content-Type-Options')).toBe('nosniff');
