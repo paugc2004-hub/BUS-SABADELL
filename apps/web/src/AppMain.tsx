@@ -75,6 +75,7 @@ export function AppMain() {
   const ready = useApp((s) => s.loadState === 'ready');
   const presenting = useApp((s) => s.presenting);
   const busOpen = useApp((s) => s.selectedBus !== null);
+  const hasTrip = useApp((s) => s.trip !== null);
 
   // al mòbil, l'inici tapa el mapa: primer es pinta l'inici i el mapa (WebGL, ~1,5 MB) arrenca quan el mòbil està lliure
   const [mapOn, setMapOn] = useState(() => !(window.matchMedia('(max-width: 760px)').matches && ['home', 'mine', 'line'].includes(view.name)));
@@ -117,7 +118,7 @@ export function AppMain() {
   const control = presenting || name === 'network';
 
   return (
-    <div className={`app view-${name} base-${left ?? 'none'}${presenting ? ' presenting' : ''}${view.name === 'line' && lineRef ? ' has-line' : ''}${control ? ' control' : ' citizen'}${busOpen ? ' bus-open' : ''}`}>
+    <div className={`app view-${name} base-${left ?? 'none'}${presenting ? ' presenting' : ''}${view.name === 'line' && lineRef ? ' has-line' : ''}${control ? ' control' : ' citizen'}${busOpen ? ' bus-open' : ''}${hasTrip ? ' has-trip' : ''}`}>
       <TopBar />
       {control && <HonestyBanner />}
       <main className="stage">

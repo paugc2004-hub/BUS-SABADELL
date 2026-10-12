@@ -172,6 +172,9 @@ test.describe('app (amb sessió)', () => {
     await ready(page);
     const trip = page.locator('.trip-card');
     await expect(trip).toBeVisible();
+    // al mòbil és una barra plegada a baix (no tapa el cercador): s'obre en tocar-la
+    const toggle = trip.locator('.trip-toggle');
+    if ((await toggle.getAttribute('aria-expanded')) === 'false') await toggle.click();
     await expect(trip).toContainText('Estació Centre');
     await trip.getByRole('button', { name: /Deixa de seguir|Dejar de seguir/ }).click();
     await expect(trip).toHaveCount(0);

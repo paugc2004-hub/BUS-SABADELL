@@ -21,7 +21,8 @@ export function TripPanel() {
   const trip = useApp((s) => s.trip);
   const engine = useApp((s) => s.engine);
   const selectedBus = useApp((s) => s.selectedBus);
-  const [open, setOpen] = useState(true);
+  // al mòbil, plegat per defecte (barra a baix): no tapa el cercador ni els panells
+  const [open, setOpen] = useState(() => !(typeof window !== 'undefined' && window.matchMedia?.('(max-width: 760px)').matches));
   const now = useNow(1000);
   if (!trip || !engine) return null;
   // si la fitxa del mateix bus és oberta, el viatge ja hi és (no es repeteix)

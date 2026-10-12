@@ -92,6 +92,11 @@ dels QR), `/qr[/<codi>]` generador de QR (`data/qr.ts`, al dispositiu), `/horari
 parada imprimibles, `/privacitat` `/avis-legal` `/galetes`. Core: `timetable.ts` (horari teòric = hora d'horari del
 motor), `alerts.ts` (avisos per publicació/expiració; mai mostrar `network.alerts` sense filtrar), `planArriveBy`.
 Traçabilitat i decisions: `docs/LICITACIO_2024_*.md`, `docs/SUPER_MASTER_PROMPT_LICITACIO_2024.md`.
+`/tarifes` i `/punts-de-venda` (`views/Fares.tsx`, `data/fares.ts`, `data/salesPoints.ts`): preus amb `verified: false`
+(«a confirmar»), 33 punts sense coordenades, «obert ara» en hora de Sabadell amb estat *a confirmar*. `docs/TARIFES_PUNTS_DE_VENDA.md`.
+Revisió de producte: el planificador no proposa cap bus que faci caminar més que anar-hi a peu («A peu» com a millor
+opció); al mòbil el viatge actiu és una barra plegada a baix (`.has-trip`); la navegació tanca la fitxa del bus.
+Regressions: `e2e/product.spec.ts`.
 
 ## Ubicació i cerca de destins (2026-10-07)
 - **Ubicació**: només `apps/web/src/location/location.ts` (LocationService) crida `navigator.geolocation`. Estats:

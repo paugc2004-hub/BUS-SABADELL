@@ -22,11 +22,16 @@ function activeTab(view: ReturnType<typeof useApp.getState>['view'], base: strin
 function useNavItems() {
   const t = useT();
   const st = useApp.getState();
+  // una pestanya porta a la seva pantalla: la fitxa d'un bus oberta a sobre es tanca (al mapa, es manté)
+  const to = (v: Parameters<typeof st.navigate>[0]) => () => {
+    if (v.name !== 'map' && useApp.getState().selectedBus) st.selectBus(null);
+    st.navigate(v);
+  };
   return [
-    { key: 'home' as const, label: t.nav2.home, icon: Icon.home, go: () => st.navigate({ name: 'home' }) },
-    { key: 'map' as const, label: t.nav2.map, icon: Icon.map, go: () => st.navigate({ name: 'map' }) },
-    { key: 'line' as const, label: t.nav2.lines, icon: Icon.line, go: () => st.navigate({ name: 'line', ref: null }) },
-    { key: 'mine' as const, label: t.nav2.mine, icon: Icon.user, go: () => st.navigate({ name: 'mine' }) },
+    { key: 'home' as const, label: t.nav2.home, icon: Icon.home, go: to({ name: 'home' }) },
+    { key: 'map' as const, label: t.nav2.map, icon: Icon.map, go: to({ name: 'map' }) },
+    { key: 'line' as const, label: t.nav2.lines, icon: Icon.line, go: to({ name: 'line', ref: null }) },
+    { key: 'mine' as const, label: t.nav2.mine, icon: Icon.user, go: to({ name: 'mine' }) },
   ];
 }
 

@@ -487,7 +487,6 @@ h2, h3 { margin: 0; }
   .home-stop-name { font-size: var(--fs-body); }
   .home-pill { top: auto; bottom: calc(62px + var(--safe-b)); left: 10px; }
   .trip-card { top: 8px; left: 8px; right: 8px; width: auto; }
-  .trip-card.folded .trip-title { display: none; }
   .toasts { top: 70px; }
   .bc-ctas { grid-template-columns: 1fr 1fr; }
   .cta { font-size: var(--fs-small); }
@@ -1609,3 +1608,12 @@ details[open] > summary::after { transform: rotate(180deg); }
 .best-walk-main { margin: 2px 0 0; font-size: 28px; font-weight: 800; letter-spacing: -.01em; line-height: 1.1; }
 .best-walk-sub { margin: 2px 0 0; color: var(--text-2); font-weight: 600; }
 .best.best-alt { border-width: 1px; }
+
+/* mòbil: «El teu viatge» com a barra compacta a baix (minireproductor), sobre la navegació; s'obre cap amunt */
+@media (max-width: 760px) {
+  .citizen .trip-card { top: auto; bottom: 8px; left: 8px; right: 8px; max-height: 60dvh; overflow-y: auto; }
+  .citizen .trip-card.folded { padding-top: 6px; padding-bottom: 6px; }
+  /* s'obre cap amunt: la fletxa ho indica */
+  .citizen .trip-card .trip-toggle svg { transform: rotate(180deg); }
+  .has-trip .sheet-body, .has-trip .home, .has-trip .lines-index { padding-bottom: 72px; }
+}
